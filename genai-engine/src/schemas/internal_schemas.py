@@ -3977,6 +3977,10 @@ class ContinuousEval(BaseModel):
         default=None,
         description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
     )
+    judge_changed_at: Optional[datetime] = Field(
+        default=None,
+        description="When the eval started using its current evaluator. Null for evals created before this was tracked.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -4004,6 +4008,7 @@ class ContinuousEval(BaseModel):
             enabled=db_eval.enabled,
             sample_rate=db_eval.sample_rate,
             daily_cost_cap_usd=db_eval.daily_cost_cap_usd,
+            judge_changed_at=db_eval.judge_changed_at,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:

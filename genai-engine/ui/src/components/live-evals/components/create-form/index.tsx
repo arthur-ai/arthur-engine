@@ -239,7 +239,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
           </Stack>
           <Divider sx={{ my: 2 }} />
           <EvaluatorSelector form={form} fields="evaluator" taskId={taskId} onSelectionChange={handleSelectionChange} />
-          <SpendEstimateLine taskId={taskId} llmEvalName={evaluator.name} samplePercent={samplePercent} />
+          <SpendEstimateLine taskId={taskId} llmEvalName={evaluator.name} llmEvalVersion={evaluator.version} samplePercent={samplePercent} />
           <Divider sx={{ my: 2 }} />
           <TransformSelector form={form} fields="transform" taskId={taskId} onSelectionChange={handleSelectionChange} />
           {canShowVariableMapping && (

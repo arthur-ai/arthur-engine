@@ -16506,7 +16506,7 @@
                     "Continuous Evals"
                 ],
                 "summary": "Get recent and estimated daily spend for a continuous eval",
-                "description": "Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.",
+                "description": "Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the share of finished runs that reached the LLM, times the average cost of its live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days. If the evaluator changed in that window, only runs since the change are averaged; otherwise all of them are. Test runs are not counted.",
                 "operationId": "get_continuous_eval_spend_api_v1_continuous_evals__eval_id__spend_get",
                 "security": [
                     {
@@ -16557,7 +16557,7 @@
                     "Continuous Evals"
                 ],
                 "summary": "Estimate the daily spend of a new continuous eval",
-                "description": "Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.",
+                "description": "Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using that evaluator version (latest by default), counting each eval's runs since its evaluator last changed, or all its runs in the window if it never changed.",
                 "operationId": "estimate_continuous_eval_spend_api_v1_tasks__task_id__continuous_evals_spend_estimate_get",
                 "security": [
                     {
@@ -16585,6 +16585,18 @@
                             "title": "Llm Eval Name"
                         },
                         "description": "Name of the evaluator the continuous eval would run."
+                    },
+                    {
+                        "name": "llm_eval_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model.",
+                            "default": "latest",
+                            "title": "Llm Eval Version"
+                        },
+                        "description": "Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model."
                     },
                     {
                         "name": "sample_rate",
@@ -20993,7 +21005,32 @@
                     "run_count": {
                         "type": "integer",
                         "title": "Run Count",
-                        "description": "Live runs in the window that called the LLM (passed or failed), which the average is taken over."
+                        "description": "Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over."
+                    },
+                    "judged_share": {
+                        "type": "number",
+                        "title": "Judged Share",
+                        "description": "Share of finished runs that called the LLM rather than being skipped. Errored runs are left out. 1.0 with no finished runs.",
+                        "default": 1.0
+                    },
+                    "unpriced_run_count": {
+                        "type": "integer",
+                        "title": "Unpriced Run Count",
+                        "description": "Runs that called the LLM but have no cost (a model without a price), left out of the average.",
+                        "default": 0
+                    },
+                    "priced_since": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Priced Since",
+                        "description": "Set when the evaluator changed inside the window: the average only uses runs from this time on."
                     },
                     "average_run_cost": {
                         "anyOf": [
@@ -21028,7 +21065,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window."
+                        "description": "Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs in the window that called the LLM and have a recorded cost (unpriced_run_count counts the ones without)."
                     }
                 },
                 "type": "object",
@@ -21040,7 +21077,7 @@
                     "run_count"
                 ],
                 "title": "ContinuousEvalDailySpendEstimate",
-                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost"
+                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost"
             },
             "ContinuousEvalRerunResponse": {
                 "properties": {

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ContinuousEvalSpendCards, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
+import { ContinuousEvalSpendCards, describeEstimateFormula, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
 
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse } from "@/lib/api-client/api-client";
 
@@ -69,6 +69,48 @@ describe("SpendCards", () => {
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.getByText("No runs that called the LLM in the last 7 days")).toBeTruthy();
   });
+
+  it("says the judge was called but has no price when every run is unpriced", () => {
+    render(
+      <SpendCards
+        spend={{
+          ...spend,
+          estimate: {
+            ...estimate,
+            run_count: 0,
+            unpriced_run_count: 3,
+            average_run_cost: null,
+            estimated_daily_cost: null,
+            unavailable_reason: "no_runs",
+          },
+        }}
+        currency="USD"
+      />
+    );
+
+    expect(screen.getByText("3 runs called the LLM in the last 7 days, but its model has no price")).toBeTruthy();
+  });
+
+  it("says there are no runs since the evaluator changed after a switch", () => {
+    render(
+      <SpendCards
+        spend={{
+          ...spend,
+          estimate: {
+            ...estimate,
+            run_count: 0,
+            average_run_cost: null,
+            estimated_daily_cost: null,
+            unavailable_reason: "no_runs",
+            priced_since: "2026-11-03T10:00:00",
+          },
+        }}
+        currency="USD"
+      />
+    );
+
+    expect(screen.getByText("No runs since the evaluator changed")).toBeTruthy();
+  });
 });
 
 describe("SpendEstimateText", () => {
@@ -99,7 +141,7 @@ describe("malformed spend responses", () => {
   });
 
   it("renders no estimate line", () => {
-    const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="50" />);
+    const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" llmEvalVersion="latest" samplePercent="50" />);
 
     expect(container.innerHTML).toBe("");
   });
@@ -122,5 +164,23 @@ describe("daily cap", () => {
   it("shows the pause note once the cap is reached", () => {
     render(<SpendCards spend={{ ...spend, daily_cost_cap_usd: 1, spent_today: 1.2, cap_reached: true }} currency="USD" />);
     expect(screen.getByText(/Paused for today/)).toBeTruthy();
+  });
+});
+
+describe("estimate accuracy notes", () => {
+  it("shows the share of traces that reach the judge when some are skipped", () => {
+    const text = describeEstimateFormula({ ...estimate, judged_share: 0.6 }, "USD");
+    expect(text).toContain("60% reach the judge");
+  });
+
+  it("says the price comes from the current evaluator after a switch", () => {
+    const text = describeEstimateFormula({ ...estimate, priced_since: "2026-11-03T10:00:00" }, "USD");
+    expect(text).toContain("runs since the evaluator changed");
+  });
+
+  it("leaves both out when every trace is judged and the evaluator never changed", () => {
+    const text = describeEstimateFormula({ ...estimate, judged_share: 1, priced_since: null }, "USD");
+    expect(text).not.toContain("reach the judge");
+    expect(text).not.toContain("evaluator changed");
   });
 });
