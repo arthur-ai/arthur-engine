@@ -16604,6 +16604,24 @@
                             "title": "Sample Rate"
                         },
                         "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace."
+                    },
+                    {
+                        "name": "trace_filter",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it.",
+                            "title": "Trace Filter"
+                        },
+                        "description": "The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it."
                     }
                 ],
                 "responses": {
@@ -21032,6 +21050,30 @@
                             }
                         ],
                         "description": "Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window."
+                    },
+                    "filter_match_share": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Filter Match Share",
+                        "description": "Share of the task's recent traces that match the given trace filter, checked over up to filter_traces_checked of the latest traces in the window. Null when no trace filter was given."
+                    },
+                    "filter_traces_checked": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Filter Traces Checked",
+                        "description": "How many recent traces filter_match_share was measured on."
                     }
                 },
                 "type": "object",
@@ -21043,7 +21085,7 @@
                     "run_count"
                 ],
                 "title": "ContinuousEvalDailySpendEstimate",
-                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost"
+                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost\n(* filter_match_share, when a trace filter was given)"
             },
             "ContinuousEvalRerunResponse": {
                 "properties": {

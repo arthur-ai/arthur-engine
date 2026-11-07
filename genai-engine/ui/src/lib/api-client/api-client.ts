@@ -1649,6 +1649,7 @@ export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
  * Projected daily cost of a continuous eval at the task's recent traffic.
  *
  * estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+ * (* filter_match_share, when a trace filter was given)
  */
 export interface ContinuousEvalDailySpendEstimate {
   /**
@@ -1661,6 +1662,16 @@ export interface ContinuousEvalDailySpendEstimate {
    * Projected cost per day. Null when it cannot be estimated; unavailable_reason says why.
    */
   estimated_daily_cost?: number | null;
+  /**
+   * Filter Match Share
+   * Share of the task's recent traces that match the given trace filter, checked over up to filter_traces_checked of the latest traces in the window. Null when no trace filter was given.
+   */
+  filter_match_share?: number | null;
+  /**
+   * Filter Traces Checked
+   * How many recent traces filter_match_share was measured on.
+   */
+  filter_traces_checked?: number | null;
   /**
    * Run Count
    * Live runs in the window that called the LLM (passed or failed), which the average is taken over.
@@ -2904,6 +2915,11 @@ export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpend
    * @format uuid
    */
   taskId: string;
+  /**
+   * Trace Filter
+   * The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it.
+   */
+  trace_filter?: string | null;
 }
 
 /** Eval */

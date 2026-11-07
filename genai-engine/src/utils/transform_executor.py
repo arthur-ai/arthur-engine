@@ -6,7 +6,7 @@ genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformE
 """
 
 import json
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Protocol, Sequence
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.response_schemas import (
@@ -145,8 +145,18 @@ def _filter_value_string(value: Any) -> str:
     return stringify_value(value)
 
 
+class FilterableSpan(Protocol):
+    """A span the trace filter can read: API responses and DB rows both fit."""
+
+    @property
+    def span_name(self) -> Optional[str]: ...
+
+    @property
+    def raw_data(self) -> Any: ...
+
+
 def _trace_filter_condition_holds(
-    flat_spans: List[NestedSpanWithMetricsResponse],
+    flat_spans: Sequence[FilterableSpan],
     condition: ContinuousEvalTraceFilterCondition,
 ) -> bool:
     spans = [
@@ -206,7 +216,16 @@ def trace_matches_filter(
     for span in trace.root_spans:
         flat_spans.extend(_flatten_spans(span))
 
+    return spans_match_filter(flat_spans, trace_filter)
+
+
+def spans_match_filter(
+    spans: Sequence[FilterableSpan],
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+) -> bool:
+    """trace_matches_filter over a trace's spans given as a flat list."""
+    if not trace_filter:
+        return True
     return all(
-        _trace_filter_condition_holds(flat_spans, condition)
-        for condition in trace_filter
+        _trace_filter_condition_holds(spans, condition) for condition in trace_filter
     )

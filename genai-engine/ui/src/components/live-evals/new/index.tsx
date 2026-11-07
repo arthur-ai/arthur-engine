@@ -176,6 +176,7 @@ const LiveEvalsNewForm = () => {
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
   const samplePercent = useStore(form.store, (state) => state.values.samplePercent);
+  const traceFilter = useStore(form.store, (state) => state.values.traceFilter);
 
   const isMLEval = evaluator.eval_type === "ml";
 
@@ -317,7 +318,7 @@ const LiveEvalsNewForm = () => {
 
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
-        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} samplePercent={samplePercent} />
+        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} samplePercent={samplePercent} traceFilter={traceFilter} />
 
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>

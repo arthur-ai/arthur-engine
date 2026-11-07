@@ -3,6 +3,11 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/06/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  added the optional property `estimate/filter_match_share` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  added the optional property `estimate/filter_traces_checked` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the new optional `query` request parameter `trace_filter`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the optional property `filter_match_share` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the optional property `filter_traces_checked` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `trace_filter` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property `trace_filter`
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `trace_filter` to the response with the `200` status

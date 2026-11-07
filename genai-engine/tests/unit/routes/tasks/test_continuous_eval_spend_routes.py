@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -6,7 +7,7 @@ import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.telemetry_models import DatabaseTraceMetadata
+from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from repositories.continuous_eval_spend_repository import (
     ContinuousEvalSpendRepository,
 )
@@ -309,6 +310,96 @@ def test_continuous_eval_spend_without_traces_or_runs(
         assert spend.estimate.estimated_daily_cost == 0.0
         assert spend.estimate.unavailable_reason is None
     finally:
+        _cleanup(client, task.id, [continuous_eval.id])
+
+
+def _add_root_span(task_id: str, trace_id: str, attributes: dict) -> None:
+    db_session = override_get_db_session()
+    now = datetime.now()
+    db_session.add(
+        DatabaseSpan(
+            id=uuid.uuid4().hex,
+            trace_id=trace_id,
+            span_id=uuid.uuid4().hex,
+            span_name="agent",
+            start_time=now,
+            end_time=now,
+            task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
+            raw_data={"name": "agent", "attributes": attributes},
+        ),
+    )
+    db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_spend_estimate_scales_by_the_filter_match_share(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(name="spend_filter", is_agentic=True)
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "filtered_eval")
+    assert status_code == 200
+    continuous_eval, _ = _create_continuous_eval(client, task.id, llm_eval.name, None)
+    paid_only = json.dumps(
+        [
+            {
+                "attribute_path": "attributes.metadata.plan",
+                "operator": "equals",
+                "value": "paid",
+            },
+        ],
+    )
+
+    try:
+        now = datetime.now()
+        # 7 traces in the window: 2 from paid users, 5 from free ones.
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=3)] * 7)
+        for i, trace_id in enumerate(trace_ids):
+            _add_root_span(
+                task.id,
+                trace_id,
+                {"metadata": {"plan": "paid" if i < 2 else "free"}},
+            )
+        _add_run(
+            continuous_eval.id,
+            trace_ids[0],
+            ContinuousEvalRunStatus.PASSED,
+            0.07,
+            now - timedelta(hours=1),
+        )
+
+        status_code, unfiltered = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+        )
+        assert status_code == 200
+        assert unfiltered.filter_match_share is None
+        # 1 trace/day * $0.07
+        assert unfiltered.estimated_daily_cost == pytest.approx(0.07)
+
+        status_code, filtered = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter=paid_only,
+        )
+        assert status_code == 200
+        assert filtered.filter_traces_checked == 7
+        assert filtered.filter_match_share == pytest.approx(2 / 7)
+        assert filtered.estimated_daily_cost == pytest.approx(0.07 * 2 / 7)
+
+        status_code, _ = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter='[{"attribute_path": "attributes.metadata.plan"}]',
+        )
+        assert status_code == 400
+    finally:
+        db_session = override_get_db_session()
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.task_id == task.id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
         _cleanup(client, task.id, [continuous_eval.id])
 
 
