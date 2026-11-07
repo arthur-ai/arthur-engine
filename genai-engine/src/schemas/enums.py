@@ -331,3 +331,12 @@ class SpendEstimateUnavailableReason(str, Enum):
 
     NO_TRACES = "no_traces"
     NO_RUNS = "no_runs"
+
+
+class ContinuousEvalTraceFilterOperator(str, Enum):
+    """How a continuous eval trace filter condition compares a span attribute."""
+
+    EQUALS = "equals"
+    NOT_EQUALS = "not_equals"
+    CONTAINS = "contains"
+    EXISTS = "exists"

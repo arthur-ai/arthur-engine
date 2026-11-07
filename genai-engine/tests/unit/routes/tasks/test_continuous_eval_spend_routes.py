@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -6,7 +7,7 @@ import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.telemetry_models import DatabaseTraceMetadata
+from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from repositories.continuous_eval_spend_repository import (
     ContinuousEvalSpendRepository,
 )
@@ -20,7 +21,12 @@ from tests.unit.routes.tasks.test_continuous_eval_crud_routes import (
     create_test_llm_eval,
     create_test_transform,
 )
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, DEFAULT_ORG_ID
+from utils.constants import (
+    AGENT_EXPERIMENT_SESSION_PREFIX,
+    DEFAULT_ORG_ID,
+    EXPECTED_SPAN_VERSION,
+    SPAN_VERSION_KEY,
+)
 
 
 def _create_continuous_eval(
@@ -309,6 +315,123 @@ def test_continuous_eval_spend_without_traces_or_runs(
         assert spend.estimate.estimated_daily_cost == 0.0
         assert spend.estimate.unavailable_reason is None
     finally:
+        _cleanup(client, task.id, [continuous_eval.id])
+
+
+def _add_root_span(
+    task_id: str,
+    trace_id: str,
+    attributes: dict,
+    span_version: str = EXPECTED_SPAN_VERSION,
+) -> None:
+    db_session = override_get_db_session()
+    now = datetime.now()
+    db_session.add(
+        DatabaseSpan(
+            id=uuid.uuid4().hex,
+            trace_id=trace_id,
+            span_id=uuid.uuid4().hex,
+            span_name="agent",
+            start_time=now,
+            end_time=now,
+            task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
+            raw_data={
+                "name": "agent",
+                "attributes": attributes,
+                SPAN_VERSION_KEY: span_version,
+            },
+        ),
+    )
+    db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_spend_estimate_scales_by_the_filter_match_share(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, task = client.create_task(name="spend_filter", is_agentic=True)
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "filtered_eval")
+    assert status_code == 200
+    continuous_eval, _ = _create_continuous_eval(client, task.id, llm_eval.name, None)
+    paid_only = json.dumps(
+        [
+            {
+                "attribute_path": "attributes.metadata.plan",
+                "operator": "equals",
+                "value": "paid",
+            },
+        ],
+    )
+
+    try:
+        now = datetime.now()
+        # 8 traces in the window: 2 from paid users, 5 from free ones, and one
+        # paid trace whose only span has a version the worker can't read.
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=3)] * 8)
+        for i, trace_id in enumerate(trace_ids[:7]):
+            _add_root_span(
+                task.id,
+                trace_id,
+                {"metadata": {"plan": "paid" if i < 2 else "free"}},
+            )
+        _add_root_span(
+            task.id,
+            trace_ids[7],
+            {"metadata": {"plan": "paid"}},
+            span_version="arthur_span_v0",
+        )
+        _add_run(
+            continuous_eval.id,
+            trace_ids[0],
+            ContinuousEvalRunStatus.PASSED,
+            0.07,
+            now - timedelta(hours=1),
+        )
+
+        status_code, unfiltered = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+        )
+        assert status_code == 200
+        assert unfiltered.filter_match_share is None
+        # 8 traces / 7 days * $0.07
+        assert unfiltered.estimated_daily_cost == pytest.approx(0.08)
+
+        status_code, filtered = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter=paid_only,
+        )
+        assert status_code == 200
+        # The unreadable trace is checked but can't match: the worker can't load
+        # it, so it never reaches the judge. 2 of 8 match.
+        assert filtered.filter_traces_checked == 8
+        assert filtered.filter_match_share == pytest.approx(2 / 8)
+        assert filtered.estimated_daily_cost == pytest.approx(0.08 * 2 / 8)
+
+        status_code, not_paid = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter=paid_only.replace('"equals"', '"not_equals"'),
+        )
+        assert status_code == 200
+        assert not_paid.filter_traces_checked == 8
+        assert not_paid.filter_match_share == pytest.approx(5 / 8)
+
+        status_code, _ = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter='[{"attribute_path": "attributes.metadata.plan"}]',
+        )
+        assert status_code == 400
+    finally:
+        db_session = override_get_db_session()
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.task_id == task.id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
         _cleanup(client, task.id, [continuous_eval.id])
 
 
