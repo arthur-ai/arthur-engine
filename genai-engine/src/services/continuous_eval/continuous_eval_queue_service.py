@@ -256,7 +256,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             if db_continuous_eval.trace_filter and not trace_matches_filter(
                 trace,
                 [
-                    ContinuousEvalTraceFilterCondition(**condition)
+                    ContinuousEvalTraceFilterCondition.model_validate(condition)
                     for condition in db_continuous_eval.trace_filter
                 ],
             ):

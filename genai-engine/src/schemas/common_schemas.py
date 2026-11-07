@@ -116,5 +116,7 @@ class ContinuousEvalTraceFilterCondition(BaseModel):
             if self.value is not None:
                 raise ValueError("value must be null when operator is 'exists'")
         elif self.value is None:
-            raise ValueError(f"value is required when operator is '{self.operator.value}'")
+            raise ValueError(
+                f"value is required when operator is '{self.operator.value}'"
+            )
         return self

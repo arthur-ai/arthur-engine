@@ -4008,7 +4008,7 @@ class ContinuousEval(BaseModel):
             sample_rate=db_eval.sample_rate,
             trace_filter=(
                 [
-                    ContinuousEvalTraceFilterCondition(**condition)
+                    ContinuousEvalTraceFilterCondition.model_validate(condition)
                     for condition in db_eval.trace_filter
                 ]
                 if db_eval.trace_filter
