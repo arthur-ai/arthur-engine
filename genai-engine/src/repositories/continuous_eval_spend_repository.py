@@ -20,8 +20,9 @@ from utils.transform_executor import spans_match_filter
 
 SPEND_ESTIMATE_WINDOW_DAYS = 7
 # A new eval's trace filter is tried on at most this many of the task's latest
-# traces, so the create-form estimate stays a bounded read.
-FILTER_SHARE_MAX_TRACES = 200
+# traces, so the create-form estimate stays a bounded read: it reruns on each
+# filter edit and loads every span's raw data for these traces.
+FILTER_SHARE_MAX_TRACES = 100
 
 # Runs that reached the LLM. Pending and running runs have no cost yet, skipped
 # runs never call it, and errored runs may have failed before or during the call.
@@ -152,12 +153,13 @@ class ContinuousEvalSpendRepository:
         if not trace_ids:
             return 0, 0
 
-        spans_by_trace: dict[str, list[DatabaseSpan]] = {
-            trace_id: [] for trace_id in trace_ids
-        }
-        for span in self.db_session.query(DatabaseSpan).filter(
-            DatabaseSpan.trace_id.in_(trace_ids),
-        ):
+        # Only the columns the matcher reads, not whole span rows.
+        spans_by_trace: dict[str, list[Any]] = {trace_id: [] for trace_id in trace_ids}
+        for span in self.db_session.query(
+            DatabaseSpan.trace_id,
+            DatabaseSpan.span_name,
+            DatabaseSpan.raw_data,
+        ).filter(DatabaseSpan.trace_id.in_(trace_ids)):
             spans_by_trace[span.trace_id].append(span)
 
         matched = sum(

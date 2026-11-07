@@ -5,7 +5,7 @@ import { Skeleton, Stack, Typography } from "@mui/material";
 import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
 import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
-import { rowsToTraceFilter, traceFilterSchema, type TraceFilterRow } from "../trace-filter";
+import { completeTraceFilterRows, rowsToTraceFilter, type TraceFilterRow } from "../trace-filter";
 
 import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
 
@@ -93,7 +93,7 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent, traceFil
   const debouncedFilter = useDebouncedValue(traceFilter);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
   // A half-filled condition isn't sent; the estimate covers the complete ones.
-  const conditions = traceFilterSchema.safeParse(debouncedFilter).success ? rowsToTraceFilter(debouncedFilter) : null;
+  const conditions = rowsToTraceFilter(completeTraceFilterRows(debouncedFilter));
   const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(
     taskId,
     llmEvalName,
