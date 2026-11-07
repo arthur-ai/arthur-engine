@@ -31,6 +31,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import (
     ConnectionCheckOutcome,
     EvalKind,
@@ -452,9 +453,9 @@ class ModelReasoningOptions(BaseModel):
 
 
 class ContinuousEvalResponse(CommonContinuousEvalResponse):
-    """The continuous eval response, with its sample rate.
+    """The continuous eval response, with its sample rate and trace filter.
 
-    Extends the shared model only until `arthur_common` carries `sample_rate` on
+    Extends the shared model only until `arthur_common` carries these fields on
     `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
     same so the OpenAPI component, and the generated clients built from it, keep
     their name either way.
@@ -463,6 +464,10 @@ class ContinuousEvalResponse(CommonContinuousEvalResponse):
     sample_rate: Optional[float] = Field(
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
     )
 
 

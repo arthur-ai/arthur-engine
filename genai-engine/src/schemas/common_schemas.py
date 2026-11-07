@@ -7,7 +7,9 @@ from arthur_common.models.enums import (
     UserPermissionAction,
     UserPermissionResource,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from schemas.enums import ContinuousEvalTraceFilterOperator
 
 
 class LLMTokenConsumption(BaseModel):
@@ -80,3 +82,39 @@ class BasePaginationResponse(BaseModel):
     page_size: int = Field(description="Number of items per page")
     total_pages: int = Field(description="Total number of pages")
     total_count: int = Field(description="Total number of records")
+
+
+class ContinuousEvalTraceFilterCondition(BaseModel):
+    """One condition a trace must meet for a continuous eval to judge it.
+
+    The condition holds when any span in the trace (or any span named `span_name`,
+    when set) has a value at `attribute_path` that satisfies `operator`.
+    """
+
+    span_name: Optional[str] = Field(
+        default=None,
+        description="Only check spans with this name. Null checks every span in the trace.",
+    )
+    attribute_path: str = Field(
+        min_length=1,
+        description=(
+            "Dot-separated path into the span, the same paths transforms use, "
+            "e.g. 'attributes.metadata.plan' or 'attributes.llm.model_name'."
+        ),
+    )
+    operator: ContinuousEvalTraceFilterOperator = Field(
+        description="How to compare the value at attribute_path.",
+    )
+    value: Optional[str] = Field(
+        default=None,
+        description="Value to compare against. Required unless operator is 'exists'.",
+    )
+
+    @model_validator(mode="after")
+    def validate_value(self) -> "ContinuousEvalTraceFilterCondition":
+        if self.operator == ContinuousEvalTraceFilterOperator.EXISTS:
+            if self.value is not None:
+                raise ValueError("value must be null when operator is 'exists'")
+        elif self.value is None:
+            raise ValueError(f"value is required when operator is '{self.operator.value}'")
+        return self

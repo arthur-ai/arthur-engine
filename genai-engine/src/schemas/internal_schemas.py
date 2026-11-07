@@ -155,7 +155,10 @@ from schemas.agentic_notebook_schemas import (
     CreateAgenticNotebookRequest,
 )
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.common_schemas import (
+    ContinuousEvalTraceFilterCondition,
+    NewDatasetVersionRowColumnItemRequest,
+)
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -3973,6 +3976,10 @@ class ContinuousEval(BaseModel):
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
     )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -3999,6 +4006,14 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=db_eval.enabled,
             sample_rate=db_eval.sample_rate,
+            trace_filter=(
+                [
+                    ContinuousEvalTraceFilterCondition(**condition)
+                    for condition in db_eval.trace_filter
+                ]
+                if db_eval.trace_filter
+                else None
+            ),
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -4025,6 +4040,7 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
             sample_rate=self.sample_rate,
+            trace_filter=self.trace_filter,
         )
 
 

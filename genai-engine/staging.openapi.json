@@ -20944,6 +20944,21 @@
                         ],
                         "title": "Sample Rate",
                         "description": "Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace."
+                    },
+                    "trace_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTraceFilterCondition"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Filter",
+                        "description": "Conditions a trace must meet to be judged; all must hold. A trace that doesn't match is skipped before the judge is called. Null or empty judges every sampled trace."
                     }
                 },
                 "type": "object",
@@ -21166,6 +21181,21 @@
                         ],
                         "title": "Sample Rate",
                         "description": "Fraction of traces evaluated, in (0, 1]. Null evaluates every trace."
+                    },
+                    "trace_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTraceFilterCondition"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Filter",
+                        "description": "Conditions a trace must meet to be judged. Null judges every sampled trace."
                     }
                 },
                 "type": "object",
@@ -21178,7 +21208,7 @@
                     "updated_at"
                 ],
                 "title": "ContinuousEvalResponse",
-                "description": "The continuous eval response, with its sample rate.\n\nExtends the shared model only until `arthur_common` carries `sample_rate` on\n`ContinuousEvalResponse` itself, at which point this subclass goes. Named the\nsame so the OpenAPI component, and the generated clients built from it, keep\ntheir name either way."
+                "description": "The continuous eval response, with its sample rate and trace filter.\n\nExtends the shared model only until `arthur_common` carries these fields on\n`ContinuousEvalResponse` itself, at which point this subclass goes. Named the\nsame so the OpenAPI component, and the generated clients built from it, keep\ntheir name either way."
             },
             "ContinuousEvalRunStatus": {
                 "type": "string",
@@ -21307,6 +21337,62 @@
                     "updated_at"
                 ],
                 "title": "ContinuousEvalTestRunResponse"
+            },
+            "ContinuousEvalTraceFilterCondition": {
+                "properties": {
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name",
+                        "description": "Only check spans with this name. Null checks every span in the trace."
+                    },
+                    "attribute_path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Attribute Path",
+                        "description": "Dot-separated path into the span, the same paths transforms use, e.g. 'attributes.metadata.plan' or 'attributes.llm.model_name'."
+                    },
+                    "operator": {
+                        "$ref": "#/components/schemas/ContinuousEvalTraceFilterOperator",
+                        "description": "How to compare the value at attribute_path."
+                    },
+                    "value": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Value",
+                        "description": "Value to compare against. Required unless operator is 'exists'."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "attribute_path",
+                    "operator"
+                ],
+                "title": "ContinuousEvalTraceFilterCondition",
+                "description": "One condition a trace must meet for a continuous eval to judge it.\n\nThe condition holds when any span in the trace (or any span named `span_name`,\nwhen set) has a value at `attribute_path` that satisfies `operator`."
+            },
+            "ContinuousEvalTraceFilterOperator": {
+                "type": "string",
+                "enum": [
+                    "equals",
+                    "not_equals",
+                    "contains",
+                    "exists"
+                ],
+                "title": "ContinuousEvalTraceFilterOperator",
+                "description": "How a continuous eval trace filter condition compares a span attribute."
             },
             "ContinuousEvalTransformVariableMappingRequest": {
                 "properties": {
@@ -35246,6 +35332,21 @@
                         ],
                         "title": "Sample Rate",
                         "description": "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace."
+                    },
+                    "trace_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTraceFilterCondition"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Filter",
+                        "description": "Conditions a trace must meet to be judged; all must hold. Omit to leave it unchanged; send null or an empty list to judge every sampled trace."
                     }
                 },
                 "type": "object",

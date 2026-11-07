@@ -1615,6 +1615,11 @@ export interface ContinuousEvalCreateRequest {
    */
   sample_rate?: number | null;
   /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged; all must hold. A trace that doesn't match is skipped before the judge is called. Null or empty judges every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
+  /**
    * Transform Id
    * ID of the transform to create the continuous eval for
    * @format uuid
@@ -1702,9 +1707,9 @@ export interface ContinuousEvalRerunResponse {
 
 /**
  * ContinuousEvalResponse
- * The continuous eval response, with its sample rate.
+ * The continuous eval response, with its sample rate and trace filter.
  *
- * Extends the shared model only until `arthur_common` carries `sample_rate` on
+ * Extends the shared model only until `arthur_common` carries these fields on
  * `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
  * same so the OpenAPI component, and the generated clients built from it, keep
  * their name either way.
@@ -1763,6 +1768,11 @@ export interface ContinuousEvalResponse {
    * ID of the parent task.
    */
   task_id: string;
+  /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged. Null judges every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
   /**
    * Transform Id
    * ID of the transform.
@@ -1878,6 +1888,40 @@ export interface ContinuousEvalTestRunResponse {
    * @format date-time
    */
   updated_at: string;
+}
+
+/**
+ * ContinuousEvalTraceFilterOperator
+ * How a continuous eval trace filter condition compares a span attribute.
+ */
+export type ContinuousEvalTraceFilterOperator = "equals" | "not_equals" | "contains" | "exists";
+
+/**
+ * ContinuousEvalTraceFilterCondition
+ * One condition a trace must meet for a continuous eval to judge it.
+ *
+ * The condition holds when any span in the trace (or any span named `span_name`,
+ * when set) has a value at `attribute_path` that satisfies `operator`.
+ */
+export interface ContinuousEvalTraceFilterCondition {
+  /**
+   * Attribute Path
+   * Dot-separated path into the span, the same paths transforms use, e.g. 'attributes.metadata.plan' or 'attributes.llm.model_name'.
+   * @minLength 1
+   */
+  attribute_path: string;
+  /** How to compare the value at attribute_path. */
+  operator: ContinuousEvalTraceFilterOperator;
+  /**
+   * Span Name
+   * Only check spans with this name. Null checks every span in the trace.
+   */
+  span_name?: string | null;
+  /**
+   * Value
+   * Value to compare against. Required unless operator is 'exists'.
+   */
+  value?: string | null;
 }
 
 /** ContinuousEvalTransformVariableMappingRequest */
@@ -12805,6 +12849,11 @@ export interface UpdateContinuousEvalRequest {
    * Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace.
    */
   sample_rate?: number | null;
+  /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged; all must hold. Omit to leave it unchanged; send null or an empty list to judge every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
   /**
    * Transform Id
    * ID of the transform to create the continuous eval for

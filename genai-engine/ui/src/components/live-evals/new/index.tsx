@@ -23,6 +23,7 @@ import z from "zod";
 
 import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../components/sample-rate";
 import { SpendEstimateLine } from "../components/spend";
+import { rowsToTraceFilter, TraceFilterField, traceFilterSchema, type TraceFilterRow } from "../components/trace-filter";
 import { VariableMappingSection } from "../components/variable-mapping";
 import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
@@ -98,6 +99,7 @@ const LiveEvalsNewForm = () => {
       description: "",
       enabled: true,
       samplePercent: "",
+      traceFilter: [] as TraceFilterRow[],
       evaluator: initialEvaluator,
       transform: {
         transformId: null,
@@ -111,6 +113,7 @@ const LiveEvalsNewForm = () => {
         description: z.string(),
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
+        traceFilter: traceFilterSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -132,6 +135,7 @@ const LiveEvalsNewForm = () => {
         description: z.string(),
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
+        traceFilter: traceFilterSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -156,6 +160,7 @@ const LiveEvalsNewForm = () => {
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         sample_rate: percentToSampleRate(value.samplePercent),
+        trace_filter: rowsToTraceFilter(value.traceFilter),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -305,6 +310,8 @@ const LiveEvalsNewForm = () => {
             <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
           )}
         </form.Field>
+
+        <form.Field name="traceFilter">{(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}</form.Field>
 
         <Divider sx={{ my: 2 }} />
 
