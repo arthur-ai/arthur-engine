@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -8,7 +8,7 @@ from arthur_common.models.task_eval_schemas import (
     ContinuousEvalVariableMappingResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from pydantic import AfterValidator
+from pydantic import AfterValidator, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from dependencies import (
@@ -27,6 +27,7 @@ from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
@@ -50,6 +51,8 @@ from schemas.response_schemas import (
 from utils.url_encoding import decode_path_param
 from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
+
+_TRACE_FILTER_ADAPTER = TypeAdapter(List[ContinuousEvalTraceFilterCondition])
 
 continuous_eval_routes = APIRouter(
     prefix="/api/v1",
@@ -708,10 +711,26 @@ def estimate_continuous_eval_spend(
         # Not Query(gt=0): see validate_sample_rate.
         AfterValidator(validate_sample_rate),
     ] = None,
+    trace_filter: Annotated[
+        Optional[str],
+        Query(
+            description=(
+                "The new eval's trace filter as a JSON list of conditions, the same "
+                "shape as trace_filter on create. When set, the estimate is scaled by "
+                "the share of the task's recent traces that match it."
+            ),
+        ),
+    ] = None,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
 ) -> ContinuousEvalDailySpendEstimate:
+    try:
+        conditions = (
+            _TRACE_FILTER_ADAPTER.validate_json(trace_filter) if trace_filter else None
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid trace_filter: {e}")
     try:
         # 404 for an evaluator the task doesn't have
         llm_eval = LLMEvalsRepository(db_session).get_llm_item(
@@ -726,6 +745,7 @@ def estimate_continuous_eval_spend(
             llm_eval_name,
             llm_eval.version,
             sample_rate,
+            trace_filter=conditions,
         )
     except HTTPException:
         raise

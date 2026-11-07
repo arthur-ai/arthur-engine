@@ -184,3 +184,13 @@ describe("estimate accuracy notes", () => {
     expect(text).not.toContain("evaluator changed");
   });
 });
+describe("trace filter share in the estimate", () => {
+  it("states the share of recent traces that match the filter", () => {
+    const text = describeEstimateFormula({ ...estimate, filter_match_share: 0.25, filter_traces_checked: 200 }, "USD");
+    expect(text).toBe("2 traces/day × 50% sampled × 25% match the filter (of 200 recent traces) × $0.040000 per run (last 7 days)");
+  });
+
+  it("leaves it out without a filter", () => {
+    expect(describeEstimateFormula(estimate, "USD")).not.toContain("match the filter");
+  });
+});

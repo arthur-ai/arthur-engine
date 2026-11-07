@@ -22,6 +22,7 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from repositories.organizations_repository import lookup_org_id
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
@@ -54,6 +55,15 @@ def is_trace_sampled(trace_id: str, sample_rate: Optional[float]) -> bool:
         return True
     digest = hashlib.sha256(trace_id.encode()).digest()
     return int.from_bytes(digest[:8], "big") / 2**64 < sample_rate
+
+
+def trace_filter_to_db(
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+) -> Optional[List[dict[str, Optional[str]]]]:
+    """Store a trace filter as JSON, with an empty list stored as NULL (no filter)."""
+    if not trace_filter:
+        return None
+    return [condition.model_dump(mode="json") for condition in trace_filter]
 
 
 class ContinuousEvalsRepository:
@@ -175,6 +185,7 @@ class ContinuousEvalsRepository:
             enabled=continuous_eval_request.enabled,
             sample_rate=continuous_eval_request.sample_rate,
             daily_cost_cap_usd=continuous_eval_request.daily_cost_cap_usd,
+            trace_filter=trace_filter_to_db(continuous_eval_request.trace_filter),
         )
 
         try:
@@ -260,6 +271,11 @@ class ContinuousEvalsRepository:
         if "daily_cost_cap_usd" in update_continuous_eval.model_fields_set:
             db_continuous_eval.daily_cost_cap_usd = (
                 update_continuous_eval.daily_cost_cap_usd
+            )
+            has_changes = True
+        if "trace_filter" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.trace_filter = trace_filter_to_db(
+                update_continuous_eval.trace_filter,
             )
             has_changes = True
 

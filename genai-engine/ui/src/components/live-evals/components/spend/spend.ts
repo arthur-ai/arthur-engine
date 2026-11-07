@@ -18,6 +18,9 @@ export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstima
   const parts = [`${formatTracesPerDay(estimate.traces_per_day)} traces/day`, `${sampleRateToPercent(estimate.sample_rate)}% sampled`];
   const judgedShare = estimate.judged_share ?? 1;
   if (judgedShare < 1) parts.push(`${sampleRateToPercent(judgedShare)}% reach the judge`);
+  if (estimate.filter_match_share != null) {
+    parts.push(`${sampleRateToPercent(estimate.filter_match_share)}% match the filter (of ${estimate.filter_traces_checked} recent traces)`);
+  }
   if (estimate.average_run_cost != null) parts.push(`${formatSpend(estimate.average_run_cost, currency)} per run`);
   const pricedFrom = estimate.priced_since ? `, runs since the evaluator changed` : "";
   return `${parts.join(" × ")} (last ${estimate.window_days} days${pricedFrom})`;

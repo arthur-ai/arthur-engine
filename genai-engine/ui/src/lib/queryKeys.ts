@@ -61,8 +61,8 @@ export const queryKeys = {
     all: (taskId: string) => ["listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet", { taskId }] as const,
     byId: (evalId: string) => ["getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet", { evalId }] as const,
     spend: (evalId: string) => ["getContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet", { evalId }] as const,
-    spendEstimate: (taskId: string, llmEvalName: string, llmEvalVersion: string | null, sampleRate: number | null) =>
-      ["estimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet", { taskId, llmEvalName, llmEvalVersion, sampleRate }] as const,
+    spendEstimate: (taskId: string, llmEvalName: string, llmEvalVersion: string | null, sampleRate: number | null, traceFilter: string | null) =>
+      ["estimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet", { taskId, llmEvalName, llmEvalVersion, sampleRate, traceFilter }] as const,
     results: (taskId: string) => ["listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet", { taskId }] as const,
     variableMapping: (taskId: string, transformId: string, evalName: string, evalVersion: string) =>
       [

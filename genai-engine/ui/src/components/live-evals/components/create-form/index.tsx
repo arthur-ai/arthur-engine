@@ -12,6 +12,7 @@ import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../n
 import { DailyCapField, dailyCapSchema, dailyCapToUsd } from "../daily-cap";
 import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../sample-rate";
 import { SpendEstimateLine } from "../spend";
+import { rowsToTraceFilter, TraceFilterField, traceFilterSchema, type TraceFilterRow } from "../trace-filter";
 import { VariableMappingSection } from "../variable-mapping";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
@@ -44,6 +45,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
       enabled: true,
       samplePercent: "",
       dailyCap: "",
+      traceFilter: [] as TraceFilterRow[],
       evaluator: {
         name: null as string | null,
         version: null as string | null,
@@ -62,6 +64,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
         dailyCap: dailyCapSchema,
+        traceFilter: traceFilterSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -84,6 +87,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
         dailyCap: dailyCapSchema,
+        traceFilter: traceFilterSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -109,6 +113,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         enabled: value.enabled,
         sample_rate: percentToSampleRate(value.samplePercent),
         daily_cost_cap_usd: dailyCapToUsd(value.dailyCap),
+        trace_filter: rowsToTraceFilter(value.traceFilter),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -126,6 +131,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
   const samplePercent = useStore(form.store, (state) => state.values.samplePercent);
+  const traceFilter = useStore(form.store, (state) => state.values.traceFilter);
 
   const { data: versions = [] } = useTransformVersions(transform.transformId);
   const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
@@ -236,10 +242,11 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
                 <DailyCapField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
               )}
             </form.Field>
+            <form.Field name="traceFilter">{(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}</form.Field>
           </Stack>
           <Divider sx={{ my: 2 }} />
           <EvaluatorSelector form={form} fields="evaluator" taskId={taskId} onSelectionChange={handleSelectionChange} />
-          <SpendEstimateLine taskId={taskId} llmEvalName={evaluator.name} llmEvalVersion={evaluator.version} samplePercent={samplePercent} />
+          <SpendEstimateLine taskId={taskId} llmEvalName={evaluator.name} llmEvalVersion={evaluator.version} samplePercent={samplePercent} traceFilter={traceFilter} />
           <Divider sx={{ my: 2 }} />
           <TransformSelector form={form} fields="transform" taskId={taskId} onSelectionChange={handleSelectionChange} />
           {canShowVariableMapping && (

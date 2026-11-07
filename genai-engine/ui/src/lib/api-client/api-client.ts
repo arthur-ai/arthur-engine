@@ -1620,6 +1620,11 @@ export interface ContinuousEvalCreateRequest {
    */
   sample_rate?: number | null;
   /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged; all must hold. A trace that doesn't match is skipped before the judge is called. Null or empty judges every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
+  /**
    * Transform Id
    * ID of the transform to create the continuous eval for
    * @format uuid
@@ -1649,6 +1654,7 @@ export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
  * Projected daily cost of a continuous eval at the task's recent traffic.
  *
  * estimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost
+ * (* filter_match_share, when a trace filter was given)
  */
 export interface ContinuousEvalDailySpendEstimate {
   /**
@@ -1672,6 +1678,16 @@ export interface ContinuousEvalDailySpendEstimate {
    * Set when the evaluator changed inside the window: the average only uses runs from this time on.
    */
   priced_since?: string | null;
+  /**
+   * Filter Match Share
+   * Share of the task's recent traces that match the given trace filter, checked over up to filter_traces_checked of the latest traces in the window. Null when no trace filter was given.
+   */
+  filter_match_share?: number | null;
+  /**
+   * Filter Traces Checked
+   * How many recent traces filter_match_share was measured on.
+   */
+  filter_traces_checked?: number | null;
   /**
    * Run Count
    * Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over.
@@ -1724,9 +1740,9 @@ export interface ContinuousEvalRerunResponse {
 
 /**
  * ContinuousEvalResponse
- * The continuous eval response, with its sample rate.
+ * The continuous eval response, with its sample rate and trace filter.
  *
- * Extends the shared model only until `arthur_common` carries `sample_rate` on
+ * Extends the shared model only until `arthur_common` carries these fields on
  * `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
  * same so the OpenAPI component, and the generated clients built from it, keep
  * their name either way.
@@ -1790,6 +1806,11 @@ export interface ContinuousEvalResponse {
    * ID of the parent task.
    */
   task_id: string;
+  /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged. Null judges every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
   /**
    * Transform Id
    * ID of the transform.
@@ -1920,6 +1941,42 @@ export interface ContinuousEvalTestRunResponse {
    * @format date-time
    */
   updated_at: string;
+}
+
+/**
+ * ContinuousEvalTraceFilterOperator
+ * How a continuous eval trace filter condition compares a span attribute.
+ */
+export type ContinuousEvalTraceFilterOperator = "equals" | "not_equals" | "contains" | "exists";
+
+/**
+ * ContinuousEvalTraceFilterCondition
+ * One condition a trace must meet for a continuous eval to judge it.
+ *
+ * Checks the spans in the trace (only spans named `span_name`, when set):
+ * `equals`, `contains` and `exists` hold when any of them has a value at
+ * `attribute_path` that meets the operator; `not_equals` holds when none of them
+ * has that value, so a trace without the attribute counts as not equal.
+ */
+export interface ContinuousEvalTraceFilterCondition {
+  /**
+   * Attribute Path
+   * Dot-separated path into the span, the same paths transforms use, e.g. 'attributes.metadata.plan' or 'attributes.llm.model_name'.
+   * @minLength 1
+   */
+  attribute_path: string;
+  /** How to compare the value at attribute_path. 'not_equals' holds when no checked span has the value, including when none has the attribute. */
+  operator: ContinuousEvalTraceFilterOperator;
+  /**
+   * Span Name
+   * Only check spans with this name. Null checks every span in the trace.
+   */
+  span_name?: string | null;
+  /**
+   * Value
+   * Value to compare against. Required unless operator is 'exists'.
+   */
+  value?: string | null;
 }
 
 /** ContinuousEvalTransformVariableMappingRequest */
@@ -2906,6 +2963,11 @@ export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpend
    * @format uuid
    */
   taskId: string;
+  /**
+   * Trace Filter
+   * The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it.
+   */
+  trace_filter?: string | null;
 }
 
 /** Eval */
@@ -12858,6 +12920,11 @@ export interface UpdateContinuousEvalRequest {
    * Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace.
    */
   sample_rate?: number | null;
+  /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged; all must hold. Omit to leave it unchanged; send null or an empty list to judge every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
   /**
    * Transform Id
    * ID of the transform to create the continuous eval for

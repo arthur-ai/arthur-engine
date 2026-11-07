@@ -31,6 +31,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import (
     ConnectionCheckOutcome,
     EvalKind,
@@ -452,9 +453,9 @@ class ModelReasoningOptions(BaseModel):
 
 
 class ContinuousEvalResponse(CommonContinuousEvalResponse):
-    """The continuous eval response, with its sample rate.
+    """The continuous eval response, with its sample rate and trace filter.
 
-    Extends the shared model only until `arthur_common` carries `sample_rate` on
+    Extends the shared model only until `arthur_common` carries these fields on
     `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
     same so the OpenAPI component, and the generated clients built from it, keep
     their name either way.
@@ -467,6 +468,10 @@ class ContinuousEvalResponse(CommonContinuousEvalResponse):
     daily_cost_cap_usd: Optional[float] = Field(
         default=None,
         description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
     )
 
 
@@ -1068,6 +1073,7 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     """Projected daily cost of a continuous eval at the task's recent traffic.
 
     estimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost
+    (* filter_match_share, when a trace filter was given)
     """
 
     window_days: int = Field(
@@ -1106,6 +1112,18 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     unavailable_reason: Optional[SpendEstimateUnavailableReason] = Field(
         default=None,
         description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs in the window that called the LLM and have a recorded cost (unpriced_run_count counts the ones without).",
+    )
+    filter_match_share: Optional[float] = Field(
+        default=None,
+        description=(
+            "Share of the task's recent traces that match the given trace filter, "
+            "checked over up to filter_traces_checked of the latest traces in the "
+            "window. Null when no trace filter was given."
+        ),
+    )
+    filter_traces_checked: Optional[int] = Field(
+        default=None,
+        description="How many recent traces filter_match_share was measured on.",
     )
 
 

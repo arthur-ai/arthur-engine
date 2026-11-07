@@ -155,7 +155,10 @@ from schemas.agentic_notebook_schemas import (
     CreateAgenticNotebookRequest,
 )
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.common_schemas import (
+    ContinuousEvalTraceFilterCondition,
+    NewDatasetVersionRowColumnItemRequest,
+)
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -3981,6 +3984,10 @@ class ContinuousEval(BaseModel):
         default=None,
         description="When the eval started using its current evaluator. Null for evals created before this was tracked.",
     )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -4009,6 +4016,14 @@ class ContinuousEval(BaseModel):
             sample_rate=db_eval.sample_rate,
             daily_cost_cap_usd=db_eval.daily_cost_cap_usd,
             judge_changed_at=db_eval.judge_changed_at,
+            trace_filter=(
+                [
+                    ContinuousEvalTraceFilterCondition.model_validate(condition)
+                    for condition in db_eval.trace_filter
+                ]
+                if db_eval.trace_filter
+                else None
+            ),
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -4036,6 +4051,7 @@ class ContinuousEval(BaseModel):
             enabled=self.enabled,
             sample_rate=self.sample_rate,
             daily_cost_cap_usd=self.daily_cost_cap_usd,
+            trace_filter=self.trace_filter,
         )
 
 

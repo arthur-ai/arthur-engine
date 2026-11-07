@@ -7,6 +7,7 @@ import { Alert, Skeleton, Stack, Typography } from "@mui/material";
 import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
 import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
+import { rowsToTraceFilter, traceFilterSchema, type TraceFilterRow } from "../trace-filter";
 
 import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
 
@@ -103,14 +104,24 @@ type SpendEstimateLineProps = {
   llmEvalName: string | null;
   llmEvalVersion: string | null;
   samplePercent: string;
+  traceFilter?: TraceFilterRow[];
 };
 
-// Estimate shown under the evaluator on the create forms; follows the evaluator, its version and the sample rate fields.
-export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent }: SpendEstimateLineProps) => {
+// Estimate shown under the evaluator on the create forms; follows the evaluator, its version, the sample rate and the trace filter fields.
+export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent, traceFilter = [] }: SpendEstimateLineProps) => {
   const { defaultCurrency } = useDisplaySettings();
   const debouncedPercent = useDebouncedValue(samplePercent);
+  const debouncedFilter = useDebouncedValue(traceFilter);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
-  const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(taskId, llmEvalName, llmEvalVersion, sampleRate);
+  // A half-filled condition isn't sent; the estimate covers the complete ones.
+  const conditions = traceFilterSchema.safeParse(debouncedFilter).success ? rowsToTraceFilter(debouncedFilter) : null;
+  const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(
+    taskId,
+    llmEvalName,
+    llmEvalVersion,
+    sampleRate,
+    conditions ? JSON.stringify(conditions) : null
+  );
 
   if (!llmEvalName || sampleRate === undefined) return null;
   if (!estimate) {

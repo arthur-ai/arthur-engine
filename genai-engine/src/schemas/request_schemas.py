@@ -38,6 +38,7 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from schemas.common_schemas import (
+    ContinuousEvalTraceFilterCondition,
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
@@ -1246,6 +1247,14 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=None,
         description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
     )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description=(
+            "Conditions a trace must meet to be judged; all must hold. A trace that "
+            "doesn't match is skipped before the judge is called. Null or empty judges "
+            "every sampled trace."
+        ),
+    )
 
 
 class UpdateContinuousEvalRequest(BaseModel):
@@ -1293,6 +1302,13 @@ class UpdateContinuousEvalRequest(BaseModel):
     daily_cost_cap_usd: DailyCostCap = Field(
         default=None,
         description="Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description=(
+            "Conditions a trace must meet to be judged; all must hold. Omit to leave "
+            "it unchanged; send null or an empty list to judge every sampled trace."
+        ),
     )
 
     @model_validator(mode="after")
