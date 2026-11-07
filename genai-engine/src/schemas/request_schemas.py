@@ -1143,6 +1143,15 @@ class AgenticAnnotationRequest(BaseModel):
         default=None,
         description="Description of the annotation",
     )
+    span_id: Optional[str] = Field(
+        default=None,
+        description="Span in the trace the annotation is about. Omit to annotate the whole trace; each span keeps its own annotation.",
+    )
+    label: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Category for the annotation, such as 'wrong_tool' or 'wrong_args'.",
+    )
 
 
 class TransformListFilterRequest(BaseModel):

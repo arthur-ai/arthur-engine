@@ -458,6 +458,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 input_variables=input_variables,
                 annotation_score=int(eval_run_result.score),
                 annotation_description=eval_run_result.reason,
+                label=eval_run_result.label,
                 cost=(
                     float(eval_run_result.cost)
                     if eval_run_result.cost and eval_run_result.cost != COST_UNAVAILABLE
@@ -492,6 +493,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         run_status: str,
         annotation_score: Optional[int] = None,
         annotation_description: Optional[str] = None,
+        label: Optional[str] = None,
         input_variables: Optional[list[VariableTemplateValue]] = None,
         cost: Optional[float] = None,
     ) -> None:
@@ -513,6 +515,8 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             db_annotation.annotation_score = annotation_score
         if annotation_description is not None:
             db_annotation.annotation_description = annotation_description
+        if label is not None:
+            db_annotation.label = label
         if input_variables is not None:
             db_annotation.input_variables = [
                 variable.model_dump() for variable in input_variables

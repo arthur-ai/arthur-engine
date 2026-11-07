@@ -705,6 +705,7 @@ class ContinuousEvalsRepository:
         annotation.run_status = ContinuousEvalRunStatus.PENDING.value
         annotation.annotation_score = None
         annotation.annotation_description = None
+        annotation.label = None
         annotation.input_variables = None
         # cost is kept: the earlier judge call was billed, and the rerun adds its own.
         annotation.updated_at = datetime.now()

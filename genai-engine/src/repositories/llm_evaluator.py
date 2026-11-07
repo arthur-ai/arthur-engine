@@ -62,4 +62,5 @@ class LLMEvaluator(BaseEvaluator):
             reason=llm_result.reason,
             score=bool(llm_result.score),
             cost=llm_result.cost,
+            label=llm_result.label,
         )

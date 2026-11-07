@@ -7,7 +7,6 @@ as before.
 """
 
 from enum import Enum
-from typing import Any
 
 from arthur_common.models.task_eval_schemas import (
     ListTraceTransformsResponse as CommonListTraceTransformsResponse,
@@ -21,19 +20,9 @@ from arthur_common.models.task_eval_schemas import (
 from arthur_common.models.task_eval_schemas import (
     TraceTransformVariableDefinition as CommonTraceTransformVariableDefinition,
 )
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field
 
-
-class _AcceptsCommonModel(BaseModel):
-    """Lets code that still builds the arthur_common model pass it where the
-    engine model is expected."""
-
-    @model_validator(mode="before")
-    @classmethod
-    def _from_common_model(cls, data: Any) -> Any:
-        if isinstance(data, BaseModel) and not isinstance(data, cls):
-            return data.model_dump()
-        return data
+from schemas.model_compat import AcceptsCommonModel
 
 
 class TransformSpanSelector(str, Enum):
@@ -43,7 +32,7 @@ class TransformSpanSelector(str, Enum):
 
 
 class TraceTransformVariableDefinition(
-    _AcceptsCommonModel,
+    AcceptsCommonModel,
     CommonTraceTransformVariableDefinition,
 ):
     span_selector: TransformSpanSelector = Field(
@@ -57,20 +46,20 @@ class TraceTransformVariableDefinition(
     )
 
 
-class TraceTransformDefinition(_AcceptsCommonModel, CommonTraceTransformDefinition):
+class TraceTransformDefinition(AcceptsCommonModel, CommonTraceTransformDefinition):
     variables: list[TraceTransformVariableDefinition] = Field(  # type: ignore[assignment]
         description="List of variable extraction rules.",
     )
 
 
-class TraceTransformResponse(_AcceptsCommonModel, CommonTraceTransformResponse):
+class TraceTransformResponse(AcceptsCommonModel, CommonTraceTransformResponse):
     definition: TraceTransformDefinition = Field(
         description="Latest version of the transform definition.",
     )
 
 
 class ListTraceTransformsResponse(
-    _AcceptsCommonModel,
+    AcceptsCommonModel,
     CommonListTraceTransformsResponse,
 ):
     transforms: list[TraceTransformResponse] = Field(  # type: ignore[assignment]

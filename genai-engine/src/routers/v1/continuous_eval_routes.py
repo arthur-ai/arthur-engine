@@ -3,7 +3,6 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalVariableMappingResponse,
 )
@@ -27,6 +26,7 @@ from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.annotation_schemas import ListAgenticAnnotationsResponse
 from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User

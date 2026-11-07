@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from custom_types import QueryT
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.telemetry_models import DatabaseTraceMetadata
+from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
@@ -76,10 +76,30 @@ class TraceAnnotationService:
         if trace is None:
             raise ValueError(f"Trace {trace_id} not found")
 
+        span_id = annotation_request.span_id
+        if span_id is not None:
+            span_in_trace = (
+                self.db_session.query(DatabaseSpan.id)
+                .filter(
+                    DatabaseSpan.trace_id == trace_id,
+                    DatabaseSpan.span_id == span_id,
+                )
+                .first()
+            )
+            if span_in_trace is None:
+                raise ValueError(f"Span {span_id} is not in trace {trace_id}")
+
+        # One human annotation per trace, and one per span in it: a span's
+        # annotation doesn't replace the trace's or another span's.
         existing_annotation_q = self.db_session.query(DatabaseAgenticAnnotation).filter(
             DatabaseAgenticAnnotation.trace_id == trace_id,
             DatabaseAgenticAnnotation.annotation_type
             == AgenticAnnotationType.HUMAN.value,
+            (
+                DatabaseAgenticAnnotation.span_id == span_id
+                if span_id is not None
+                else DatabaseAgenticAnnotation.span_id.is_(None)
+            ),
         )
         if org_scope is not None:
             existing_annotation_q = existing_annotation_q.filter(
@@ -92,6 +112,7 @@ class TraceAnnotationService:
             existing_annotation.annotation_description = (
                 annotation_request.annotation_description
             )
+            existing_annotation.label = annotation_request.label
             existing_annotation.updated_at = datetime.now()
             db_annotation = existing_annotation
         else:
@@ -101,6 +122,8 @@ class TraceAnnotationService:
                 trace_id=trace_id,
                 annotation_score=annotation_request.annotation_score,
                 annotation_description=annotation_request.annotation_description,
+                span_id=span_id,
+                label=annotation_request.label,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
                 org_id=trace.org_id,

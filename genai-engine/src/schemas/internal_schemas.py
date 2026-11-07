@@ -45,7 +45,6 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationResponse,
     AgentMetadataResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
@@ -152,6 +151,7 @@ from schemas.agentic_notebook_schemas import (
     AgenticNotebookSummary,
     CreateAgenticNotebookRequest,
 )
+from schemas.annotation_schemas import AgenticAnnotationResponse
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
 from schemas.common_schemas import (
     ContinuousEvalTraceFilterCondition,
@@ -819,6 +819,14 @@ class AgenticAnnotation(BaseModel):
         default=None,
         description="Description of the annotation",
     )
+    span_id: Optional[str] = Field(
+        default=None,
+        description="Span the annotation is about; null for the whole trace",
+    )
+    label: Optional[str] = Field(
+        default=None,
+        description="Category of the result, from a person or a judge",
+    )
     input_variables: Optional[List[VariableTemplateValue]] = Field(
         default=None,
         description="Input variables for the continuous eval",
@@ -879,6 +887,8 @@ class AgenticAnnotation(BaseModel):
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
             annotation_description=db_annotation.annotation_description,
+            span_id=db_annotation.span_id,
+            label=db_annotation.label,
             input_variables=[
                 VariableTemplateValue.model_validate(variable)
                 for variable in db_annotation.input_variables or []
@@ -907,6 +917,8 @@ class AgenticAnnotation(BaseModel):
             eval_version=self.eval_version,
             annotation_score=self.annotation_score,
             annotation_description=self.annotation_description,
+            span_id=self.span_id,
+            label=self.label,
             input_variables=self.input_variables,
             run_status=self.run_status,
             cost=self.cost,

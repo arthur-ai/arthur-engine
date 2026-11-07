@@ -10,7 +10,6 @@ from arthur_common.models.llm_model_providers import (
     ReasoningEffortEnum,
 )
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationResponse,
     ExternalInference,
     SpanWithMetricsResponse,
     TokenCountCostSchema,
@@ -30,6 +29,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.annotation_schemas import AgenticAnnotationResponse
 from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import (
     ConnectionCheckOutcome,
@@ -894,6 +894,10 @@ class EvalRunResponse(BaseModel):
     )
     score: int = Field(..., description="Score for this llm eval")
     cost: str = Field(..., description="Cost of this llm completion")
+    label: Optional[str] = Field(
+        default=None,
+        description="Category of the result when the eval's instructions define categories.",
+    )
 
 
 class RenderedPromptResponse(BaseModel):

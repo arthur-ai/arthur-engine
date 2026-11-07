@@ -42,6 +42,10 @@ class DatabaseAgenticAnnotation(Base):
     )
 
     annotation_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Span the annotation is about; NULL for the whole trace.
+    span_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # Category of the result (e.g. "wrong_tool"), from a person or a judge.
+    label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     annotation_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Continuous eval run result parameters
