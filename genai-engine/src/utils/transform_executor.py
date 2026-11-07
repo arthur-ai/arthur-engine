@@ -157,11 +157,13 @@ def _trace_filter_condition_holds(
     found = []
     for span in spans:
         if "*" in condition.attribute_path:
-            value = get_nested_value_wildcard(span.raw_data, condition.attribute_path)
+            # A wildcard path collects one value per matched item; each is compared
+            # on its own, so "contains" on a list means "any item contains".
+            matches = get_nested_value_wildcard(span.raw_data, condition.attribute_path)
+            values = matches if isinstance(matches, list) else [matches]
         else:
-            value = get_nested_value(span.raw_data, condition.attribute_path)
-        if value is not None:
-            found.append(_filter_value_string(value))
+            values = [get_nested_value(span.raw_data, condition.attribute_path)]
+        found.extend(_filter_value_string(v) for v in values if v is not None)
 
     match condition.operator:
         case ContinuousEvalTraceFilterOperator.EXISTS:
@@ -183,9 +185,12 @@ def trace_matches_filter(
 ) -> bool:
     """Check a trace against a continuous eval's trace filter.
 
-    Every condition must hold. A condition holds when any span in the trace (only
-    spans named `span_name`, when set) has a value at `attribute_path` meeting the
-    operator. Paths resolve against each span's raw data, the same as transforms.
+    Every condition must hold. Over the checked spans (only spans named `span_name`,
+    when set): `equals`, `contains` and `exists` hold when any value at
+    `attribute_path` meets them; `not_equals` holds when no value equals it, so a
+    trace without the attribute counts as not equal. Paths resolve against each
+    span's raw data, the same as transforms; a wildcard path compares each matched
+    item.
 
     Args:
         trace: TraceResponse object containing root_spans

@@ -192,3 +192,54 @@ def test_value_is_required_unless_exists(operator):
 def test_exists_takes_no_value():
     with pytest.raises(ValidationError, match="value must be null"):
         _condition("attributes.metadata.plan", Op.EXISTS, "paid")
+
+
+@pytest.mark.unit_tests
+def test_not_equals_fails_when_any_span_has_the_value():
+    # Two agent runs in one trace, one paid and one free: "plan != paid" leaves the
+    # trace out, because a paid span is in it.
+    trace = TraceResponse(
+        trace_id="trace-1",
+        start_time=NOW,
+        end_time=NOW,
+        root_spans=[
+            _span("dataAnalystAgent", {"metadata": {"plan": "paid"}}),
+            _span("dataAnalystAgent", {"metadata": {"plan": "free"}}),
+        ],
+    )
+
+    assert not trace_matches_filter(
+        trace,
+        [_condition("attributes.metadata.plan", Op.NOT_EQUALS, "paid")],
+    )
+    assert trace_matches_filter(
+        trace,
+        [_condition("attributes.metadata.plan", Op.EQUALS, "free")],
+    )
+
+
+@pytest.mark.unit_tests
+def test_wildcard_paths_compare_each_item():
+    trace = TraceResponse(
+        trace_id="trace-1",
+        start_time=NOW,
+        end_time=NOW,
+        root_spans=[
+            _span(
+                "agent",
+                {"tools": [{"name": "text-to-sql"}, {"name": "generate-graph"}]},
+            ),
+        ],
+    )
+
+    def holds(operator: Op, value: Optional[str]) -> bool:
+        return trace_matches_filter(
+            trace,
+            [_condition("attributes.tools.*.name", operator, value)],
+        )
+
+    assert holds(Op.EQUALS, "generate-graph")
+    assert not holds(Op.EQUALS, "execute-sql")
+    assert holds(Op.CONTAINS, "sql")
+    assert not holds(Op.NOT_EQUALS, "text-to-sql")
+    assert holds(Op.EXISTS, None)

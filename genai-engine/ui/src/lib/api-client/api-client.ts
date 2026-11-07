@@ -1900,8 +1900,10 @@ export type ContinuousEvalTraceFilterOperator = "equals" | "not_equals" | "conta
  * ContinuousEvalTraceFilterCondition
  * One condition a trace must meet for a continuous eval to judge it.
  *
- * The condition holds when any span in the trace (or any span named `span_name`,
- * when set) has a value at `attribute_path` that satisfies `operator`.
+ * Checks the spans in the trace (only spans named `span_name`, when set):
+ * `equals`, `contains` and `exists` hold when any of them has a value at
+ * `attribute_path` that meets the operator; `not_equals` holds when none of them
+ * has that value, so a trace without the attribute counts as not equal.
  */
 export interface ContinuousEvalTraceFilterCondition {
   /**
@@ -1910,7 +1912,7 @@ export interface ContinuousEvalTraceFilterCondition {
    * @minLength 1
    */
   attribute_path: string;
-  /** How to compare the value at attribute_path. */
+  /** How to compare the value at attribute_path. 'not_equals' holds when no checked span has the value, including when none has the attribute. */
   operator: ContinuousEvalTraceFilterOperator;
   /**
    * Span Name

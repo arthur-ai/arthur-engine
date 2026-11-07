@@ -21360,7 +21360,7 @@
                     },
                     "operator": {
                         "$ref": "#/components/schemas/ContinuousEvalTraceFilterOperator",
-                        "description": "How to compare the value at attribute_path."
+                        "description": "How to compare the value at attribute_path. 'not_equals' holds when no checked span has the value, including when none has the attribute."
                     },
                     "value": {
                         "anyOf": [
@@ -21381,7 +21381,7 @@
                     "operator"
                 ],
                 "title": "ContinuousEvalTraceFilterCondition",
-                "description": "One condition a trace must meet for a continuous eval to judge it.\n\nThe condition holds when any span in the trace (or any span named `span_name`,\nwhen set) has a value at `attribute_path` that satisfies `operator`."
+                "description": "One condition a trace must meet for a continuous eval to judge it.\n\nChecks the spans in the trace (only spans named `span_name`, when set):\n`equals`, `contains` and `exists` hold when any of them has a value at\n`attribute_path` that meets the operator; `not_equals` holds when none of them\nhas that value, so a trace without the attribute counts as not equal."
             },
             "ContinuousEvalTraceFilterOperator": {
                 "type": "string",
