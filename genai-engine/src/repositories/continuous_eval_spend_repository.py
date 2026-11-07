@@ -16,6 +16,7 @@ from schemas.response_schemas import (
     ContinuousEvalSpendResponse,
 )
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
+from utils.trace import validate_span_version
 from utils.transform_executor import spans_match_filter
 
 SPEND_ESTIMATE_WINDOW_DAYS = 7
@@ -153,21 +154,24 @@ class ContinuousEvalSpendRepository:
         if not trace_ids:
             return 0, 0
 
-        # Only the columns the matcher reads, not whole span rows.
-        spans_by_trace: dict[str, list[Any]] = {trace_id: [] for trace_id in trace_ids}
+        # Only the columns the matcher reads, not whole span rows. Spans of an
+        # unsupported version are dropped, as the worker's trace load drops them,
+        # and a trace left with none isn't counted: the worker can't judge it.
+        spans_by_trace: dict[str, list[Any]] = {}
         for span in self.db_session.query(
             DatabaseSpan.trace_id,
             DatabaseSpan.span_name,
             DatabaseSpan.raw_data,
         ).filter(DatabaseSpan.trace_id.in_(trace_ids)):
-            spans_by_trace[span.trace_id].append(span)
+            if validate_span_version(span.raw_data):
+                spans_by_trace.setdefault(span.trace_id, []).append(span)
 
         matched = sum(
             1
             for spans in spans_by_trace.values()
             if spans_match_filter(spans, trace_filter)
         )
-        return matched, len(trace_ids)
+        return matched, len(spans_by_trace)
 
     @staticmethod
     def _task_traces_in_window(

@@ -92,8 +92,10 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent, traceFil
   const debouncedPercent = useDebouncedValue(samplePercent);
   const debouncedFilter = useDebouncedValue(traceFilter);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
-  // A half-filled condition isn't sent; the estimate covers the complete ones.
-  const conditions = rowsToTraceFilter(completeTraceFilterRows(debouncedFilter));
+  // A half-filled condition isn't sent; the estimate covers the complete ones and says so.
+  const completeRows = completeTraceFilterRows(debouncedFilter);
+  const conditions = rowsToTraceFilter(completeRows);
+  const incompleteCount = debouncedFilter.length - completeRows.length;
   const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(
     taskId,
     llmEvalName,
@@ -106,5 +108,15 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent, traceFil
     return isFetching ? <Skeleton variant="text" width={360} /> : null;
   }
   if (!isSpendEstimate(estimate)) return null;
-  return <SpendEstimateText estimate={estimate} currency={defaultCurrency} />;
+  return (
+    <Stack sx={{ gap: 0.5 }}>
+      <SpendEstimateText estimate={estimate} currency={defaultCurrency} />
+      {incompleteCount > 0 && (
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          {incompleteCount === 1 ? "1 trace filter condition isn't" : `${incompleteCount} trace filter conditions aren't`} filled in yet, so the
+          estimate leaves {incompleteCount === 1 ? "it" : "them"} out.
+        </Typography>
+      )}
+    </Stack>
+  );
 };
