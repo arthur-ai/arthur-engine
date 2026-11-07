@@ -154,7 +154,7 @@ def _trace_filter_condition_holds(
         for span in flat_spans
         if condition.span_name is None or span.span_name == condition.span_name
     ]
-    found = []
+    found: List[str] = []
     for span in spans:
         if "*" in condition.attribute_path:
             # A wildcard path collects one value per matched item; each is compared
