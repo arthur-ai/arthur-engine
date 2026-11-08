@@ -63,6 +63,7 @@ from job_executors.discovery_scan import (
     run_source_scan,
 )
 from tests.fakes.catalog import agent, document
+from tests.fakes.records import agent_records
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
@@ -382,7 +383,7 @@ def scan(
         fields or FIELDS,
         LOG,
     )
-    return [record for batch in batches for record in batch]
+    return agent_records(batches)
 
 
 def listed(connector: ComputeEngineConnector) -> list[dict[str, Any]]:
@@ -425,6 +426,37 @@ def test_a_reporting_vm_is_a_cloud_record_on_gcp_addressed_by_vm_project_and_zon
     )
     assert source.observations is not None
     assert source.observations.host_name == "build-1"
+
+
+def test_a_vm_record_lists_every_place_it_found_the_agent() -> None:
+    """A cloud VM carries the same inventory as an endpoint, so its record lists every
+    install too, with a home directory written as `~`."""
+    two_installs = frame(
+        [
+            row("npm", "@openai/codex", ver="0.5.0", loc="/usr/lib/node_modules"),
+            row(
+                "npm",
+                "@openai/codex",
+                ver="0.4.2",
+                loc="/home/ci/.npm-global/lib/node_modules",
+            ),
+            row("scan", "packages-linux", ver=str(SCAN_AT), extra="ok"),
+        ],
+    )
+    fake = FakeCompute(
+        {PROJECT: [[vm("4823710983451", name="build-1")]]},
+        guest={(ZONE, "build-1"): attributes(two_installs)},
+    )
+
+    (record,) = scan(fake)
+
+    source = record.creation_source
+    assert isinstance(source, CloudAgentCreationSource)
+    assert source.observations is not None
+    assert [(o.path, o.version) for o in source.observations.occurrences] == [
+        ("/usr/lib/node_modules", "0.5.0"),
+        ("~/.npm-global/lib/node_modules", "0.4.2"),
+    ]
 
 
 def test_a_vm_recreated_under_the_same_name_is_a_new_machine() -> None:

@@ -1,7 +1,8 @@
 """Turning one machine's payload into records. Nothing here knows which carrier.
 
 Finds the `arthur1.` payload among a device's attributes, matches the rows against the
-catalog, and emits one record per (device, agent). The carrier's package -- an MDM, or a
+catalog, and emits one record per (device, agent), followed by a `CorroboratingRecord` for
+each catalog identifier that agent matched. The carrier's package -- an MDM, or a
 cloud that lists its VMs -- supplies the device, the vendor tag and the record type.
 """
 
@@ -13,7 +14,9 @@ from typing import Any, Mapping, Optional, Sequence, Union
 
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
 from arthur_common.models.agent_governance_schemas import (
+    MAX_OCCURRENCES,
     AgentObservations,
+    AgentOccurrence,
     CloudAgentCreationSource,
     EndpointAgentCreationSource,
     SourceAddress,
@@ -27,6 +30,10 @@ from discovery.endpoint.envelope import (
     OVERSIZE_PREFIX,
     EnvelopeOutcome,
     read,
+)
+from job_executors.discovery_scan import (
+    CorroboratingRecord,
+    corroboration_external_id,
 )
 
 
@@ -242,8 +249,9 @@ def records_from_rows(
         )
         return DeviceRead(unreadable=UnreadableReason.NO_SCAN_TIME)
 
-    records = [
-        DiscoveredAgentRecord(
+    records: list[DiscoveredAgentRecord] = []
+    for finding in result.findings:
+        record = DiscoveredAgentRecord(
             external_id=f"{device.device_key}:{finding.agent_id}",
             name=finding.name,
             last_seen=last_seen,
@@ -253,11 +261,41 @@ def records_from_rows(
             # imply it.
             runs_on=device.runs_on,
             platform=device.platform,
-            creation_source=_source_for(finding, device, vendor, source_type),
+            creation_source=_source_for(finding, device, vendor, source_type, log),
         )
-        for finding in result.findings
-    ]
+        records.append(record)
+        records.extend(
+            _corroborations(record, finding, device, vendor, source_type, log),
+        )
     return DeviceRead(records=records, last_seen=last_seen)
+
+
+def _occurrences(
+    found: Sequence[AgentOccurrence],
+    external_id: str,
+    log: logging.Logger,
+) -> list[AgentOccurrence]:
+    """A record's `occurrences`: every place its rows found the agent, each once.
+
+    EMPTY WHEN THAT IS ONE PLACE, which `install_path` and `version` already carry, so an
+    empty list means what the field says. Two rows can be one place: two users' copies of
+    `~/.claude/` read the same once their home directories are written as `~`.
+
+    REPEATS GO BEFORE THE CAP. The model counts its list before it collapses repeats, so a
+    list over the cap only in repeats would refuse the whole record. Past the cap the first
+    are kept, in the order the payload listed them.
+    """
+    unique = list({(o.kind, o.path, o.version): o for o in found}.values())
+    if len(unique) < 2:
+        return []
+    if len(unique) > MAX_OCCURRENCES:
+        log.warning(
+            "%s: %s places found the agent; the record carries the first %s",
+            external_id,
+            len(unique),
+            MAX_OCCURRENCES,
+        )
+    return unique[:MAX_OCCURRENCES]
 
 
 def _source_for(
@@ -265,6 +303,7 @@ def _source_for(
     device: ManagedDevice,
     vendor: str,
     source_type: InventorySource,
+    log: logging.Logger,
 ) -> Union[EndpointAgentCreationSource, CloudAgentCreationSource]:
     """What this source saw, in the shape every discovery category reports.
 
@@ -272,6 +311,9 @@ def _source_for(
     (device, agent), so uninstalling one of an agent's several routes does not churn its
     identity. The address is (device, primary route), because its job is finding the thing
     again on the machine -- a bundle id you can look up, not a catalog key you cannot.
+
+    `install_path` and `version` are the primary row's; `occurrences` is every row's, so a
+    Mac running three versions of an agent says so rather than naming the first.
 
     `service_names` stays empty: a one-shot scan sees installation, not behaviour.
     """
@@ -289,6 +331,11 @@ def _source_for(
             # is one -- an image's is a digest.
             install_path=finding.install_path,
             version=finding.version,
+            occurrences=_occurrences(
+                finding.occurrences,
+                f"{device.device_key}:{finding.agent_id}",
+                log,
+            ),
             permissions=list(finding.permissions),
             classification=finding.classification or None,
             host_name=device.name,
@@ -297,6 +344,83 @@ def _source_for(
             assigned_user=device.assigned_user,
         ),
     )
+
+
+def _corroborations(
+    record: DiscoveredAgentRecord,
+    finding: Finding,
+    device: ManagedDevice,
+    vendor: str,
+    source_type: InventorySource,
+    log: logging.Logger,
+) -> list[CorroboratingRecord]:
+    """The agent's evidence on this device: one record per catalog identifier it matched.
+
+    The primary row's identifier too, though `record`'s address already names it. That
+    address is the row's id, and an install kind's id names neither where nor which
+    version: once a Mac has the Claude Code extension, the extension is the primary row
+    and `record` says only `anthropic.claude-code`. Corroborating every identifier also
+    keeps each one's entry current when the primary route changes.
+
+    Keyed on the identifier, never on the row: a row's id moves with every release
+    (~/.local/share/claude/versions/2.1.314), and an `external_id` that moves mints a
+    mapping and a provenance entry per upgrade. The identifier stays, and its entry
+    holds the latest address.
+
+    THE ADDRESS IS THE PATH WHERE THE ROW'S KIND HAS ONE. An extension's path names its
+    editor and version (~/.cursor/extensions/anthropic.claude-code-2.1.314), where its
+    id names neither. A provenance entry now keeps its record's observations too, the
+    install path and version among them, but an entry stored before GenAI Engine kept
+    them has only its address, so the address is still where its location reads.
+
+    An identifier whose row has neither is left out. The evidence schema lets a row's id
+    be blank, and an address with no resource is one `SourceAddress` refuses, which
+    would end the scan at this device over one piece of evidence.
+
+    AN ENTRY'S OCCURRENCES ARE ITS IDENTIFIER'S ROWS. The address moves to the version
+    that speaks for the finding, the newest among tied rows, so `occurrences` is where
+    the others are: every version under ~/.local/share/claude/versions/, every profile
+    an extension is in.
+    """
+    corroborations: list[CorroboratingRecord] = []
+    for match in finding.identifiers:
+        if not (match.path or match.id).strip():
+            continue
+        external_id = corroboration_external_id(
+            record.external_id,
+            match.route,
+            match.value,
+        )
+        corroborations.append(
+            CorroboratingRecord(
+                corroborates=record.external_id,
+                external_id=external_id,
+                name=record.name,
+                last_seen=record.last_seen,
+                runs_on=record.runs_on,
+                platform=record.platform,
+                creation_source=source_type(
+                    vendor=vendor,
+                    address=SourceAddress(
+                        instance=device.device_key,
+                        scope=device.address_scope,
+                        resource_kind=match.kind,
+                        resource_id=match.path or match.id,
+                    ),
+                    observations=AgentObservations(
+                        install_path=match.path,
+                        version=match.version,
+                        occurrences=_occurrences(match.occurrences, external_id, log),
+                        classification=finding.classification or None,
+                        host_name=device.name,
+                        host_group=device.group,
+                        os_version=device.os_version,
+                        assigned_user=device.assigned_user,
+                    ),
+                ),
+            ),
+        )
+    return corroborations
 
 
 def _last_seen(

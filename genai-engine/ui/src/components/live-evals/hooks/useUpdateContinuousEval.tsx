@@ -20,6 +20,7 @@ export const useUpdateContinuousEval = (evalId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [queryKeys.continuousEvals.all(task!.id)] });
       queryClient.invalidateQueries({ queryKey: [queryKeys.continuousEvals.byId(evalId)] });
+      queryClient.invalidateQueries({ queryKey: [queryKeys.continuousEvals.spend(evalId)] });
       enqueueSnackbar("Continuous eval updated successfully", { variant: "success" });
     },
     onError: (error) => {

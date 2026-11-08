@@ -8,49 +8,62 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 @pytest.mark.integration_tests
 def test_create_prompt(client: GenaiEngineTestClientBase):
-    status_code, prompt_result = client.create_prompt("cool prompt for this test")
+    _, task = client.create_task()
+    status_code, prompt_result = client.create_prompt(
+        "cool prompt for this test",
+        task_id=task.id,
+    )
     assert status_code == 200
-
-    return prompt_result
 
 
 @pytest.mark.integration_tests
 def test_create_prompt_with_user_id(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     status_code, prompt_result = client.create_prompt(
         "cool prompt for this test",
+        task_id=task.id,
         user_id="testUser",
     )
     assert status_code == 200
 
     assert prompt_result.user_id == "testUser"
 
-    return prompt_result
-
 
 @pytest.mark.integration_tests
 def test_create_response(client: GenaiEngineTestClientBase):
-    prompt_result = test_create_prompt(client)
+    _, task = client.create_task()
+    status_code, prompt_result = client.create_prompt(
+        "cool prompt for this test",
+        task_id=task.id,
+    )
+    assert status_code == 200
     status_code, response_result = client.create_response(
         prompt_result.inference_id,
         "cool response for this test",
+        task_id=task.id,
     )
     assert status_code == 200
-
-    return response_result
 
 
 @pytest.mark.integration_tests
 def test_create_response_fails_duplicates(client: GenaiEngineTestClientBase):
-    prompt_result = test_create_prompt(client)
+    _, task = client.create_task()
+    status_code, prompt_result = client.create_prompt(
+        "cool prompt for this test",
+        task_id=task.id,
+    )
+    assert status_code == 200
     status_code, response_result = client.create_response(
         prompt_result.inference_id,
         "cool response for this test",
+        task_id=task.id,
     )
     assert status_code == 200
 
     status_code, response_result = client.create_response(
         prompt_result.inference_id,
         "cool response for this test",
+        task_id=task.id,
     )
     assert status_code == 400
 
@@ -102,9 +115,10 @@ def test_user_story_create_task_create_custom_scoped_rule_send_prompt_response(
         rule_name,
         rule_type=RuleType.KEYWORD,
         keywords=[custom_keyword],
+        task_id=task_response.id,
     )
     assert status_code == 200
-    assert rule.scope == RuleScope.DEFAULT
+    assert rule.scope == RuleScope.TASK
 
     status_code, prompt_result = client.create_prompt(
         "cool prompt for this test",
@@ -128,10 +142,6 @@ def test_user_story_create_task_validate_large_prompt_no_error(
         "test_user_story_create_task_validate_large_prompt_no_error",
     )
     assert status_code == 200
-
-    # delete the default rules on the newly created task
-    for rule in task_response.rules:
-        client.delete_task_rule(task_id=task_response.id, rule_id=rule.id)
 
     # prompt injection
     rule_name = str(random.random())

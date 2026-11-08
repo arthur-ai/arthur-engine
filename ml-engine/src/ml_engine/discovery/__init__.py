@@ -17,8 +17,9 @@ an unsupported source and is reported per job rather than per engine.
 
 Adding an MDM is one more entry here and one more package under `discovery.endpoint`;
 adding a SIEM is the same under `discovery.siem`, a cloud provider product under
-`discovery.cloud`, and a network log source under `discovery.network`. A package goes
-where its vendor's source class is, which is also the record type it emits.
+`discovery.cloud`, and a network log source or an AI gateway under `discovery.network`.
+A package goes where its vendor's source class is, which is also the record type it
+emits.
 
 A connector a standalone engine can run and a Platform job cannot goes in
 `standalone_connectors()` instead: the Platform has no vendor for it, and its executors
@@ -53,6 +54,8 @@ from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOG
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
 from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
 from discovery.network.gcp_logging.connector import GcpNetworkConnector
+from discovery.network.litellm.connector import VENDOR as LITELLM_VENDOR
+from discovery.network.litellm.connector import LiteLLMConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
 from discovery.siem.elastic_security.connector import ElasticSecurityConnector
 from discovery.siem.splunk.connector import VENDOR as SPLUNK_VENDOR
@@ -80,6 +83,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         VERCEL_AI_VENDOR: VercelConnector,
         CLOUDWATCH_LOGS_VENDOR: CloudWatchLogsConnector,
         GCP_NETWORK_VENDOR: GcpNetworkConnector,
+        LITELLM_VENDOR: LiteLLMConnector,
     }
 
 
@@ -94,9 +98,24 @@ def standalone_connectors() -> dict[str, DiscoveryConnectorFactory]:
     return {**source_connectors(), LOCAL_VENDOR: LocalConnector}
 
 
+def corroborating_vendors() -> frozenset[str]:
+    """Vendors whose agent records are followed by a `CorroboratingRecord` per catalog
+    identifier: those that read a machine's payload through `discovery.endpoint.records`.
+
+    Provenance does not keep `corroborates`, so a reader of it tells a corroboration
+    from its agent record by the `external_id` alone, which any vendor's could resemble.
+    It reads that shape only on these vendors' records. A connector that starts calling
+    `records_for` is added here.
+    """
+    return frozenset(
+        {JAMF_VENDOR, GCP_COMPUTE_ENGINE_VENDOR, AWS_EC2_VENDOR, LOCAL_VENDOR},
+    )
+
+
 __all__ = [
     "source_connectors",
     "standalone_connectors",
+    "corroborating_vendors",
     "LocalConnector",
     "LOCAL_VENDOR",
     "JamfConnector",
@@ -125,4 +144,6 @@ __all__ = [
     "CLOUDWATCH_LOGS_VENDOR",
     "GcpNetworkConnector",
     "GCP_NETWORK_VENDOR",
+    "LiteLLMConnector",
+    "LITELLM_VENDOR",
 ]

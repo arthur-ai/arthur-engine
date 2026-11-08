@@ -56,7 +56,7 @@ def test_model_invocations_recorded_end_to_end(client, monkeypatch):
     app.dependency_overrides[get_scorer_client] = lambda: real_scorer
 
     try:
-        status, task = client.create_task(name="ai-activity e2e task", empty_rules=True)
+        status, task = client.create_task(name="ai-activity e2e task")
         assert status == 200
         status, _rule = client.create_rule(
             name="",

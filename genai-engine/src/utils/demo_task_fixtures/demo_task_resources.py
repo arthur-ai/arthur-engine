@@ -66,21 +66,21 @@ DEMO_TASK_SYSTEM_PROMPT = (
     "You should only respond to the user's question, don't include any other information"
 )
 
+# Static instructions come before the variables so providers can cache them as a prefix
 DEMO_TASK_ANSWER_RELEVANCE_EVAL_PROMPT = (
-    "Given user's message and assistant's response:\n\n"
-    "<user_message>\n"
-    "{{query}}\n"
-    "</user_message>\n\n"
-    "<assistant_response>\n"
-    "{{response}}\n"
-    "</assistant_response>\n\n"
     "Determine if the assistant's response is relevant to the user's message. "
     "Respond with 1 if it is and 0 if it is not. "
     "Ignore all formatting, structure, and metadata (e.g. markdown, json, tool calls, API responses, etc.) — "
     "extract and evaluate only the natural language text content within. "
     "You should never fail or pass anything based on if it was a json object, if there were tool calls, "
     "or anything similar. You should also make no reference to the format of the response or "
-    '"natural language content", just give the reasoning.\n'
+    '"natural language content", just give the reasoning.\n\n'
+    "<user_message>\n"
+    "{{query}}\n"
+    "</user_message>\n\n"
+    "<assistant_response>\n"
+    "{{response}}\n"
+    "</assistant_response>\n"
 )
 
 DEMO_TASK_ANSWER_RELEVANCE_EVAL_TRANSFORM = NewTraceTransformRequest(

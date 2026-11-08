@@ -142,6 +142,11 @@
       "allowedVersions": "<9"
     },
     {
+      "description": "Cap Node < 25: node:25+ images ship neither Corepack nor Yarn, so the `corepack enable` in genai-engine/dockerfile's ui-build stage fails and the image cannot build. PR #2560 (node:26-alpine) passed CI only because the docker build job is skipped on PRs. @types/node follows the runtime major, so code can't typecheck against APIs Node 24 lacks. Mirrors the same cap in unify-frontend, whose shared components this UI consumes. Lift node and @types/node together once the dockerfile bootstraps Yarn without the bundled Corepack and the image build is green.",
+      "matchPackageNames": ["node", "@types/node"],
+      "allowedVersions": "<25"
+    },
+    {
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchPackageNames": ["python"],
       "enabled": false

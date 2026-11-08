@@ -9,7 +9,7 @@ window is covered over the wire in tests/unit/routes/tasks.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Generator
+from typing import Generator, Optional
 
 import pytest
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -328,6 +328,225 @@ def test_rescan_moves_last_seen_forward_and_never_back(
 
     [entry] = _served_provenance(task_repo, resolved.task_id).sources
     assert entry.last_seen == later
+
+
+def _versioned_record(
+    external_id: str,
+    version: Optional[str],
+    last_seen: datetime = LAST_SEEN,
+) -> DiscoveredAgentRecord:
+    """An endpoint record carrying the version its row read, as a Jamf scan reports one."""
+    return DiscoveredAgentRecord(
+        external_id=external_id,
+        name=external_id,
+        last_seen=last_seen,
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(
+                instance="serial:m1",
+                resource_kind="vscodeext",
+                resource_id="anthropic.claude-code",
+            ),
+            observations=AgentObservations(version=version, host_name="mac-m1"),
+        ),
+    )
+
+
+def _scan_versions(
+    resolver: DiscoveryTaskResolutionService,
+    tracked_tasks: list[str],
+    *reports: tuple[Optional[str], datetime],
+) -> str:
+    """Report one record once per (version, last_seen), each its own scan; its task."""
+    source_id = uuid.uuid4()
+    external_id = f"{_run_id()}-claude-code"
+    task_ids = set()
+    for version, last_seen in reports:
+        [resolved] = resolver.resolve_records(
+            [_versioned_record(external_id, version, last_seen)],
+            source_id=source_id,
+        ).resolved
+        task_ids.add(resolved.task_id)
+    [task_id] = task_ids
+    tracked_tasks.append(task_id)
+    return task_id
+
+
+def _served_observations(task_repo: TaskRepository, task_id: str) -> AgentObservations:
+    [entry] = _served_provenance(task_repo, task_id).sources
+    return entry.observations
+
+
+@pytest.mark.unit_tests
+def test_a_report_serves_what_it_saw_after_the_first_scan(
+    resolver,
+    task_repo,
+    tracked_tasks,
+):
+    """The task's creation source keeps only the first report's observations, so each
+    entry carries its own record's latest ones."""
+    task_id = _scan_versions(
+        resolver,
+        tracked_tasks,
+        ("2.1.312", LAST_SEEN),
+        ("2.1.314", LAST_SEEN + timedelta(days=1)),
+    )
+
+    observations = _served_observations(task_repo, task_id)
+    assert observations.version == "2.1.314"
+    assert observations.host_name == "mac-m1"
+
+
+@pytest.mark.unit_tests
+def test_a_version_change_keeps_the_version_before_it(
+    resolver,
+    task_repo,
+    tracked_tasks,
+):
+    """The version before the latest change, however many scans report the same one
+    since -- not merely the last scan's."""
+    task_id = _scan_versions(
+        resolver,
+        tracked_tasks,
+        ("2.1.312", LAST_SEEN),
+        ("2.1.314", LAST_SEEN + timedelta(days=1)),
+        ("2.1.314", LAST_SEEN + timedelta(days=2)),
+    )
+
+    observations = _served_observations(task_repo, task_id)
+    assert (observations.version, observations.previous_version) == (
+        "2.1.314",
+        "2.1.312",
+    )
+
+
+@pytest.mark.unit_tests
+def test_there_is_no_previous_version_until_the_version_changes(
+    resolver,
+    task_repo,
+    tracked_tasks,
+):
+    task_id = _scan_versions(
+        resolver,
+        tracked_tasks,
+        ("2.1.312", LAST_SEEN),
+        ("2.1.312", LAST_SEEN + timedelta(days=1)),
+    )
+
+    assert _served_observations(task_repo, task_id).previous_version is None
+
+
+@pytest.mark.unit_tests
+def test_a_report_with_no_version_keeps_the_one_held(
+    resolver,
+    task_repo,
+    tracked_tasks,
+):
+    """Silence is not a new answer, and is not a change the next version is measured
+    from either."""
+    task_id = _scan_versions(
+        resolver,
+        tracked_tasks,
+        ("2.1.312", LAST_SEEN),
+        (None, LAST_SEEN + timedelta(days=1)),
+        ("2.1.314", LAST_SEEN + timedelta(days=2)),
+    )
+
+    observations = _served_observations(task_repo, task_id)
+    assert (observations.version, observations.previous_version) == (
+        "2.1.314",
+        "2.1.312",
+    )
+
+
+@pytest.mark.unit_tests
+def test_an_out_of_order_report_does_not_read_as_a_downgrade(
+    resolver,
+    task_repo,
+    tracked_tasks,
+):
+    """A batch carrying an older sighting arrives after a newer one: the version stays
+    the newer sighting's, and nothing moves to `previous_version`."""
+    task_id = _scan_versions(
+        resolver,
+        tracked_tasks,
+        ("2.1.314", LAST_SEEN + timedelta(days=1)),
+        ("2.1.312", LAST_SEEN),
+    )
+
+    observations = _served_observations(task_repo, task_id)
+    assert (observations.version, observations.previous_version) == ("2.1.314", None)
+
+
+@pytest.mark.unit_tests
+def test_an_older_report_does_not_fill_a_row_stored_without_observations(
+    resolver,
+    db_session,
+    tracked_tasks,
+):
+    """A row stored before observations were kept has a sighting but nothing observed.
+    A report older than that sighting must leave it empty rather than fill it with a
+    version the row has moved past; the next newer report fills it."""
+    source_id = uuid.uuid4()
+    external_id = f"{_run_id()}-claude-code"
+    [resolved] = resolver.resolve_records(
+        [_versioned_record(external_id, "2.1.314", LAST_SEEN + timedelta(days=1))],
+        source_id=source_id,
+    ).resolved
+    tracked_tasks.append(resolved.task_id)
+    [row] = _rows(db_session, resolved.task_id)
+    row.observations = None
+    db_session.commit()
+
+    resolver.resolve_records(
+        [_versioned_record(external_id, "2.1.312", LAST_SEEN)],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.observations is None
+
+    resolver.resolve_records(
+        [_versioned_record(external_id, "2.1.316", LAST_SEEN + timedelta(days=2))],
+        source_id=source_id,
+    )
+    [row] = _rows(db_session, resolved.task_id)
+    assert row.observations["version"] == "2.1.316"
+
+
+@pytest.mark.unit_tests
+def test_a_version_change_within_one_batch_is_kept(
+    provenance_repo,
+    resolver,
+    task_repo,
+    tracked_tasks,
+):
+    """One statement cannot upsert a row twice, so a key repeated in a batch keeps its
+    last report -- measured against the one before it, not against what was stored."""
+    task_id = _scan_versions(resolver, tracked_tasks, ("2.1.310", LAST_SEEN))
+    [row] = TaskProvenanceRepository(task_repo.db_session).get_by_task_ids(
+        [task_id],
+    )[task_id]
+
+    provenance_repo.record_reports(
+        ProvenanceReport(
+            external_id=row.external_id,
+            task_id=task_id,
+            entry=ProvenanceSource.from_creation_source(
+                AgentCreationSource(
+                    _versioned_record(row.external_id, version).creation_source,
+                ),
+                source_id=row.source_id,
+                last_seen=LAST_SEEN + timedelta(days=day),
+            ),
+        )
+        for day, version in ((1, "2.1.312"), (2, "2.1.314"))
+    )
+
+    observations = _served_observations(task_repo, task_id)
+    assert (observations.version, observations.previous_version) == (
+        "2.1.314",
+        "2.1.312",
+    )
 
 
 @pytest.mark.unit_tests

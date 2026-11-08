@@ -35,6 +35,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { Details } from "../components/results/components/details";
+import { ContinuousEvalSpendCards } from "../components/spend";
 import { TestRunDialog } from "../components/TestRunDialog";
 import { TestRunsHistory } from "../components/TestRunsHistory";
 import { useContinuousEval } from "../hooks/useContinuousEval";
@@ -226,6 +227,8 @@ export const LiveEvalDetail = () => {
       {/* Content */}
       <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
         <Stack spacing={3}>
+          <ContinuousEvalSpendCards evalId={liveEval.id} />
+
           {/* Configuration Section */}
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography

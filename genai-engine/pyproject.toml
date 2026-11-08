@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1078"
+version = "2.1.1104"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -11,13 +11,13 @@ dependencies = [
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
-  "fastapi==0.159.1",
+  "fastapi==0.162.0",
   "uvicorn==0.54.0",
-  "pydantic==2.14.1",
-  "sse-starlette==3.5.0",
+  "pydantic==2.14.2",
+  "sse-starlette==3.6.0",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.20.1",
-  "boto3==1.43.117",
+  "boto3==1.43.122",
   "python-dotenv==1.2.4",
   "psycopg2-binary==2.9.13",
   # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1)
@@ -26,18 +26,18 @@ dependencies = [
   "sqlalchemy==2.0.55",
   "pgvector==0.5.1",
   "python-multipart==0.0.32",
-  "pypdf==6.21.2",
+  "pypdf==6.21.4",
   "httpx==0.28.1",
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
   "transformers==5.13.1",
   "authlib==1.9.1",
   "requests==2.34.2",
-  "starlette==1.9.0",
+  "starlette==1.10.0",
   "pyjwt==2.15.1",
-  "azure-storage-blob==12.31.0",
+  "azure-storage-blob==12.31.1",
   "itsdangerous==2.2.0",
-  "newrelic==14.0.0",
+  "newrelic==14.2.0",
   # Held below 9.0: litellm 1.106.2 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.9.0",
@@ -49,11 +49,11 @@ dependencies = [
   "tiktoken==0.14.0",
   "nltk==3.10.4",
   "more-itertools==11.2.1",
-  "presidio-analyzer==2.2.364",
-  "presidio-anonymizer==2.2.364",
+  "presidio-analyzer==2.2.366",
+  "presidio-anonymizer==2.2.366",
   "python-keycloak==7.1.1",
   "bcrypt==5.0.0",
-  "cachetools==7.2.4",
+  "cachetools==7.2.7",
   "sentence-transformers==6.2.0",
   "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
   "torch==2.13.0 ; sys_platform == 'darwin'",
@@ -65,11 +65,11 @@ dependencies = [
   "spacy>=3.8.3",
   "date-spacy>=0.0.1,<0.1",
   "bert-score==0.3.13",
-  "langchain==1.4.7",
+  "langchain==1.4.8",
   "langchain-community==0.4.2",
-  "langchain-openai==1.7.2",
-  "langsmith==0.14.12",
-  "msgpack==1.2.3",
+  "langchain-openai==1.7.3",
+  "langsmith==0.14.17",
+  "msgpack==1.2.4",
   "cloudpickle==3.1.2",
   "amplitude-analytics>=1.1.5,<2",
   "sentencepiece==0.2.2",
@@ -78,16 +78,16 @@ dependencies = [
   # The [mcp] extra is required, not optional: since 1.106.0 litellm imports `mcp` on every
   # completion() that passes tools, so without it every tool-calling feature returns a 500
   # (UP-5288). Drop the extra once litellm makes that import lazy.
-  "litellm[mcp]==1.106.2",
+  "litellm[mcp]==1.106.6",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.102",
+  "arthur-common==2.4.106",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.65b0,<0.66",
-  "arthur-client==1.4.2900",
+  "arthur-client==1.4.2961",
 ]
 
 [project.scripts]
@@ -97,8 +97,8 @@ routes_security_check = "routes_security_check:main"
 
 [dependency-groups]
 dev = [
-  "pytest==9.1.1",
-  "pytest-asyncio==1.4.0",
+  "pytest==9.2.0",
+  "pytest-asyncio==1.4.1",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",
   "pre-commit==4.7.0",
@@ -119,12 +119,17 @@ exclude-newer = "3 days"
 # fastapi-pagination bypasses the release-age soak: 0.15.16 (FastAPI 0.140 compat) was needed
 # before it aged past the 3-day window. Without this, the lock's per-package override diverges
 # from pyproject and uv re-resolves under the soak, failing to satisfy the ==0.15.16 pin.
-exclude-newer-package = { torch = false, arthur-common = false, arthur-client = false, fastapi-pagination = false }
+# grpcio bypasses the soak: weaviate-client caps grpcio < 1.80, and the only G3-free release
+# below that cap is 1.78.2 (2026-11-05). Drop the exemption once it is 3 days old.
+exclude-newer-package = { torch = false, arthur-common = false, arthur-client = false, fastapi-pagination = false, grpcio = false }
 # Security: pin transitive hf-xet (its wheel vendors Rust crates) to >=1.5.2, which bundles
 # rustls-webpki 0.103.13 (RUSTSEC-2026-0104, HIGH: DoS panic in CRL parsing) and quinn-proto
 # 0.11.15 (RUSTSEC-2026-0185 / CVE-2026-25800, HIGH: remote memory exhaustion). Both are fixed
 # as of hf-xet 1.5.2 (xet-core v1.5.2 bumped the vendored quinn-proto 0.11.14 -> 0.11.15).
-constraint-dependencies = ["hf-xet>=1.5.2"]
+# SOC-222: certifi < 2026.10.19 and grpcio's bundled roots.pem (< 1.78.2 / 1.84.1 / 1.85.0)
+# still trust the compromised "emSign ECC Root CA - G3" root. Neither is a direct dependency.
+# litellm < 1.106.3 has the same problem in its Rust extension; that bump waits on arthur-common.
+constraint-dependencies = ["hf-xet>=1.5.2", "certifi>=2026.10.19", "grpcio>=1.78.2", "litellm>=1.106.3"]
 # Security: force transitive cryptography past presidio-anonymizer 2.2.364 (latest), which
 # requires cryptography>=48.0.1,<49.0.0 and so pinned us to 48.0.1 — a version with three open
 # advisories: CVE-2026-69248 (X.509 verifier accepts wildcard DNS names, escaping

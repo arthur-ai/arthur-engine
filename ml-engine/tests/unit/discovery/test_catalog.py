@@ -64,10 +64,10 @@ def matcher() -> Matcher:
 
 def test_floor_catalog_is_the_vendored_one() -> None:
     m = Matcher.from_source()
-    assert m.agent_count == 42
+    assert m.agent_count == 63
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "a71733f7afd7"
+    assert m.catalog_sha == "809c96703265"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -106,6 +106,76 @@ def test_one_agent_through_two_routes_is_one_finding(matcher: Matcher) -> None:
     assert finding.agent_id == "codex-cli"
     assert len(finding.evidence) == 2
     assert set(finding.kinds) == {"npm", "file"}
+
+
+_CLAUDE_CODE = document(
+    agent(
+        "claude-code",
+        "Claude Code",
+        "Coding agent",
+        binaries=["~/.local/bin/claude"],
+        process_paths=["~/.local/share/claude/versions/"],
+    ),
+)
+
+
+def test_every_row_is_an_occurrence_and_a_process_is_where_it_runs_from() -> None:
+    """describe() gives a process no install path, because an npm agent's runs from its
+    interpreter. An occurrence's path is where a process runs from, and that is what tells
+    the running versions apart. Each identifier lists its own rows."""
+    versions = "/Users/nori/.local/share/claude/versions/"
+    finding = (
+        Matcher.from_source(catalog_json=_CLAUDE_CODE)
+        .match(
+            [
+                row(
+                    "file",
+                    "/Users/nori/.local/bin/claude",
+                    loc="/Users/nori/.local/bin/claude",
+                ),
+                row("proc", versions + "2.1.312", loc=versions + "2.1.312"),
+                row("proc", versions + "2.1.314", loc=versions + "2.1.314"),
+            ],
+        )
+        .findings[0]
+    )
+
+    assert [(o.kind, o.path, o.version) for o in finding.occurrences] == [
+        ("file", "~/.local/bin/claude", None),
+        ("proc", "~/.local/share/claude/versions/2.1.312", None),
+        ("proc", "~/.local/share/claude/versions/2.1.314", None),
+    ]
+    by_route = {m.route: m for m in finding.identifiers}
+    assert [o.path for o in by_route["process_paths"].occurrences] == [
+        "~/.local/share/claude/versions/2.1.312",
+        "~/.local/share/claude/versions/2.1.314",
+    ]
+    assert [o.kind for o in by_route["binaries"].occurrences] == ["file"]
+
+
+def test_an_occurrence_takes_ver_as_its_version_and_only_a_place_as_its_path(
+    matcher: Matcher,
+) -> None:
+    """A version is `ver` wherever it is set, and never read out of a path. A process's
+    executable can be the interpreter, which is still what it runs from; but argv[0], left
+    where the executable could not be read, is a name and not a place."""
+    result = matcher.match(
+        [
+            row(
+                "npm",
+                "@openai/codex",
+                ver="0.5.0",
+                loc="/opt/homebrew/lib/node_modules",
+            ),
+            row("proc", "@openai/codex", loc="/opt/homebrew/bin/node"),
+            row("proc", "@openai/codex", loc="node"),
+        ],
+    )
+    assert [(o.kind, o.path, o.version) for o in result.findings[0].occurrences] == [
+        ("npm", "/opt/homebrew/lib/node_modules", "0.5.0"),
+        ("proc", "/opt/homebrew/bin/node", None),
+        ("proc", None, None),
+    ]
 
 
 def test_an_install_record_speaks_before_a_path(matcher: Matcher) -> None:
@@ -294,6 +364,8 @@ def test_the_copy_the_browser_loads_speaks_before_a_leftover() -> None:
 
 
 def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
+    """Among rows still tied, the newest release speaks: it is the one an upgrade moves
+    to, where evidence order is whichever osquery listed first (classify.primary)."""
     ext = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
     result = Matcher.from_source(catalog_json=_CLAUDE_IN_CHROME).match(
         [
@@ -301,7 +373,7 @@ def test_a_leftover_still_speaks_when_no_copy_is_loaded() -> None:
             row("ext", ext, ver="1.0.97", extra="chrome,unreferenced", perms="tabs"),
         ],
     )
-    assert result.findings[0].version == "1.0.94"
+    assert result.findings[0].version == "1.0.97"
 
 
 def test_permissions_split_into_a_tuple(matcher: Matcher) -> None:
@@ -564,7 +636,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "a71733f7afd7"
+        assert Matcher.from_source().catalog_sha == "809c96703265"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,
