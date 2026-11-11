@@ -130,6 +130,18 @@
       "allowedVersions": "<9.0.0"
     },
     {
+      "description": "Cap pandas < 3.1.0: arthur-common 2.4.108 (the pinned version, and the latest release) requires pandas>=3.0.3,<3.1.0, so pandas 3.1.x makes ml-engine unresolvable. Renovate cannot see that transitive ceiling and bundled pandas 3.1.x into PR #2567, whose ml-engine lockfile step then failed. Lift this cap once an arthur-common release widens its pandas ceiling (arthur-ai/arthur-common#274) and both engines pin it.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["pandas"],
+      "allowedVersions": "<3.1.0"
+    },
+    {
+      "description": "Cap sentencepiece < 0.2.3: its 0.2.3 wheels ship protobuf code generated with protobuf 7.36.1, which refuses to load on an older protobuf runtime, but they do not declare protobuf as a dependency. weaviate-client 4.24.1 (the latest release) requires protobuf<7, so genai-engine locks protobuf 6.x and every PII path that loads the GLiNER tokenizer raises VersionError (81 unit tests in PR #2567). The lock resolves, so only the test suite catches it. Lift this cap once a weaviate-client release accepts protobuf 7.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["sentencepiece"],
+      "allowedVersions": "<0.2.3"
+    },
+    {
       "description": "Cap sqlalchemy < 2.1.0: snowflake-sqlalchemy (ml-engine's Snowflake connector) subclasses sqlalchemy.orm.context.ORMSelectCompileState, which SQLAlchemy 2.1 made private, so it raises AttributeError at import. 1.11.1, the latest stable release, declares no upper bound and so still resolves, which is how PR #2410 reached CI; its 2.0.0 pre-releases declare sqlalchemy<2.1. In genai-engine, opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1) declares sqlalchemy<2.1.0 and skips instrumenting outside that range, so DB tracing would stop without any test failing. Lift once a snowflake-sqlalchemy release supports SQLAlchemy 2.1 (snowflakedb/snowflake-sqlalchemy#652) and opentelemetry-instrumentation-sqlalchemy widens its range.",
       "matchManagers": ["pep621"],
       "matchPackageNames": ["sqlalchemy"],
