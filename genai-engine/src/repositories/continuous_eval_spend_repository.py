@@ -27,12 +27,14 @@ from schemas.response_schemas import (
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 from utils.span_selection import select_spans
 from utils.span_tree import tree_order
+from utils.trace import validate_span_version
 from utils.transform_executor import spans_match_filter
 
 SPEND_ESTIMATE_WINDOW_DAYS = 7
 # A new eval's trace filter is tried on at most this many of the task's latest
-# traces, so the create-form estimate stays a bounded read.
-FILTER_SHARE_MAX_TRACES = 200
+# traces, so the create-form estimate stays a bounded read: it reruns on each
+# filter edit and loads every span's raw data for these traces.
+FILTER_SHARE_MAX_TRACES = 100
 
 # Runs that reached the LLM. Pending and running runs have no cost yet, skipped
 # runs never call it, and errored runs may have failed before or during the call.
@@ -290,7 +292,7 @@ class ContinuousEvalSpendRepository:
         matched = sum(
             1
             for spans in spans_by_trace.values()
-            if spans_match_filter(spans, trace_filter)
+            if spans and spans_match_filter(spans, trace_filter)
         )
         return matched, len(spans_by_trace)
 
@@ -309,15 +311,25 @@ class ContinuousEvalSpendRepository:
             .order_by(DatabaseTraceMetadata.start_time.desc())
             .limit(FILTER_SHARE_MAX_TRACES)
         ]
-        spans_by_trace: dict[str, list[DatabaseSpan]] = {
-            trace_id: [] for trace_id in trace_ids
-        }
+        # Only the columns the matchers read, not whole span rows. Spans of an
+        # unsupported version are dropped, as the worker's trace load drops them.
+        # A trace left with none still counts as checked, but never matches: the
+        # worker can't load it, so it never reaches the judge. That keeps shares
+        # over the same traces as trace_count, which they scale.
+        spans_by_trace: dict[str, list[Any]] = {trace_id: [] for trace_id in trace_ids}
         if not trace_ids:
             return spans_by_trace
-        for span in self.db_session.query(DatabaseSpan).filter(
-            DatabaseSpan.trace_id.in_(trace_ids),
-        ):
-            spans_by_trace[span.trace_id].append(span)
+        for span in self.db_session.query(
+            DatabaseSpan.trace_id,
+            DatabaseSpan.span_id,
+            DatabaseSpan.parent_span_id,
+            DatabaseSpan.span_name,
+            DatabaseSpan.span_kind,
+            DatabaseSpan.start_time,
+            DatabaseSpan.raw_data,
+        ).filter(DatabaseSpan.trace_id.in_(trace_ids)):
+            if validate_span_version(span.raw_data):
+                spans_by_trace[span.trace_id].append(span)
         return spans_by_trace
 
     @staticmethod
@@ -446,7 +458,10 @@ class ContinuousEvalSpendRepository:
         judged = 0
         matched_traces = 0
         for spans in spans_by_trace.values():
-            if trace_filter and not spans_match_filter(spans, trace_filter):
+            # An unreadable trace is checked but never judged (see above).
+            if not spans or (
+                trace_filter and not spans_match_filter(spans, trace_filter)
+            ):
                 continue
             matched_traces += 1
             judged += min(

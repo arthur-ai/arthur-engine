@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { rowsToTraceFilter, traceFilterSchema, traceFilterToRows, type TraceFilterRow } from "./traceFilter";
+import { completeTraceFilterRows, rowsToTraceFilter, traceFilterSchema, traceFilterToRows, type TraceFilterRow } from "./traceFilter";
 
 const paid: TraceFilterRow = { spanName: "", attributePath: "attributes.metadata.plan", operator: "equals", value: "paid" };
 
@@ -26,5 +26,11 @@ describe("trace filter", () => {
     expect(traceFilterSchema.safeParse([{ ...paid, attributePath: " " }]).success).toBe(false);
     expect(traceFilterSchema.safeParse([{ ...paid, value: "" }]).success).toBe(false);
     expect(traceFilterSchema.safeParse([{ ...paid, operator: "exists", value: "" }]).success).toBe(true);
+  });
+
+  it("keeps the complete rows when another row is still being filled in", () => {
+    const blank: TraceFilterRow = { spanName: "", attributePath: "", operator: "equals", value: "" };
+    expect(completeTraceFilterRows([paid, blank])).toEqual([paid]);
+    expect(completeTraceFilterRows([blank])).toEqual([]);
   });
 });

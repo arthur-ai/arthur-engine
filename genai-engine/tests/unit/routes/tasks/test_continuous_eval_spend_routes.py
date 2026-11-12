@@ -22,7 +22,12 @@ from tests.unit.routes.tasks.test_continuous_eval_crud_routes import (
     create_test_llm_eval,
     create_test_transform,
 )
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, DEFAULT_ORG_ID
+from utils.constants import (
+    AGENT_EXPERIMENT_SESSION_PREFIX,
+    DEFAULT_ORG_ID,
+    EXPECTED_SPAN_VERSION,
+    SPAN_VERSION_KEY,
+)
 
 
 def _create_continuous_eval(
@@ -322,7 +327,12 @@ def test_continuous_eval_spend_without_traces_or_runs(
         _cleanup(client, task.id, [continuous_eval.id])
 
 
-def _add_root_span(task_id: str, trace_id: str, attributes: dict) -> None:
+def _add_root_span(
+    task_id: str,
+    trace_id: str,
+    attributes: dict,
+    span_version: str = EXPECTED_SPAN_VERSION,
+) -> None:
     db_session = override_get_db_session()
     now = datetime.now()
     db_session.add(
@@ -335,7 +345,11 @@ def _add_root_span(task_id: str, trace_id: str, attributes: dict) -> None:
             end_time=now,
             task_id=task_id,
             org_id=DEFAULT_ORG_ID,
-            raw_data={"name": "agent", "attributes": attributes},
+            raw_data={
+                "name": "agent",
+                "attributes": attributes,
+                SPAN_VERSION_KEY: span_version,
+            },
         ),
     )
     db_session.commit()
@@ -362,14 +376,21 @@ def test_spend_estimate_scales_by_the_filter_match_share(
 
     try:
         now = datetime.now()
-        # 7 traces in the window: 2 from paid users, 5 from free ones.
-        trace_ids = _add_traces(task.id, [now - timedelta(hours=3)] * 7)
-        for i, trace_id in enumerate(trace_ids):
+        # 8 traces in the window: 2 from paid users, 5 from free ones, and one
+        # paid trace whose only span has a version the worker can't read.
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=3)] * 8)
+        for i, trace_id in enumerate(trace_ids[:7]):
             _add_root_span(
                 task.id,
                 trace_id,
                 {"metadata": {"plan": "paid" if i < 2 else "free"}},
             )
+        _add_root_span(
+            task.id,
+            trace_ids[7],
+            {"metadata": {"plan": "paid"}},
+            span_version="arthur_span_v0",
+        )
         _add_run(
             continuous_eval.id,
             trace_ids[0],
@@ -384,8 +405,8 @@ def test_spend_estimate_scales_by_the_filter_match_share(
         )
         assert status_code == 200
         assert unfiltered.filter_match_share is None
-        # 1 trace/day * $0.07
-        assert unfiltered.estimated_daily_cost == pytest.approx(0.07)
+        # 8 traces / 7 days * $0.07
+        assert unfiltered.estimated_daily_cost == pytest.approx(0.08)
 
         status_code, filtered = client.estimate_continuous_eval_spend(
             task.id,
@@ -393,9 +414,20 @@ def test_spend_estimate_scales_by_the_filter_match_share(
             trace_filter=paid_only,
         )
         assert status_code == 200
-        assert filtered.filter_traces_checked == 7
-        assert filtered.filter_match_share == pytest.approx(2 / 7)
-        assert filtered.estimated_daily_cost == pytest.approx(0.07 * 2 / 7)
+        # The unreadable trace is checked but can't match: the worker can't load
+        # it, so it never reaches the judge. 2 of 8 match.
+        assert filtered.filter_traces_checked == 8
+        assert filtered.filter_match_share == pytest.approx(2 / 8)
+        assert filtered.estimated_daily_cost == pytest.approx(0.08 * 2 / 8)
+
+        status_code, not_paid = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter=paid_only.replace('"equals"', '"not_equals"'),
+        )
+        assert status_code == 200
+        assert not_paid.filter_traces_checked == 8
+        assert not_paid.filter_match_share == pytest.approx(5 / 8)
 
         status_code, _ = client.estimate_continuous_eval_spend(
             task.id,

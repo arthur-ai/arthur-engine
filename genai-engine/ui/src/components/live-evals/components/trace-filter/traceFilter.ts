@@ -20,19 +20,23 @@ export const TRACE_FILTER_OPERATORS: { value: ContinuousEvalTraceFilterOperator;
 
 export const emptyTraceFilterRow = (): TraceFilterRow => ({ spanName: "", attributePath: "", operator: "equals", value: "" });
 
-export const traceFilterSchema = z.array(
-  z
-    .object({
-      spanName: z.string(),
-      attributePath: z.string().trim().min(1, { error: "Attribute path is required" }),
-      operator: z.enum(["equals", "not_equals", "contains", "exists"]),
-      value: z.string(),
-    })
-    .refine((row) => row.operator === "exists" || row.value.trim() !== "", {
-      error: "Value is required unless the operator is exists",
-      path: ["value"],
-    })
-);
+export const traceFilterRowSchema = z
+  .object({
+    spanName: z.string(),
+    attributePath: z.string().trim().min(1, { error: "Attribute path is required" }),
+    operator: z.enum(["equals", "not_equals", "contains", "exists"]),
+    value: z.string(),
+  })
+  .refine((row) => row.operator === "exists" || row.value.trim() !== "", {
+    error: "Value is required unless the operator is exists",
+    path: ["value"],
+  });
+
+export const traceFilterSchema = z.array(traceFilterRowSchema);
+
+// The rows that are filled in enough to send, e.g. for an estimate while editing.
+export const completeTraceFilterRows = (rows: TraceFilterRow[]): TraceFilterRow[] =>
+  rows.filter((row) => traceFilterRowSchema.safeParse(row).success);
 
 export const rowsToTraceFilter = (rows: TraceFilterRow[]): ContinuousEvalTraceFilterCondition[] | null =>
   rows.length === 0

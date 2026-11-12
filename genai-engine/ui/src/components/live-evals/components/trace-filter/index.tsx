@@ -8,7 +8,14 @@ import Typography from "@mui/material/Typography";
 
 import { emptyTraceFilterRow, TRACE_FILTER_OPERATORS, type TraceFilterRow } from "./traceFilter";
 
-export { emptyTraceFilterRow, rowsToTraceFilter, traceFilterSchema, traceFilterToRows, type TraceFilterRow } from "./traceFilter";
+export {
+  completeTraceFilterRows,
+  emptyTraceFilterRow,
+  rowsToTraceFilter,
+  traceFilterSchema,
+  traceFilterToRows,
+  type TraceFilterRow,
+} from "./traceFilter";
 
 type Props = {
   value: TraceFilterRow[];

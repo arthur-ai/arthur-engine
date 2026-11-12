@@ -8,7 +8,7 @@ import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
 import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
 import { spanFilterJson, spanScopeSchema, type SpanScopeValues } from "../span-scope/spanScope";
-import { rowsToTraceFilter, traceFilterSchema, type TraceFilterRow } from "../trace-filter";
+import { completeTraceFilterRows, rowsToTraceFilter, type TraceFilterRow } from "../trace-filter";
 
 import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
 
@@ -116,8 +116,10 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, sampleP
   const debouncedFilter = useDebouncedValue(traceFilter);
   const debouncedScope = useDebouncedValue(spanScope);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
-  // A half-filled condition isn't sent; the estimate covers the complete ones.
-  const conditions = traceFilterSchema.safeParse(debouncedFilter).success ? rowsToTraceFilter(debouncedFilter) : null;
+  // A half-filled condition isn't sent; the estimate covers the complete ones and says so.
+  const completeRows = completeTraceFilterRows(debouncedFilter);
+  const conditions = rowsToTraceFilter(completeRows);
+  const incompleteCount = debouncedFilter.length - completeRows.length;
   const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(
     taskId,
     llmEvalName,
@@ -133,5 +135,15 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, sampleP
     return isFetching ? <Skeleton variant="text" width={360} /> : null;
   }
   if (!isSpendEstimate(estimate)) return null;
-  return <SpendEstimateText estimate={estimate} currency={defaultCurrency} />;
+  return (
+    <Stack sx={{ gap: 0.5 }}>
+      <SpendEstimateText estimate={estimate} currency={defaultCurrency} />
+      {incompleteCount > 0 && (
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          {incompleteCount === 1 ? "1 trace filter condition isn't" : `${incompleteCount} trace filter conditions aren't`} filled in yet, so the
+          estimate leaves {incompleteCount === 1 ? "it" : "them"} out.
+        </Typography>
+      )}
+    </Stack>
+  );
 };
