@@ -16,7 +16,10 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseSpan
 from dependencies import get_db_session
-from repositories.continuous_eval_spend_repository import ContinuousEvalSpendRepository
+from repositories.continuous_eval_spend_repository import (
+    TRACE_FILTER_SKIP_DESCRIPTION,
+    ContinuousEvalSpendRepository,
+)
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
@@ -66,9 +69,6 @@ _LLM_CALL_RUN_STATUSES = (
     ContinuousEvalRunStatus.PASSED.value,
     ContinuousEvalRunStatus.FAILED.value,
 )
-
-# Start of the run description for a trace the eval's trace filter left out
-TRACE_FILTER_SKIP_DESCRIPTION = "Trace did not match the trace filter"
 
 # A prompt cache write costs 1.25x the uncached input price and lasts 5 minutes, so
 # a continuous eval only gets a cache breakpoint once it runs often enough to read

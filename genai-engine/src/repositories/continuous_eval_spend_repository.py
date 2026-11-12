@@ -52,6 +52,8 @@ _FINISHED_RUN_STATUSES = (
     *_LLM_CALLING_RUN_STATUSES,
     ContinuousEvalRunStatus.SKIPPED.value,
 )
+# Start of the run description for a trace the eval's trace filter left out.
+TRACE_FILTER_SKIP_DESCRIPTION = "Trace did not match the trace filter"
 # continuous_evals.eval_type of evals that call an LLM judge ("ml_eval" otherwise).
 _LLM_EVAL_TYPE = "llm_eval"
 
@@ -224,7 +226,11 @@ class ContinuousEvalSpendRepository:
         window_start = now - timedelta(days=SPEND_ESTIMATE_WINDOW_DAYS)
 
         priced = _Priced.from_row(
-            self.db_session.query(*self._average_run_cost_columns())
+            # The new eval has its own trace filter (or none), applied below as
+            # filter_match_share, so the existing evals' filter skips stay out.
+            self.db_session.query(
+                *self._average_run_cost_columns(leave_out_trace_filter_skips=True),
+            )
             .join(
                 DatabaseContinuousEval,
                 DatabaseAgenticAnnotation.continuous_eval_id
@@ -494,7 +500,9 @@ class ContinuousEvalSpendRepository:
         )
 
     @staticmethod
-    def _average_run_cost_columns() -> list[Any]:
+    def _average_run_cost_columns(
+        leave_out_trace_filter_skips: bool = False,
+    ) -> list[Any]:
         cost = DatabaseAgenticAnnotation.cost
         # A rollup has a pass/fail status but never calls the judge.
         judge_call = (
@@ -508,6 +516,13 @@ class ContinuousEvalSpendRepository:
         finished = judge_call & DatabaseAgenticAnnotation.run_status.in_(
             _FINISHED_RUN_STATUSES,
         )
+        if leave_out_trace_filter_skips:
+            description = DatabaseAgenticAnnotation.annotation_description
+            finished = finished & (
+                called_llm
+                | description.is_(None)
+                | ~description.startswith(TRACE_FILTER_SKIP_DESCRIPTION)
+            )
         return [
             func.count(case((priced, 1))).label("run_count"),
             # A run without a cost (a model litellm has no price for) would pull the

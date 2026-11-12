@@ -29,14 +29,17 @@ const spend: ContinuousEvalSpendResponse = {
 // Hoisted so the mock factory, which vitest lifts above the imports, can close over it.
 // The shape a partial-match replay returned for /spend and /spend_estimate.
 const malformed = vi.hoisted(() => ({ count: 3, page: 0, results: [] }));
+// What /spend returns; a test may swap in a well-formed response.
+const spendReply = vi.hoisted(() => ({ data: malformed as unknown }));
 
 vi.mock("../../hooks/useContinuousEvalSpend", () => ({
-  useContinuousEvalSpend: () => ({ data: malformed, isLoading: false }),
+  useContinuousEvalSpend: () => ({ data: spendReply.data, isLoading: false }),
   useContinuousEvalSpendEstimate: () => ({ data: malformed, isFetching: false }),
 }));
 
+// A non-USD display currency: spend amounts are USD and must not take its symbol.
 vi.mock("@/contexts/DisplaySettingsContext", () => ({
-  useDisplaySettings: () => ({ defaultCurrency: "USD" }),
+  useDisplaySettings: () => ({ defaultCurrency: "EUR" }),
 }));
 
 describe("SpendCards", () => {
@@ -144,6 +147,20 @@ describe("malformed spend responses", () => {
     const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" llmEvalVersion="latest" samplePercent="50" />);
 
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("spend currency", () => {
+  it("shows USD amounts in USD when the display currency is another one", () => {
+    spendReply.data = { ...spend, daily_cost_cap_usd: 10, spent_today: 1.2, cap_reached: false };
+    try {
+      render(<ContinuousEvalSpendCards evalId="22222222-2222-4222-8222-222222222222" />);
+    } finally {
+      spendReply.data = malformed;
+    }
+
+    expect(screen.getByText("since midnight, of $10.000000 daily cap")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("€");
   });
 });
 

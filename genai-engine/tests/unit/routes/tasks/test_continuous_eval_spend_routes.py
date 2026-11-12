@@ -14,6 +14,9 @@ from repositories.continuous_eval_spend_repository import (
 )
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from schemas.enums import SpendEstimateUnavailableReason
+from services.continuous_eval.continuous_eval_queue_service import (
+    TRACE_FILTER_SKIP_DESCRIPTION,
+)
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -93,6 +96,7 @@ def _add_run(
     cost: Optional[float],
     created_at: datetime,
     test_run_id: Optional[uuid.UUID] = None,
+    annotation_description: Optional[str] = None,
 ) -> None:
     db_session = override_get_db_session()
     db_session.add(
@@ -104,6 +108,7 @@ def _add_run(
             run_status=run_status.value,
             cost=cost,
             test_run_id=test_run_id,
+            annotation_description=annotation_description,
             created_at=created_at,
             updated_at=created_at,
             org_id=DEFAULT_ORG_ID,
@@ -435,6 +440,104 @@ def test_spend_estimate_scales_by_the_filter_match_share(
             trace_filter='[{"attribute_path": "attributes.metadata.plan"}]',
         )
         assert status_code == 400
+    finally:
+        db_session = override_get_db_session()
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.task_id == task.id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
+        _cleanup(client, task.id, [continuous_eval.id])
+
+
+@pytest.mark.unit_tests
+def test_new_eval_estimate_ignores_trace_filter_skips_of_existing_evals(
+    client: GenaiEngineTestClientBase,
+):
+    """An existing eval's trace filter skips say nothing about a new eval, which
+    has its own filter (or none), so they must not lower the share that reaches
+    the judge. Applying both would count the filter twice."""
+    status_code, task = client.create_task(name="spend_filter_skips", is_agentic=True)
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "skip_eval")
+    assert status_code == 200
+    continuous_eval, _ = _create_continuous_eval(client, task.id, llm_eval.name, None)
+    paid_only = json.dumps(
+        [
+            {
+                "attribute_path": "attributes.metadata.plan",
+                "operator": "equals",
+                "value": "paid",
+            },
+        ],
+    )
+
+    try:
+        now = datetime.now()
+        # 70 traces in 7 days -> 10 traces/day; 2 are paid. Traces without a
+        # span are checked and don't match, so the filter matches 2 of 70.
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=3)] * 70)
+        for i, trace_id in enumerate(trace_ids[:8]):
+            _add_root_span(
+                task.id,
+                trace_id,
+                {"metadata": {"plan": "paid" if i < 2 else "free"}},
+            )
+        recent = now - timedelta(hours=1)
+        # The existing eval: 1 judged run at $0.07, 1 skipped for a missing span,
+        # and 8 skipped by its own trace filter.
+        _add_run(
+            continuous_eval.id,
+            trace_ids[0],
+            ContinuousEvalRunStatus.PASSED,
+            0.07,
+            recent,
+        )
+        _add_run(
+            continuous_eval.id,
+            trace_ids[1],
+            ContinuousEvalRunStatus.SKIPPED,
+            None,
+            recent,
+            annotation_description="Missing required spans: llm_span",
+        )
+        for trace_id in trace_ids[2:10]:
+            _add_run(
+                continuous_eval.id,
+                trace_id,
+                ContinuousEvalRunStatus.SKIPPED,
+                None,
+                recent,
+                annotation_description=(
+                    f"{TRACE_FILTER_SKIP_DESCRIPTION} for eval {continuous_eval.id}"
+                ),
+            )
+
+        status_code, unfiltered = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+        )
+        assert status_code == 200
+        # Only the missing-span skip counts: 1 of 2 reach the judge.
+        assert unfiltered.judged_share == pytest.approx(1 / 2)
+        # 10 traces/day * 1/2 judged * $0.07
+        assert unfiltered.estimated_daily_cost == pytest.approx(0.35)
+
+        status_code, filtered = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+            trace_filter=paid_only,
+        )
+        assert status_code == 200
+        assert filtered.judged_share == pytest.approx(1 / 2)
+        assert filtered.filter_match_share == pytest.approx(2 / 70)
+        assert filtered.estimated_daily_cost == pytest.approx(0.35 * 2 / 70)
+
+        # The existing eval's own estimate keeps its filter skips: they are
+        # what its filter will keep doing. 1 of 10 finished runs reached the judge.
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert status_code == 200
+        assert spend.estimate.judged_share == pytest.approx(1 / 10)
+        assert spend.estimate.estimated_daily_cost == pytest.approx(0.07)
     finally:
         db_session = override_get_db_session()
         db_session.query(DatabaseSpan).filter(

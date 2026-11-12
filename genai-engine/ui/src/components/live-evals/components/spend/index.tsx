@@ -12,11 +12,13 @@ import { completeTraceFilterRows, rowsToTraceFilter, type TraceFilterRow } from 
 
 import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
 
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse } from "@/lib/api-client/api-client";
 
 export { describeEstimateFormula, describeUnavailableEstimate, formatSpend } from "./spend";
+
+// Run costs and the daily cap are stored in USD and not converted, so they are shown in USD whatever the display currency.
+const SPEND_CURRENCY = "USD";
 
 export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResponse; currency: string }) => {
   const { estimate } = spend;
@@ -62,7 +64,6 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
 };
 
 export const ContinuousEvalSpendCards = ({ evalId }: { evalId: string }) => {
-  const { defaultCurrency } = useDisplaySettings();
   const { data: spend, isLoading } = useContinuousEvalSpend(evalId);
 
   if (isLoading) {
@@ -76,7 +77,7 @@ export const ContinuousEvalSpendCards = ({ evalId }: { evalId: string }) => {
   // Spend is supplementary: if it fails to load or comes back malformed, the rest of the page still works.
   if (!isSpendResponse(spend)) return null;
 
-  return <SpendCards spend={spend} currency={defaultCurrency} />;
+  return <SpendCards spend={spend} currency={SPEND_CURRENCY} />;
 };
 
 export const SpendEstimateText = ({ estimate, currency }: { estimate: ContinuousEvalDailySpendEstimate; currency: string }) => (
@@ -111,7 +112,6 @@ type SpendEstimateLineProps = {
 
 // Estimate shown under the evaluator on the create forms; follows the evaluator, its version, the sample rate and the trace filter fields.
 export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent, traceFilter = [], spanScope }: SpendEstimateLineProps) => {
-  const { defaultCurrency } = useDisplaySettings();
   const debouncedPercent = useDebouncedValue(samplePercent);
   const debouncedFilter = useDebouncedValue(traceFilter);
   const debouncedScope = useDebouncedValue(spanScope);
@@ -137,7 +137,7 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, sampleP
   if (!isSpendEstimate(estimate)) return null;
   return (
     <Stack sx={{ gap: 0.5 }}>
-      <SpendEstimateText estimate={estimate} currency={defaultCurrency} />
+      <SpendEstimateText estimate={estimate} currency={SPEND_CURRENCY} />
       {incompleteCount > 0 && (
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {incompleteCount === 1 ? "1 trace filter condition isn't" : `${incompleteCount} trace filter conditions aren't`} filled in yet, so the
