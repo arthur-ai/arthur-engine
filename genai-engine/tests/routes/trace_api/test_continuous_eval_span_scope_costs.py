@@ -24,9 +24,9 @@ from tests.routes.trace_api.test_continuous_eval_execution import (
 )
 from tests.routes.trace_api.test_continuous_eval_span_scope import (
     WORKER,
-    SyncQueue,
     _cleanup,
     _judge_reply,
+    _queue_for,
     _runs,
     _setup_eval,
 )
@@ -92,7 +92,7 @@ def test_live_estimate_prices_span_runs_and_counts_traces_by_rollup(
     4 span runs at $0.01 (2 judged spans per judged trace):
     3/7 traces/day x 1.0 x 2/3 x 2 x $0.01. The rollups are not unpriced runs."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         traces = [_recent_trace(task.id) for _ in range(3)]
         for trace_id in traces[:2]:
@@ -131,7 +131,7 @@ def test_new_span_scope_estimate_multiplies_by_matching_spans_per_trace(
     retry traces have 2 lookup_order spans each, a third has none: 4/3 spans per
     trace, or 2/3 when max_spans_per_trace is 1."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         traces = [_recent_trace(task.id) for _ in range(2)]
         other = add_trace(
@@ -200,7 +200,7 @@ def test_cap_reached_skips_the_whole_trace_at_fan_out(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, "any_fail", daily_cost_cap_usd=0.01)
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         spent = _recent_trace(task.id)
         _add_run(eval_id, spent, SPAN, ContinuousEvalRunStatus.PASSED, "call-1", 0.02)
@@ -237,7 +237,7 @@ def test_cap_checked_before_each_span_run_stops_mid_trace(
     """The alternative behind the seam: a $0.001 cap lets the first span run
     ($0.002) through and skips the second; the judged failure still decides."""
     task, eval_id = _setup_eval(client, "final_attempt", daily_cost_cap_usd=0.001)
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = _recent_trace(task.id)
         _enqueue(task.id, trace_id)
@@ -263,7 +263,7 @@ def test_rerun_a_span_run_redecides_its_rollup(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = _recent_trace(task.id)
         _enqueue(task.id, trace_id)
@@ -302,7 +302,7 @@ def test_rerun_a_rollup_rejudges_only_the_span_runs_that_did_not_pass(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = _recent_trace(task.id)
         _enqueue(task.id, trace_id)
@@ -335,7 +335,7 @@ def test_rerun_in_a_test_run_moves_the_trace_between_counters(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = _recent_trace(task.id)
         status_code, test_run = client.create_test_run(str(eval_id), [trace_id])
@@ -404,7 +404,7 @@ def test_rerun_after_lowering_max_spans_skips_the_span_runs_past_it(
     span per trace. The other span run is skipped, not left pending, so the
     rollup finishes."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = _recent_trace(task.id)
         _enqueue(task.id, trace_id)
@@ -447,7 +447,7 @@ def test_rerun_after_the_trace_filter_stops_matching_skips_the_span_runs(
     """The rollup is skipped by the new trace filter, and so are the span runs the
     rerun reopened: none is left pending for the stale sweep to judge later."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = _recent_trace(task.id)
         _enqueue(task.id, trace_id)

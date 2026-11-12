@@ -165,10 +165,18 @@ class SyncQueue:
             num_workers=1,
             override_execution_delay=0,
         )
-        self.service = get_continuous_eval_queue_service()
-        self.jobs: list[ContinuousEvalJob] = []
-        self._patch = patch.object(self.service, "enqueue", side_effect=self._enqueue)
-        self._patch.start()
+        try:
+            self.service = get_continuous_eval_queue_service()
+            self.jobs: list[ContinuousEvalJob] = []
+            self._patch = patch.object(
+                self.service,
+                "enqueue",
+                side_effect=self._enqueue,
+            )
+            self._patch.start()
+        except BaseException:
+            shutdown_continuous_eval_queue_service()
+            raise
 
     def _enqueue(self, job):
         self.jobs.append(job)
@@ -184,6 +192,17 @@ class SyncQueue:
     def close(self):
         self._patch.stop()
         shutdown_continuous_eval_queue_service()
+
+
+def _queue_for(client: GenaiEngineTestClientBase, task) -> SyncQueue:
+    """A SyncQueue for a test that has set up task; if the queue can't start, the
+    task and provider are removed before the error goes up."""
+    try:
+        return SyncQueue()
+    except BaseException:
+        client.delete_task(task.id)
+        cleanup_model_provider(client)
+        raise
 
 
 def _finished_rollup(eval_id: uuid.UUID, trace_id: str) -> DatabaseAgenticAnnotation:
@@ -230,7 +249,7 @@ def test_span_scope_judges_each_call_and_rolls_up_by_rule(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, rollup_rule)
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     trace_id = add_trace(task.id, RETRY_TRACE)
     expected_jobs = 3
     try:
@@ -286,7 +305,7 @@ def test_a_repeated_fan_out_reuses_span_runs_and_judges_nothing_twice(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, "final_attempt")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     trace_id = add_trace(task.id, RETRY_TRACE)
     expected_jobs = 3
     try:
@@ -333,7 +352,7 @@ def test_fan_out_waits_while_the_trace_is_still_receiving_spans(
     """Spans stored just now: the rollup job asks to run again once the trace has
     been quiet for the idle window, and creates no span runs yet."""
     task, eval_id = _setup_eval(client, "final_attempt")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     trace_id = add_trace(task.id, RETRY_TRACE)
     try:
         ContinuousEvalsRepository(
@@ -369,7 +388,7 @@ def test_max_spans_per_trace_judges_the_first_spans_in_tree_order(
     client: GenaiEngineTestClientBase,
 ):
     task, eval_id = _setup_eval(client, "any_fail", max_spans_per_trace=1)
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     trace_id = add_trace(task.id, RETRY_TRACE)
     expected_jobs = 2
     try:
@@ -403,7 +422,7 @@ def test_a_test_run_counts_each_trace_once_through_its_rollup(
     """Two span runs, one trace: the test run counts one finished trace. A test
     run picks finished traces, so it skips the idle window (set to an hour here)."""
     task, eval_id = _setup_eval(client, "final_attempt")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     trace_id = add_trace(task.id, RETRY_TRACE)
     try:
         status_code, test_run = client.create_test_run(str(eval_id), [trace_id])
@@ -444,7 +463,7 @@ def test_a_span_stored_twice_is_judged_once(
     """An exporter re-sent call-1, so the spans table has two rows for it. The
     fan-out still makes one span run per span id and decides the trace."""
     task, eval_id = _setup_eval(client, "final_attempt")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = add_trace(task.id, RETRY_TRACE)
         db_session = override_get_db_session()
@@ -497,7 +516,7 @@ def test_a_transform_that_stops_reading_the_judged_span_skips_the_trace(
     variable after it was created. Every span run would then send the judge the
     same input, so the trace is skipped and no span run is made."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         _point_eval_at_a_fixed_span_transform(client, task.id, eval_id)
         trace_id = add_trace(task.id, RETRY_TRACE)
@@ -550,7 +569,7 @@ def test_worker_start_requeues_rollups_waiting_for_their_trace(
     which a restart empties. The worker re-queues pending rollups when it starts,
     whatever their age; the hourly sweep only takes runs older than 15 minutes."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = add_trace(task.id, RETRY_TRACE)
         ContinuousEvalsRepository(
@@ -596,13 +615,14 @@ def test_another_tasks_span_under_the_same_trace_id_is_not_judged(
     """A lookup_order span stored under the same trace id by another task matches
     the span filter, but it is not this eval's to judge or send to the judge."""
     task, eval_id = _setup_eval(client, "final_attempt")
-    queue = SyncQueue()
-    status_code, other_task = client.create_task(
-        name="span_scope_other_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
+    queue = _queue_for(client, task)
+    other_task = None
     try:
+        status_code, other_task = client.create_task(
+            name="span_scope_other_task",
+            is_agentic=True,
+        )
+        assert status_code == 200
         trace_id = add_trace(task.id, RETRY_TRACE)
         db_session = override_get_db_session()
         call_2 = (
@@ -640,11 +660,12 @@ def test_another_tasks_span_under_the_same_trace_id_is_not_judged(
     finally:
         db_session = override_get_db_session()
         db_session.rollback()
-        db_session.query(DatabaseSpan).filter(
-            DatabaseSpan.task_id == other_task.id,
-        ).delete(synchronize_session=False)
-        db_session.commit()
-        client.delete_task(other_task.id)
+        if other_task is not None:
+            db_session.query(DatabaseSpan).filter(
+                DatabaseSpan.task_id == other_task.id,
+            ).delete(synchronize_session=False)
+            db_session.commit()
+            client.delete_task(other_task.id)
         _cleanup(client, task, eval_id, queue)
 
 
@@ -661,7 +682,7 @@ def test_span_runs_queued_before_the_transform_changed_are_skipped(
     transform stopped reading the judged span. Each span run checks again and is
     skipped instead of judging the wrong span."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
+    queue = _queue_for(client, task)
     try:
         trace_id = add_trace(task.id, RETRY_TRACE)
         ContinuousEvalsRepository(
@@ -698,13 +719,14 @@ def test_idle_wait_and_span_run_order_ignore_other_tasks_and_query_order(
     under the same trace id. The trace is idle for this eval, so it fans out now,
     and span runs come back in the order of the spans asked for."""
     task, eval_id = _setup_eval(client, "any_fail")
-    queue = SyncQueue()
-    status_code, other_task = client.create_task(
-        name="span_scope_other_idle",
-        is_agentic=True,
-    )
-    assert status_code == 200
+    queue = _queue_for(client, task)
+    other_task = None
     try:
+        status_code, other_task = client.create_task(
+            name="span_scope_other_idle",
+            is_agentic=True,
+        )
+        assert status_code == 200
         trace_id = add_trace(task.id, RETRY_TRACE)
         db_session = override_get_db_session()
         db_session.query(DatabaseSpan).filter(
@@ -749,9 +771,10 @@ def test_idle_wait_and_span_run_order_ignore_other_tasks_and_query_order(
     finally:
         db_session = override_get_db_session()
         db_session.rollback()
-        db_session.query(DatabaseSpan).filter(
-            DatabaseSpan.task_id == other_task.id,
-        ).delete(synchronize_session=False)
-        db_session.commit()
-        client.delete_task(other_task.id)
+        if other_task is not None:
+            db_session.query(DatabaseSpan).filter(
+                DatabaseSpan.task_id == other_task.id,
+            ).delete(synchronize_session=False)
+            db_session.commit()
+            client.delete_task(other_task.id)
         _cleanup(client, task, eval_id, queue)
