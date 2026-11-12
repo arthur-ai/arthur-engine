@@ -28,6 +28,7 @@ from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import EvalKind, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
+from utils.stored_value import cap_stored_value
 from utils.transform_executor import execute_transform, trace_matches_filter
 
 logger = logging.getLogger(__name__)
@@ -448,7 +449,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 else ContinuousEvalRunStatus.FAILED.value
             )
             input_variables = [
-                VariableTemplateValue(name=k, value=v)
+                VariableTemplateValue(name=k, value=cap_stored_value(v))
                 for k, v in resolved_variables.items()
             ]
             self._update_annotation_status(

@@ -179,9 +179,10 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    # When the eval last switched evaluator (name or version). Spend estimates price
-    # runs from this point on, so a judge switch doesn't mix models. NULL until the
-    # first switch: every run so far came from the evaluator it was created with.
+    # When the eval last switched evaluator (name or version) or transform (another
+    # transform or version, or a new version of the one it follows). Spend estimates
+    # price runs from this point on, so a switch doesn't mix run costs. NULL until
+    # the first switch: every run so far came from the setup it was created with.
     judge_changed_at: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMP,
         nullable=True,

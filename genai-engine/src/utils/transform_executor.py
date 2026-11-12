@@ -1,11 +1,12 @@
 """Transform execution utilities for dataset transforms.
 
-This module provides functionality to execute transforms against trace spans,
-matching the behavior of the frontend transform executor in
-genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformExecutor.ts
+This module provides functionality to execute transforms against trace spans. It is
+the only implementation: the UI preview calls the extraction endpoint and reads the
+span ids it returns rather than matching spans itself.
 """
 
 import json
+from datetime import datetime
 from typing import Any, List, Optional, Protocol, Sequence
 
 from arthur_common.models.common_schemas import VariableTemplateValue
@@ -18,8 +19,14 @@ from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import ContinuousEvalTraceFilterOperator
 from schemas.response_schemas import (
     TransformExtractionResponseList,
+    TransformVariableSpans,
 )
-from schemas.transform_schemas import TraceTransformDefinition, TransformSpanSelector
+from schemas.transform_schemas import (
+    TraceTransformDefinition,
+    TraceTransformVariableDefinition,
+    TransformSpanSelector,
+)
+from utils.span_tree import tree_order
 from utils.trace import get_nested_value, get_nested_value_wildcard
 
 
@@ -61,24 +68,68 @@ def _flatten_spans(
     return result
 
 
-def _read_span(span: NestedSpanWithMetricsResponse, attribute_path: str) -> Any:
+class TransformableSpan(Protocol):
+    """A span a transform can read: API responses and DB rows both fit."""
+
+    @property
+    def span_id(self) -> str: ...
+
+    @property
+    def parent_span_id(self) -> Optional[str]: ...
+
+    @property
+    def start_time(self) -> datetime: ...
+
+    @property
+    def span_name(self) -> Optional[str]: ...
+
+    @property
+    def span_kind(self) -> Optional[str]: ...
+
+    @property
+    def raw_data(self) -> Any: ...
+
+
+def _read_span(span: TransformableSpan, attribute_path: str) -> Any:
     if "*" in attribute_path:
         return get_nested_value_wildcard(span.raw_data, attribute_path)
     return get_nested_value(span.raw_data, attribute_path)
 
 
 def _read_all_spans(
-    spans: List[NestedSpanWithMetricsResponse],
+    spans: Sequence[TransformableSpan],
     attribute_path: str,
-) -> Optional[str]:
-    """Every matching span's value in start-time order, each headed by its span id
-    so a judge can say which call it means. None when no span has the attribute."""
+) -> tuple[Optional[str], list[str]]:
+    """Every matching span's value in the given (tree) order, each headed by its
+    span id so a judge can say which call it means, and the ids that had a value.
+    The value is None when no span has the attribute."""
     blocks = []
-    for span in sorted(spans, key=lambda s: s.start_time):
+    read_ids = []
+    for span in spans:
         value = _read_span(span, attribute_path)
         if value is not None:
             blocks.append(f"[span {span.span_id}]\n{stringify_value(value)}")
-    return "\n\n".join(blocks) if blocks else None
+            read_ids.append(span.span_id)
+    return ("\n\n".join(blocks) if blocks else None), read_ids
+
+
+def span_matches_variable(
+    span: TransformableSpan,
+    var_def: TraceTransformVariableDefinition,
+) -> bool:
+    """A span matches on span_name, span_kind or both, whichever the variable sets."""
+    if var_def.span_name is not None and span.span_name != var_def.span_name:
+        return False
+    if var_def.span_kind is not None and span.span_kind != var_def.span_kind:
+        return False
+    return True
+
+
+def flatten_trace_spans(trace: TraceResponse) -> List[NestedSpanWithMetricsResponse]:
+    flat_spans: List[NestedSpanWithMetricsResponse] = []
+    for span in trace.root_spans:
+        flat_spans.extend(_flatten_spans(span))
+    return flat_spans
 
 
 def execute_transform(
@@ -88,11 +139,7 @@ def execute_transform(
     """Execute transform on a trace, returns raw extracted values.
 
     Base extraction function that returns raw variable names and values without
-    formatting them into specific structures.
-
-    When several spans share a variable's span_name, its span_selector picks them:
-    the first match (the default, which matches the frontend executeTransform
-    function), the one that started last, or all of them in start-time order.
+    formatting them into specific structures. See execute_transform_on_spans.
 
     Args:
         trace: TraceResponse object containing root_spans
@@ -101,45 +148,62 @@ def execute_transform(
     Returns:
         TransformExtractionResponseList containing list of variable names and values
     """
-    # Flatten the nested span structure into a flat list
-    flat_spans: List[NestedSpanWithMetricsResponse] = []
-    for span in trace.root_spans:
-        flat_spans.extend(_flatten_spans(span))
+    return execute_transform_on_spans(flatten_trace_spans(trace), transform_definition)
+
+
+def execute_transform_on_spans(
+    spans: Sequence[TransformableSpan],
+    transform_definition: TraceTransformDefinition,
+) -> TransformExtractionResponseList:
+    """Execute a transform over a trace's spans given as a flat list.
+
+    Spans are put in tree order first (utils.span_tree), the one order every
+    span_selector uses: 'first' and 'last' are its two ends, 'all' reads every
+    match in it. The response names the spans each value was read from, so the UI
+    preview shows the same spans the worker judges.
+    """
+    ordered_spans = tree_order(spans)
 
     variables = []
-    missing_spans = []
+    missing_spans: list[str] = []
     missing_variables = []
+    variable_spans = []
 
     # Iterate through variable definitions
     for var_def in transform_definition.variables:
-        span_name = var_def.span_name
         variable_name = var_def.variable_name
         attribute_path = var_def.attribute_path
         fallback = var_def.fallback
 
-        # Find matching spans by span_name
-        matching_spans = [span for span in flat_spans if span.span_name == span_name]
+        matching_spans = [
+            span for span in ordered_spans if span_matches_variable(span, var_def)
+        ]
 
         is_missing = False
+        read_ids: list[str] = []
         value: Any
         if not matching_spans:
             # No matching span found, use fallback
             if fallback is None:
-                missing_spans.append(span_name)
+                described = var_def.describe_spans()
+                if described not in missing_spans:
+                    missing_spans.append(described)
                 value = ""
             else:
                 value = fallback
         else:
             selector = var_def.span_selector
             if selector == TransformSpanSelector.ALL:
-                value = _read_all_spans(matching_spans, attribute_path)
+                value, read_ids = _read_all_spans(matching_spans, attribute_path)
             else:
                 span = (
-                    max(matching_spans, key=lambda s: s.start_time)
+                    matching_spans[-1]
                     if selector == TransformSpanSelector.LAST
                     else matching_spans[0]
                 )
                 value = _read_span(span, attribute_path)
+                if value is not None:
+                    read_ids = [span.span_id]
 
             # Use value if found, otherwise use fallback
             if value is None:
@@ -156,11 +220,15 @@ def execute_transform(
                 value=stringify_value(value),
             ),
         )
+        variable_spans.append(
+            TransformVariableSpans(variable_name=variable_name, span_ids=read_ids),
+        )
 
     return TransformExtractionResponseList(
         variables=variables,
         missing_variables=missing_variables,
         missing_spans=missing_spans,
+        variable_spans=variable_spans,
     )
 
 
@@ -238,11 +306,7 @@ def trace_matches_filter(
     if not trace_filter:
         return True
 
-    flat_spans: List[NestedSpanWithMetricsResponse] = []
-    for span in trace.root_spans:
-        flat_spans.extend(_flatten_spans(span))
-
-    return spans_match_filter(flat_spans, trace_filter)
+    return spans_match_filter(flatten_trace_spans(trace), trace_filter)
 
 
 def spans_match_filter(

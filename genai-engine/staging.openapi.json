@@ -6656,7 +6656,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                    "$ref": "#/components/schemas/schemas__annotation_schemas__AgenticAnnotationResponse"
                                 }
                             }
                         }
@@ -6903,7 +6903,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                    "$ref": "#/components/schemas/schemas__annotation_schemas__AgenticAnnotationResponse"
                                 }
                             }
                         }
@@ -16474,6 +16474,44 @@
                             "title": "End Time"
                         },
                         "description": "End time (exclusive). Defaults to now."
+                    },
+                    {
+                        "name": "group_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 500
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Attribute path on the run's trace to split each day by, as transforms use, e.g. 'attributes.metadata.prompt_version'. Rows then carry `group`.",
+                            "title": "Group By"
+                        },
+                        "description": "Attribute path on the run's trace to split each day by, as transforms use, e.g. 'attributes.metadata.prompt_version'. Rows then carry `group`."
+                    },
+                    {
+                        "name": "group_by_span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 500
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only read group_by from spans with this name. Defaults to the earliest span that has it.",
+                            "title": "Group By Span Name"
+                        },
+                        "description": "Only read group_by from spans with this name. Defaults to the earliest span that has it."
                     }
                 ],
                 "responses": {
@@ -18294,12 +18332,12 @@
                         },
                         "type": "array",
                         "title": "Stats",
-                        "description": "Daily statistics ordered by date descending"
+                        "description": "Daily statistics ordered by date descending (then by group)"
                     },
                     "count": {
                         "type": "integer",
                         "title": "Count",
-                        "description": "Number of days with data"
+                        "description": "Number of rows: days, or day and group pairs with group_by"
                     }
                 },
                 "type": "object",
@@ -18330,6 +18368,31 @@
                         ],
                         "title": "Annotation Description",
                         "description": "Description of the annotation"
+                    },
+                    "span_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Id",
+                        "description": "Span in the trace the annotation is about. Omit to annotate the whole trace; each span keeps its own annotation."
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Category for the annotation, such as 'wrong_tool' or 'wrong_args'."
                     }
                 },
                 "type": "object",
@@ -18337,166 +18400,6 @@
                     "annotation_score"
                 ],
                 "title": "AgenticAnnotationRequest"
-            },
-            "AgenticAnnotationResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id",
-                        "description": "ID of the annotation"
-                    },
-                    "annotation_type": {
-                        "$ref": "#/components/schemas/AgenticAnnotationType",
-                        "description": "Type of annotation"
-                    },
-                    "trace_id": {
-                        "type": "string",
-                        "title": "Trace Id",
-                        "description": "ID of the trace this annotation belongs to"
-                    },
-                    "continuous_eval_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Continuous Eval Id",
-                        "description": "ID of the continuous eval this annotation belongs to"
-                    },
-                    "continuous_eval_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Continuous Eval Name",
-                        "description": "Name of the continuous eval this annotation belongs to"
-                    },
-                    "eval_type": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/EvalType"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Type of eval: 'llm_eval' or 'ml_eval'"
-                    },
-                    "eval_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Eval Name",
-                        "description": "Name of the eval the continuous eval used when scoring"
-                    },
-                    "eval_version": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Eval Version",
-                        "description": "Version of the eval the continuous eval used when scoring"
-                    },
-                    "annotation_score": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Annotation Score",
-                        "description": "Binary score for a positive or negative annotation."
-                    },
-                    "annotation_description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Annotation Description",
-                        "description": "Description of the annotation."
-                    },
-                    "input_variables": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/VariableTemplateValue"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Input Variables",
-                        "description": "Input variables for the continuous eval"
-                    },
-                    "run_status": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ContinuousEvalRunStatus"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Status of the continuous eval run"
-                    },
-                    "cost": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Cost",
-                        "description": "Cost of the continuous eval run"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Time the annotation was created"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At",
-                        "description": "Time the annotation was last updated"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "annotation_type",
-                    "trace_id",
-                    "created_at",
-                    "updated_at"
-                ],
-                "title": "AgenticAnnotationResponse"
             },
             "AgenticAnnotationType": {
                 "type": "string",
@@ -22197,6 +22100,30 @@
                         "type": "integer",
                         "title": "Total Count",
                         "description": "Total annotations for the day"
+                    },
+                    "pass_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pass Rate",
+                        "description": "passed_count / (passed_count + failed_count). Null with no passed or failed runs."
+                    },
+                    "group": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Group",
+                        "description": "With group_by: the attribute's value on these runs' traces, such as a prompt version. Null when not grouping or when the trace has no such attribute."
                     }
                 },
                 "type": "object",
@@ -23406,6 +23333,18 @@
                         "type": "string",
                         "title": "Cost",
                         "description": "Cost of this llm completion"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Category of the result when the eval's instructions define categories."
                     }
                 },
                 "type": "object",
@@ -25887,7 +25826,7 @@
                 "properties": {
                     "annotations": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                            "$ref": "#/components/schemas/schemas__annotation_schemas__AgenticAnnotationResponse"
                         },
                         "type": "array",
                         "title": "Annotations",
@@ -34106,7 +34045,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                    "$ref": "#/components/schemas/schemas__annotation_schemas__AgenticAnnotationResponse"
                                 },
                                 "type": "array"
                             },
@@ -34395,7 +34334,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                    "$ref": "#/components/schemas/arthur_common__models__response_schemas__AgenticAnnotationResponse"
                                 },
                                 "type": "array"
                             },
@@ -34648,9 +34587,16 @@
                         "description": "Name of the variable to extract."
                     },
                     "span_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Span Name",
-                        "description": "Name of the span to extract data from."
+                        "description": "Name of the span to read from. Optional when span_kind is set; at least one of the two is required."
                     },
                     "attribute_path": {
                         "type": "string",
@@ -34668,12 +34614,28 @@
                         ],
                         "title": "Fallback",
                         "description": "Fallback value to use if the attribute is not found."
+                    },
+                    "span_kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Kind",
+                        "description": "Kind of the span to read from, such as TOOL or LLM. Alone it matches every span of that kind; with span_name it narrows the named spans."
+                    },
+                    "span_selector": {
+                        "$ref": "#/components/schemas/TransformSpanSelector",
+                        "description": "Which span to read when several match: 'first' (the default) or 'last' in tree order (depth-first, siblings by start time then span id), so 'last' is a retried tool call; 'all' reads every match in tree order and joins their values into one block, each headed by its span id.",
+                        "default": "first"
                     }
                 },
                 "type": "object",
                 "required": [
                     "variable_name",
-                    "span_name",
                     "attribute_path"
                 ],
                 "title": "TraceTransformVariableDefinition"
@@ -34972,6 +34934,14 @@
                         "type": "array",
                         "title": "Missing Spans",
                         "description": "List of matching spans for the variables."
+                    },
+                    "variable_spans": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformVariableSpans"
+                        },
+                        "type": "array",
+                        "title": "Variable Spans",
+                        "description": "For each variable, the ids of the spans its value was read from, in tree order. Empty when no span matched."
                     }
                 },
                 "type": "object",
@@ -34981,6 +34951,15 @@
                     "missing_spans"
                 ],
                 "title": "TransformExtractionResponseList"
+            },
+            "TransformSpanSelector": {
+                "type": "string",
+                "enum": [
+                    "first",
+                    "last",
+                    "all"
+                ],
+                "title": "TransformSpanSelector"
             },
             "TransformVariableExperimentOutputSource": {
                 "properties": {
@@ -35003,6 +34982,29 @@
                 ],
                 "title": "TransformVariableExperimentOutputSource",
                 "description": "Reference to experiment output using transform variable extraction (agentic experiments only)"
+            },
+            "TransformVariableSpans": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the transform variable."
+                    },
+                    "span_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Span Ids",
+                        "description": "IDs of the spans the value was read from, in tree order."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "span_ids"
+                ],
+                "title": "TransformVariableSpans"
             },
             "UnregisteredRootSpanGroup": {
                 "properties": {
@@ -37685,6 +37687,350 @@
                 ],
                 "title": "_MultiTargetVectorJoinEnum",
                 "description": "Define how multi target vector searches should be combined."
+            },
+            "arthur_common__models__response_schemas__AgenticAnnotationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the annotation"
+                    },
+                    "annotation_type": {
+                        "$ref": "#/components/schemas/AgenticAnnotationType",
+                        "description": "Type of annotation"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace this annotation belongs to"
+                    },
+                    "continuous_eval_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval this annotation belongs to"
+                    },
+                    "continuous_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Name",
+                        "description": "Name of the continuous eval this annotation belongs to"
+                    },
+                    "eval_type": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EvalType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of eval: 'llm_eval' or 'ml_eval'"
+                    },
+                    "eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Name",
+                        "description": "Name of the eval the continuous eval used when scoring"
+                    },
+                    "eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Version",
+                        "description": "Version of the eval the continuous eval used when scoring"
+                    },
+                    "annotation_score": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Score",
+                        "description": "Binary score for a positive or negative annotation."
+                    },
+                    "annotation_description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Description",
+                        "description": "Description of the annotation."
+                    },
+                    "input_variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Variables",
+                        "description": "Input variables for the continuous eval"
+                    },
+                    "run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of the continuous eval run"
+                    },
+                    "cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Cost",
+                        "description": "Cost of the continuous eval run"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Time the annotation was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Time the annotation was last updated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "annotation_type",
+                    "trace_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "AgenticAnnotationResponse"
+            },
+            "schemas__annotation_schemas__AgenticAnnotationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the annotation"
+                    },
+                    "annotation_type": {
+                        "$ref": "#/components/schemas/AgenticAnnotationType",
+                        "description": "Type of annotation"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace this annotation belongs to"
+                    },
+                    "continuous_eval_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval this annotation belongs to"
+                    },
+                    "continuous_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Name",
+                        "description": "Name of the continuous eval this annotation belongs to"
+                    },
+                    "eval_type": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EvalType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of eval: 'llm_eval' or 'ml_eval'"
+                    },
+                    "eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Name",
+                        "description": "Name of the eval the continuous eval used when scoring"
+                    },
+                    "eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Version",
+                        "description": "Version of the eval the continuous eval used when scoring"
+                    },
+                    "annotation_score": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Score",
+                        "description": "Binary score for a positive or negative annotation."
+                    },
+                    "annotation_description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Description",
+                        "description": "Description of the annotation."
+                    },
+                    "input_variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Variables",
+                        "description": "Input variables for the continuous eval"
+                    },
+                    "run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of the continuous eval run"
+                    },
+                    "cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Cost",
+                        "description": "Cost of the continuous eval run"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Time the annotation was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Time the annotation was last updated"
+                    },
+                    "span_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Id",
+                        "description": "Span the annotation is about. Null for the whole trace."
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Category of the result, such as 'wrong_tool', given by a person or by a judge whose instructions define categories."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "annotation_type",
+                    "trace_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "AgenticAnnotationResponse"
             }
         },
         "securitySchemes": {

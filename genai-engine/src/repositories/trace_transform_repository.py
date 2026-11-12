@@ -264,6 +264,16 @@ class TraceTransformRepository:
             if new_definition is None:
                 # Name/description-only change — snapshot current definition
                 new_definition = self._get_latest_definition(db_transform.id)
+            else:
+                # Continuous evals that follow the latest version now read something
+                # else, so their spend estimates start a new pricing window.
+                self.db_session.query(DatabaseContinuousEval).filter(
+                    DatabaseContinuousEval.transform_id == db_transform.id,
+                    DatabaseContinuousEval.transform_version_id.is_(None),
+                ).update(
+                    {"judge_changed_at": datetime.now()},
+                    synchronize_session=False,
+                )
             db_transform.updated_at = datetime.now()
             self._create_version(db_transform, new_definition)
             self.db_session.commit()

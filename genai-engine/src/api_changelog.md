@@ -2,6 +2,62 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/11/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  the response property `transforms/items/definition/variables/items/span_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  response property `transforms/items/definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  the response property `definition/variables/items/span_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  response property `definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  the response property `definition/variables/items/span_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  response property `definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  the response property `definition/variables/items/span_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  response property `definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  the response property `versions/items/definition/variables/items/span_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  response property `versions/items/definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  the response property `definition/variables/items/span_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  response property `definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **CHANGE** for Component/Schema:  removed the schema `AgenticAnnotationResponse`
+- **CHANGE**  a breaking change was detected but the version is still `2.1.1102`
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property `annotations/items/label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property `annotations/items/span_id` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  added the new optional `query` request parameter `group_by`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  added the new optional `query` request parameter `group_by_span_name`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  added the optional property `stats/items/group` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  added the optional property `stats/items/pass_rate` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property `annotations/items/label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property `annotations/items/span_id` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  added the optional property `label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/span_kind` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/span_selector` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/span_kind`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/span_selector`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  the request property `definition/variables/items/span_name` became optional
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  request property `definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/span_kind` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/span_selector` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/annotations/anyOf[subschema #1]/items/label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/annotations/anyOf[subschema #1]/items/span_id` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property `label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property `span_id` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/span_kind` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/span_selector` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/span_kind`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/span_selector`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  the request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/span_name` became optional
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/span_kind` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/span_selector` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/span_kind` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/span_selector` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/span_kind` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/span_selector` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `annotations/items/label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `annotations/items/span_id` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the new optional request property `label`
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the new optional request property `span_id`
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `label` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `span_id` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property `variable_spans` to the response with the `200` status
+
 # 11/04/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the new optional `query` request parameter `llm_eval_version`
 # 11/06/2026

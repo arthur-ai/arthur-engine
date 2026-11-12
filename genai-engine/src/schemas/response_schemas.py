@@ -448,7 +448,7 @@ class ModelReasoningOptions(BaseModel):
         ),
     )
     thinking: ModelThinkingOptions = Field(
-        description="Thinking settings the model accepts"
+        description="Thinking settings the model accepts",
     )
 
 
@@ -912,6 +912,13 @@ class UnsavedPromptVariablesListResponse(BaseModel):
     )
 
 
+class TransformVariableSpans(BaseModel):
+    variable_name: str = Field(description="Name of the transform variable.")
+    span_ids: list[str] = Field(
+        description="IDs of the spans the value was read from, in tree order.",
+    )
+
+
 class TransformExtractionResponseList(BaseModel):
     variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
@@ -921,6 +928,13 @@ class TransformExtractionResponseList(BaseModel):
     )
     missing_spans: list[str] = Field(
         description="List of matching spans for the variables.",
+    )
+    variable_spans: list[TransformVariableSpans] = Field(
+        default_factory=list,
+        description=(
+            "For each variable, the ids of the spans its value was read from, in "
+            "tree order. Empty when no span matched."
+        ),
     )
 
 
@@ -1082,7 +1096,7 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
         description="Daily statistics ordered by date descending (then by group)",
     )
     count: int = Field(
-        description="Number of rows: days, or day and group pairs with group_by"
+        description="Number of rows: days, or day and group pairs with group_by",
     )
 
 

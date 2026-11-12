@@ -6,13 +6,15 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
 def _without_default_selector(definition: dict) -> dict:
-    """Responses now carry each variable's span_selector; "first" is the default."""
+    """Responses now carry each variable's span_selector ("first" by default) and
+    span_kind (None by default)."""
     return {
         "variables": [
             {
                 k: v
                 for k, v in variable.items()
                 if not (k == "span_selector" and v == "first")
+                and not (k == "span_kind" and v is None)
             }
             for variable in definition["variables"]
         ],

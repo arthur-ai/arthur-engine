@@ -254,11 +254,10 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.llm_eval_version,
             )
             has_changes = True
-        if (
-            db_continuous_eval.llm_eval_name,
-            db_continuous_eval.llm_eval_version,
-        ) != previous_judge:
-            db_continuous_eval.judge_changed_at = datetime.now()
+        previous_transform = (
+            db_continuous_eval.transform_id,
+            db_continuous_eval.transform_version_id,
+        )
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
             has_changes = True
@@ -267,6 +266,16 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.transform_version_id
             )
             has_changes = True
+        # A new judge or a new transform (which decides what the judge reads, e.g. a
+        # bigger 'all' value) changes the cost per run, so spend is priced afresh.
+        if (
+            db_continuous_eval.llm_eval_name,
+            db_continuous_eval.llm_eval_version,
+        ) != previous_judge or (
+            db_continuous_eval.transform_id,
+            db_continuous_eval.transform_version_id,
+        ) != previous_transform:
+            db_continuous_eval.judge_changed_at = datetime.now()
         if update_continuous_eval.transform_variable_mapping:
             # Convert Pydantic models to dicts for JSON serialization
             db_continuous_eval.transform_variable_mapping = [

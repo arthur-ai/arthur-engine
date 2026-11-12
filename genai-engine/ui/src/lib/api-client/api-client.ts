@@ -12640,10 +12640,29 @@ export interface TransformExtractionResponseList {
    */
   missing_variables: string[];
   /**
+   * Variable Spans
+   * For each variable, the ids of the spans its value was read from, in tree order. Empty when no span matched.
+   */
+  variable_spans?: TransformVariableSpans[];
+  /**
    * Variables
    * List of extracted variables.
    */
   variables: VariableTemplateValue[];
+}
+
+/** TransformVariableSpans */
+export interface TransformVariableSpans {
+  /**
+   * Span Ids
+   * IDs of the spans the value was read from, in tree order.
+   */
+  span_ids: string[];
+  /**
+   * Variable Name
+   * Name of the transform variable.
+   */
+  variable_name: string;
 }
 
 /**
