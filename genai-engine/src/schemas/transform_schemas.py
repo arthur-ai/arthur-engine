@@ -25,7 +25,7 @@ from pydantic import Field, model_validator
 
 from schemas.model_compat import AcceptsCommonModel
 
-# OPEN DECISION (Krishna): whether a variable may match on span_kind alone.
+# OPEN DECISION (maintainers): whether a variable may match on span_kind alone.
 # True: span_name becomes optional, so transform responses can return a null
 # span_name, which oasdiff flags as breaking for clients that read it as a
 # string. False: span_name stays required as in arthur_common (span_kind only

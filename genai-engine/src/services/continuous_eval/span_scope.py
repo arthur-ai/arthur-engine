@@ -44,7 +44,7 @@ SPAN_SCOPE_MAX_WAIT_SECONDS = _seconds_from_env(
 # full or not at all, and the last trace before the cap may overshoot it by up to
 # max_spans_per_trace judge calls. "span_run" would also check before every span
 # run, stopping exactly at the cap but leaving traces half judged.
-# OPEN DECISION (Krishna): keep "fan_out", or switch to "span_run".
+# OPEN DECISION (maintainers): keep "fan_out", or switch to "span_run".
 SPAN_SCOPE_CAP_CHECK_AT = os.environ.get(
     "GENAI_ENGINE_SPAN_SCOPE_CAP_CHECK_AT",
     "fan_out",
