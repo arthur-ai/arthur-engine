@@ -7,6 +7,8 @@ import { useTransformVersions } from "./hooks/useTransformVersions";
 import TransformEditHistoryPanel from "./TransformEditHistoryPanel";
 import { TraceTransform } from "./types";
 
+import { describeVariableSpans } from "@/components/transforms/variableRows";
+
 interface TransformDetailsModalProps {
   open: boolean;
   onClose: () => void;
@@ -141,7 +143,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                       color: "text.secondary",
                     }}
                   >
-                    Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
+                    Span: <code>{describeVariableSpans(variable)}</code> → Path: <code>{variable.attribute_path}</code>
                   </Typography>
                   {variable.fallback !== undefined && (
                     <Typography

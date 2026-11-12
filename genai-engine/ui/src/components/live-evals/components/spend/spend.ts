@@ -21,7 +21,12 @@ export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstima
   if (estimate.filter_match_share != null) {
     parts.push(`${sampleRateToPercent(estimate.filter_match_share)}% match the filter (of ${estimate.filter_traces_checked} recent traces)`);
   }
-  if (estimate.average_run_cost != null) parts.push(`${formatSpend(estimate.average_run_cost, currency)} per run`);
+  if (estimate.spans_per_trace != null) {
+    parts.push(`${estimate.spans_per_trace.toLocaleString(undefined, { maximumFractionDigits: 1 })} judged spans per trace`);
+  }
+  if (estimate.average_run_cost != null) {
+    parts.push(`${formatSpend(estimate.average_run_cost, currency)} per ${estimate.spans_per_trace != null ? "span" : "run"}`);
+  }
   const pricedFrom = estimate.priced_since ? `, runs since the evaluator changed` : "";
   return `${parts.join(" × ")} (last ${estimate.window_days} days${pricedFrom})`;
 };

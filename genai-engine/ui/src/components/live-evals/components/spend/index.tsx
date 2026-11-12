@@ -7,6 +7,7 @@ import { Alert, Skeleton, Stack, Typography } from "@mui/material";
 import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
 import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
+import { spanFilterJson, spanScopeSchema, type SpanScopeValues } from "../span-scope/spanScope";
 import { rowsToTraceFilter, traceFilterSchema, type TraceFilterRow } from "../trace-filter";
 
 import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
@@ -105,13 +106,15 @@ type SpendEstimateLineProps = {
   llmEvalVersion: string | null;
   samplePercent: string;
   traceFilter?: TraceFilterRow[];
+  spanScope?: SpanScopeValues;
 };
 
 // Estimate shown under the evaluator on the create forms; follows the evaluator, its version, the sample rate and the trace filter fields.
-export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent, traceFilter = [] }: SpendEstimateLineProps) => {
+export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent, traceFilter = [], spanScope }: SpendEstimateLineProps) => {
   const { defaultCurrency } = useDisplaySettings();
   const debouncedPercent = useDebouncedValue(samplePercent);
   const debouncedFilter = useDebouncedValue(traceFilter);
+  const debouncedScope = useDebouncedValue(spanScope);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
   // A half-filled condition isn't sent; the estimate covers the complete ones.
   const conditions = traceFilterSchema.safeParse(debouncedFilter).success ? rowsToTraceFilter(debouncedFilter) : null;
@@ -120,7 +123,9 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, sampleP
     llmEvalName,
     llmEvalVersion,
     sampleRate,
-    conditions ? JSON.stringify(conditions) : null
+    conditions ? JSON.stringify(conditions) : null,
+    debouncedScope && spanScopeSchema.safeParse(debouncedScope).success ? spanFilterJson(debouncedScope) : null,
+    debouncedScope ? Number(debouncedScope.maxSpans) : null
   );
 
   if (!llmEvalName || sampleRate === undefined) return null;

@@ -4,15 +4,29 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { Api } from "@/lib/api";
-import { ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
+import { ContinuousEvalRunLevel, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { PaginationParams } from "@/types/common";
 
-export const useContinuousEvalsResults = ({ pagination, filters = [] }: { pagination: PaginationParams; filters?: IncomingFilter[] }) => {
+// One row per trace verdict: trace-scope runs and span-scope rollups. Span runs
+// (one per judged span) are listed when asked for.
+export const TRACE_VERDICT_RUN_LEVELS: ContinuousEvalRunLevel[] = ["trace", "span_rollup"];
+
+export const runLevelsFor = (showSpanRuns: boolean): ContinuousEvalRunLevel[] | undefined => (showSpanRuns ? undefined : TRACE_VERDICT_RUN_LEVELS);
+
+export const useContinuousEvalsResults = ({
+  pagination,
+  filters = [],
+  showSpanRuns = false,
+}: {
+  pagination: PaginationParams;
+  filters?: IncomingFilter[];
+  showSpanRuns?: boolean;
+}) => {
   const { task } = useTask();
   const api = useApi()!;
 
-  return useQuery(continuousEvalsResultsQueryOptions({ api, taskId: task!.id, pagination, filters }));
+  return useQuery(continuousEvalsResultsQueryOptions({ api, taskId: task!.id, pagination, filters, showSpanRuns }));
 };
 
 export const continuousEvalsResultsQueryOptions = ({
@@ -20,16 +34,23 @@ export const continuousEvalsResultsQueryOptions = ({
   api,
   pagination,
   filters = [],
+  showSpanRuns = false,
 }: {
   api: Api<unknown>;
   taskId: string;
   pagination: PaginationParams;
   filters?: IncomingFilter[];
+  showSpanRuns?: boolean;
 }) =>
   queryOptions({
-    queryKey: [queryKeys.continuousEvals.results(taskId), pagination, filters],
+    queryKey: [queryKeys.continuousEvals.results(taskId), pagination, filters, showSpanRuns],
     queryFn: () =>
-      api.api.listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet({ taskId, ...pagination, ...mapFiltersToRequest(filters) }),
+      api.api.listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet({
+        taskId,
+        ...pagination,
+        ...mapFiltersToRequest(filters),
+        run_levels: runLevelsFor(showSpanRuns),
+      }),
     select: (data) => data.data,
   });
 

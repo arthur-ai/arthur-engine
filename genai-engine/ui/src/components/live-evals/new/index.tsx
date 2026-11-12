@@ -23,6 +23,7 @@ import z from "zod";
 
 import { DailyCapField, dailyCapSchema, dailyCapToUsd } from "../components/daily-cap";
 import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../components/sample-rate";
+import { defaultSpanScope, SpanScopeField, spanScopeSchema, spanScopeToRequest } from "../components/span-scope";
 import { SpendEstimateLine } from "../components/spend";
 import { rowsToTraceFilter, TraceFilterField, traceFilterSchema, type TraceFilterRow } from "../components/trace-filter";
 import { VariableMappingSection } from "../components/variable-mapping";
@@ -102,6 +103,7 @@ const LiveEvalsNewForm = () => {
       samplePercent: "",
       dailyCap: "",
       traceFilter: [] as TraceFilterRow[],
+      spanScope: defaultSpanScope(),
       evaluator: initialEvaluator,
       transform: {
         transformId: null,
@@ -117,6 +119,7 @@ const LiveEvalsNewForm = () => {
         samplePercent: samplePercentSchema,
         dailyCap: dailyCapSchema,
         traceFilter: traceFilterSchema,
+        spanScope: spanScopeSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -140,6 +143,7 @@ const LiveEvalsNewForm = () => {
         samplePercent: samplePercentSchema,
         dailyCap: dailyCapSchema,
         traceFilter: traceFilterSchema,
+        spanScope: spanScopeSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -166,6 +170,7 @@ const LiveEvalsNewForm = () => {
         sample_rate: percentToSampleRate(value.samplePercent),
         daily_cost_cap_usd: dailyCapToUsd(value.dailyCap),
         trace_filter: rowsToTraceFilter(value.traceFilter),
+        ...spanScopeToRequest(value.spanScope),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -182,6 +187,7 @@ const LiveEvalsNewForm = () => {
   const transform = useStore(form.store, (state) => state.values.transform);
   const samplePercent = useStore(form.store, (state) => state.values.samplePercent);
   const traceFilter = useStore(form.store, (state) => state.values.traceFilter);
+  const spanScope = useStore(form.store, (state) => state.values.spanScope);
 
   const isMLEval = evaluator.eval_type === "ml";
 
@@ -323,12 +329,20 @@ const LiveEvalsNewForm = () => {
         </form.Field>
 
         <form.Field name="traceFilter">{(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}</form.Field>
+        <form.Field name="spanScope">{(field) => <SpanScopeField value={field.state.value} onChange={field.handleChange} />}</form.Field>
 
         <Divider sx={{ my: 2 }} />
 
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
-        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} llmEvalVersion={evaluator.version} samplePercent={samplePercent} traceFilter={traceFilter} />
+        <SpendEstimateLine
+          taskId={task?.id ?? ""}
+          llmEvalName={evaluator.name}
+          llmEvalVersion={evaluator.version}
+          samplePercent={samplePercent}
+          traceFilter={traceFilter}
+          spanScope={spanScope}
+        />
 
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>

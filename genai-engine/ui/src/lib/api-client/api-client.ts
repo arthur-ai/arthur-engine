@@ -150,6 +150,23 @@ export interface AgenticAnnotationResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * Judged Span Count
+   * Spans in the trace when it was judged. Fewer than the trace has now means spans arrived after the run.
+   */
+  judged_span_count?: number | null;
+  /** 'trace' for human annotations and trace-scope runs; 'span' (one judged span) or 'span_rollup' (the trace's verdict from its span runs) for span scope. */
+  run_level?: ContinuousEvalRunLevel;
+  /**
+   * Label
+   * Category of the result, such as 'wrong_tool', given by a person or by a judge whose instructions define categories.
+   */
+  label?: string | null;
+  /**
+   * Span Id
+   * Span the annotation is about. Null for the whole trace.
+   */
+  span_id?: string | null;
 }
 
 /** AgenticAnnotationType */
@@ -1640,6 +1657,17 @@ export interface ContinuousEvalCreateRequest {
    * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
    */
   transform_version_id?: string | null;
+  /**
+   * Max Spans Per Trace
+   * Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.
+   */
+  max_spans_per_trace?: number;
+  /** How span verdicts decide the trace when scope is 'span'. */
+  rollup_rule?: ContinuousEvalRollupRule | null;
+  /** 'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup. */
+  scope?: ContinuousEvalScope;
+  /** Spans judged when scope is 'span'. */
+  span_filter?: ContinuousEvalSpanFilter | null;
 }
 
 /**
@@ -1721,6 +1749,11 @@ export interface ContinuousEvalDailySpendEstimate {
    * Number of trailing days the traffic and the average run cost are measured over.
    */
   window_days: number;
+  /**
+   * Spans Per Trace
+   * Span scope only: judge calls per sampled trace, one per judged span. The estimate is multiplied by it.
+   */
+  spans_per_trace?: number | null;
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1833,6 +1866,17 @@ export interface ContinuousEvalResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * Max Spans Per Trace
+   * Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.
+   */
+  max_spans_per_trace?: number;
+  /** How span verdicts decide the trace when scope is 'span'. */
+  rollup_rule?: ContinuousEvalRollupRule | null;
+  /** 'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup. */
+  scope?: ContinuousEvalScope;
+  /** Spans judged when scope is 'span'. */
+  span_filter?: ContinuousEvalSpanFilter | null;
 }
 
 /** ContinuousEvalRunStatus */
@@ -1947,6 +1991,28 @@ export interface ContinuousEvalTestRunResponse {
  * ContinuousEvalTraceFilterOperator
  * How a continuous eval trace filter condition compares a span attribute.
  */
+/** ContinuousEvalRollupRule */
+export type ContinuousEvalRollupRule = "any_fail" | "final_attempt";
+
+/** ContinuousEvalRunLevel */
+export type ContinuousEvalRunLevel = "trace" | "span" | "span_rollup";
+
+/** ContinuousEvalScope */
+export type ContinuousEvalScope = "trace" | "span";
+
+/**
+ * ContinuousEvalSpanFilter
+ * Which spans a span-scope continuous eval judges, one run per matching span.
+ */
+export interface ContinuousEvalSpanFilter {
+  /** Conditions the span itself must meet; all must hold. */
+  conditions?: ContinuousEvalTraceFilterCondition[];
+  /** Only judge spans of this kind, such as TOOL or LLM. */
+  span_kind?: string | null;
+  /** Only judge spans with this name. */
+  span_name?: string | null;
+}
+
 export type ContinuousEvalTraceFilterOperator = "equals" | "not_equals" | "contains" | "exists";
 
 /**
@@ -2967,6 +3033,17 @@ export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpend
    * Trace Filter
    * The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it.
    */
+  /**
+   * Span Filter
+   * For a span-scope eval: its span filter as JSON, the same shape as span_filter on create.
+   */
+  span_filter?: string | null;
+  /**
+   * Max Spans Per Trace
+   * For a span-scope eval: most spans judged per trace.
+   * @default 20
+   */
+  max_spans_per_trace?: number;
   trace_filter?: string | null;
 }
 
@@ -5686,6 +5763,11 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    * List of trace IDs to filter on.
    */
   trace_ids?: string[] | null;
+  /**
+   * Run Levels
+   * Run levels to include: 'trace', 'span' (one judged span), 'span_rollup' (a trace's summary of its span runs). Omit for all.
+   */
+  run_levels?: ContinuousEvalRunLevel[] | null;
 }
 
 /** ListContinuousEvalTestRunsResponse */
@@ -12449,9 +12531,16 @@ export interface TraceTransformVariableDefinition {
   fallback?: string | null;
   /**
    * Span Name
-   * Name of the span to extract data from.
+   * Name of the span to read from. Optional when span_kind is set; at least one of the two is required.
    */
-  span_name: string;
+  span_name?: string | null;
+  /**
+   * Span Kind
+   * Kind of the span to read from, such as TOOL or LLM. Alone it matches every span of that kind; with span_name it narrows the named spans.
+   */
+  span_kind?: string | null;
+  /** Which span to read when several match: 'first' or 'last' in tree order, 'all', or 'current' (the span a span-scope eval is judging). */
+  span_selector?: TransformSpanSelector;
   /**
    * Variable Name
    * Name of the variable to extract.
@@ -12650,6 +12739,9 @@ export interface TransformExtractionResponseList {
    */
   variables: VariableTemplateValue[];
 }
+
+/** TransformSpanSelector */
+export type TransformSpanSelector = "first" | "last" | "all" | "current";
 
 /** TransformVariableSpans */
 export interface TransformVariableSpans {
@@ -12959,6 +13051,17 @@ export interface UpdateContinuousEvalRequest {
    * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
    */
   transform_version_id?: string | null;
+  /**
+   * Max Spans Per Trace
+   * Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.
+   */
+  max_spans_per_trace?: number | null;
+  /** How span verdicts decide the trace when scope is 'span'. */
+  rollup_rule?: ContinuousEvalRollupRule | null;
+  /** 'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup. */
+  scope?: ContinuousEvalScope | null;
+  /** Spans judged when scope is 'span'. */
+  span_filter?: ContinuousEvalSpanFilter | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;

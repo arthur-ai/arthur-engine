@@ -23,6 +23,7 @@ import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { DailyCapField, dailyCapSchema, dailyCapToUsd, usdToDailyCap } from "../daily-cap";
 import { percentToSampleRate, SampleRateField, samplePercentSchema, sampleRateToPercent } from "../sample-rate";
+import { SpanScopeField, spanScopeFromEval, spanScopeSchema, spanScopeToRequest } from "../span-scope";
 import { rowsToTraceFilter, TraceFilterField, traceFilterSchema, traceFilterToRows } from "../trace-filter";
 import { VariableMappingSection } from "../variable-mapping";
 
@@ -69,6 +70,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       samplePercent: sampleRateToPercent(data.sample_rate),
       dailyCap: usdToDailyCap(data.daily_cost_cap_usd),
       traceFilter: traceFilterToRows(data.trace_filter),
+      spanScope: spanScopeFromEval(data),
       transform: {
         transformId: data.transform_id,
         transformVersionId: data.transform_version_id ?? null,
@@ -95,6 +97,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         daily_cost_cap_usd: dailyCapToUsd(value.dailyCap),
         // null clears the filter, so every sampled trace is judged again.
         trace_filter: rowsToTraceFilter(value.traceFilter),
+        ...spanScopeToRequest(value.spanScope),
         transform_id: value.transform.transformId,
         transform_version_id: value.transform.transformVersionId ?? undefined,
         ...(isML
@@ -227,6 +230,9 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
             </form.Field>
             <form.Field name="traceFilter" validators={{ onChange: traceFilterSchema }}>
               {(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}
+            </form.Field>
+            <form.Field name="spanScope" validators={{ onChange: spanScopeSchema }}>
+              {(field) => <SpanScopeField value={field.state.value} onChange={field.handleChange} />}
             </form.Field>
           </Stack>
           <Divider sx={{ my: 2 }} />
