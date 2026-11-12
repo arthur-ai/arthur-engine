@@ -8,6 +8,7 @@ output is the timeout.
 
 import json
 import uuid
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -679,4 +680,78 @@ def test_span_runs_queued_before_the_transform_changed_are_skipped(
         assert runs["span_rollup"][0].run_status == "skipped"
         assert mock_completion.call_count == 0
     finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 60)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_idle_wait_and_span_run_order_ignore_other_tasks_and_query_order(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """The trace's own spans arrived an hour ago; another task just stored a span
+    under the same trace id. The trace is idle for this eval, so it fans out now,
+    and span runs come back in the order of the spans asked for."""
+    task, eval_id = _setup_eval(client, "any_fail")
+    queue = SyncQueue()
+    status_code, other_task = client.create_task(
+        name="span_scope_other_idle",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    try:
+        trace_id = add_trace(task.id, RETRY_TRACE)
+        db_session = override_get_db_session()
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.trace_id == trace_id,
+        ).update(
+            {"created_at": datetime.now() - timedelta(hours=1)},
+            synchronize_session=False,
+        )
+        agent = (
+            db_session.query(DatabaseSpan)
+            .filter(DatabaseSpan.trace_id == trace_id, DatabaseSpan.span_id == "root")
+            .one()
+        )
+        db_session.add(
+            DatabaseSpan(
+                id=uuid.uuid4().hex,
+                trace_id=trace_id,
+                span_id="other-task-root",
+                span_name=agent.span_name,
+                start_time=agent.start_time,
+                end_time=agent.end_time,
+                task_id=other_task.id,
+                org_id=agent.org_id,
+                raw_data=agent.raw_data,
+            ),
+        )
+        db_session.commit()
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        rollup_job = queue.jobs.pop(0)
+        queue.service._execute_job(rollup_job)
+        assert rollup_job.requeue_in is None
+        assert len(queue.jobs) == 2
+
+        (rollup,) = _runs(eval_id, trace_id)["span_rollup"]
+        spans = queue.service._load_spans(db_session, trace_id, task.id)
+        lookups = [span for span in spans if span.span_name == "lookup_order"]
+        for order in (lookups, lookups[::-1]):
+            runs = queue.service._ensure_span_runs(db_session, rollup, order)
+            assert [r.span_id for r in runs] == [span.span_id for span in order]
+    finally:
+        db_session = override_get_db_session()
+        db_session.rollback()
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.task_id == other_task.id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
+        client.delete_task(other_task.id)
         _cleanup(client, task, eval_id, queue)

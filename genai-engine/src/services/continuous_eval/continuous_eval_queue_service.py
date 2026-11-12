@@ -753,7 +753,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         # Wait for the trace to go quiet, so late spans (a retried tool call, the
         # final answer) are judged too, but never past the maximum wait. A test run
         # picks finished traces by hand, so it doesn't wait.
-        quiet_for = self._seconds_since_last_span(db_session, job.trace_id)
+        quiet_for = self._seconds_since_last_span(
+            db_session,
+            job.trace_id,
+            job.task_id,
+        )
         if (
             rollup.test_run_id is None
             and quiet_for < SPAN_SCOPE_IDLE_SECONDS
@@ -874,8 +878,13 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         self._finish_rollups_if_done(db_session, rollup)
 
     @staticmethod
-    def _seconds_since_last_span(db_session: Session, trace_id: str) -> float:
-        """How long the trace has gone without a new span. Spans get created_at
+    def _seconds_since_last_span(
+        db_session: Session,
+        trace_id: str,
+        task_id: str,
+    ) -> float:
+        """How long the trace has gone without a new span in the eval's task.
+        Spans get created_at
         from the database clock, so it is compared with that clock, not the
         engine's: the two can differ by a time zone."""
         last_span_at, db_now = (
@@ -883,7 +892,10 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 func.max(DatabaseSpan.created_at),
                 func.current_timestamp(),
             )
-            .filter(DatabaseSpan.trace_id == trace_id)
+            .filter(
+                DatabaseSpan.trace_id == trace_id,
+                DatabaseSpan.task_id == task_id,
+            )
             .one()
         )
         if last_span_at is None:
@@ -988,15 +1000,18 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 f"Span runs for trace {rollup.trace_id} were created by another "
                 "worker; using those",
             )
-        wanted = {span.span_id for span in spans}
-        return [
-            run
+        # In the spans' order (tree order), not the query's, so span runs are
+        # queued, and with per-span cap checks charged, in a fixed order.
+        by_span_id = {
+            run.span_id: run
             for run in self._span_run_query(
                 db_session,
                 rollup,
                 ContinuousEvalRunLevel.SPAN,
             )
-            if run.span_id in wanted
+        }
+        return [
+            by_span_id[span.span_id] for span in spans if span.span_id in by_span_id
         ]
 
     def _finish_rollups_if_done(
