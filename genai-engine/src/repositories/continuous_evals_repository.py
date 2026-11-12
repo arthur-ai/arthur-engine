@@ -23,6 +23,7 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from repositories.organizations_repository import lookup_org_id
+from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.common_schemas import (
     ContinuousEvalSpanFilter,
     ContinuousEvalTraceFilterCondition,
@@ -51,7 +52,10 @@ from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
 )
-from services.continuous_eval.span_scope import first_run_level
+from services.continuous_eval.span_scope import (
+    first_run_level,
+    scope_variables_problem,
+)
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 from utils.trace import get_nested_value
 
@@ -233,6 +237,7 @@ class ContinuousEvalsRepository:
             ),
         )
 
+        self._check_scope_variables(db_continuous_eval)
         try:
             self.db_session.add(db_continuous_eval)
             if commit:
@@ -337,11 +342,49 @@ class ContinuousEvalsRepository:
 
         if not has_changes:
             return ContinuousEval.from_db_model(db_continuous_eval)
+        if update_continuous_eval.model_fields_set & {
+            "scope",
+            "transform_id",
+            "transform_version_id",
+            "transform_variable_mapping",
+        }:
+            try:
+                self._check_scope_variables(db_continuous_eval)
+            except HTTPException:
+                self.db_session.rollback()
+                raise
 
         db_continuous_eval.updated_at = datetime.now()
         self.db_session.commit()
 
         return ContinuousEval.from_db_model(db_continuous_eval)
+
+    def _check_scope_variables(
+        self, db_continuous_eval: DatabaseContinuousEval
+    ) -> None:
+        """Reject an eval whose mapped variables don't fit its scope: span scope
+        must read the judged span, trace scope must not."""
+        transform_repository = TraceTransformRepository(self.db_session)
+        definition = (
+            transform_repository.get_version_by_id(
+                db_continuous_eval.transform_id,
+                db_continuous_eval.transform_version_id,
+            ).definition
+            if db_continuous_eval.transform_version_id is not None
+            else transform_repository.get_latest_definition(
+                db_continuous_eval.transform_id,
+            )
+        )
+        problem = scope_variables_problem(
+            db_continuous_eval.scope,
+            definition,
+            (
+                mapping["transform_variable"]
+                for mapping in db_continuous_eval.transform_variable_mapping or []
+            ),
+        )
+        if problem:
+            raise HTTPException(status_code=400, detail=problem)
 
     @staticmethod
     def _apply_scope_update(

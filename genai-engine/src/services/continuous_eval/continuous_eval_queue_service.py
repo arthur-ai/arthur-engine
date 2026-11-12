@@ -6,7 +6,7 @@ from typing import Any, Optional
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 from fastapi import HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -47,6 +47,7 @@ from services.continuous_eval.span_scope import (
     SpanVerdict,
     cap_checked_before_each_span_run,
     decide_rollup,
+    scope_variables_problem,
 )
 from utils.span_selection import select_spans
 from utils.span_tree import tree_order
@@ -143,6 +144,15 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         """Background thread that checks for stale pending annotations and re-queues them."""
         logger.info(f"Background thread started for {self.service_name}")
 
+        # A span-scope rollup waits for its trace to go idle in the in-memory
+        # scheduler, which a restart empties. Its jobs are picked up now rather
+        # than by the hourly sweep below; a rollup another worker still holds is
+        # fanned out once, as the fan-out claims it.
+        try:
+            self._check_stale_annotations(include_pending_rollups=True)
+        except Exception as e:
+            logger.error(f"Error re-queueing pending rollups: {e}", exc_info=True)
+
         while not self.shutdown_event.is_set():
             try:
                 # Wait for 1 hour or until shutdown
@@ -157,11 +167,19 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
         logger.info("Background thread stopped")
 
-    def _check_stale_annotations(self) -> None:
-        """Find and re-queue pending annotations that are older than 15 minutes."""
+    def _check_stale_annotations(self, include_pending_rollups: bool = False) -> None:
+        """Find and re-queue pending annotations that are older than 15 minutes,
+        and with include_pending_rollups every pending span-scope rollup."""
         db_session = next(get_db_session())
         try:
             cutoff_time = datetime.now() - timedelta(minutes=15)
+            is_stale = DatabaseAgenticAnnotation.created_at < cutoff_time
+            if include_pending_rollups:
+                is_stale = or_(
+                    is_stale,
+                    DatabaseAgenticAnnotation.run_level
+                    == ContinuousEvalRunLevel.SPAN_ROLLUP.value,
+                )
 
             stale_annotations = (
                 db_session.query(DatabaseAgenticAnnotation, DatabaseContinuousEval)
@@ -175,7 +193,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     == AgenticAnnotationType.CONTINUOUS_EVAL.value,
                     DatabaseAgenticAnnotation.run_status
                     == ContinuousEvalRunStatus.PENDING.value,
-                    DatabaseAgenticAnnotation.created_at < cutoff_time,
+                    is_stale,
                 )
                 .all()
             )
@@ -673,6 +691,27 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
     ) -> None:
         """A span-scope trace's rollup job: once the trace is idle, create one span
         run per matching span (up to max_spans_per_trace) and queue them."""
+        # Create and update reject this, but an eval that follows the latest
+        # transform version can lose its judged-span variable later. Its span runs
+        # would all send the judge the same input, so none is made.
+        problem = scope_variables_problem(
+            db_continuous_eval.scope,
+            self._transform_definition(db_session, db_continuous_eval),
+            (
+                mapping["transform_variable"]
+                for mapping in db_continuous_eval.transform_variable_mapping or []
+            ),
+        )
+        if problem:
+            self._update_annotation_status(
+                db_session,
+                job.annotation_id,
+                ContinuousEvalRunStatus.SKIPPED.value,
+                annotation_description=problem,
+            )
+            self._skip_pending_span_runs(db_session, rollup, problem)
+            return
+
         spans = self._load_spans(db_session, job.trace_id)
         if not spans:
             raise ValueError(f"Trace {job.trace_id} not found")
@@ -711,27 +750,20 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 ),
                 judged_span_count=judged_span_count,
             )
+            self._skip_pending_span_runs(
+                db_session,
+                rollup,
+                "Skipped with its trace: the trace filter no longer matches",
+            )
             return
 
         # The cap is checked once per trace, here: see SPAN_SCOPE_CAP_CHECK_AT.
         if self._skip_if_cap_reached(db_session, job, rollup, db_continuous_eval):
-            # Span runs a rerun reopened are not judged either.
-            self._span_run_query(
+            self._skip_pending_span_runs(
                 db_session,
                 rollup,
-                ContinuousEvalRunLevel.SPAN,
-            ).filter(
-                DatabaseAgenticAnnotation.run_status
-                == ContinuousEvalRunStatus.PENDING.value,
-            ).update(
-                {
-                    "run_status": ContinuousEvalRunStatus.SKIPPED.value,
-                    "annotation_description": "Skipped with its trace: daily spend cap reached",
-                    "updated_at": datetime.now(),
-                },
-                synchronize_session=False,
+                "Skipped with its trace: daily spend cap reached",
             )
-            db_session.commit()
             return
 
         continuous_eval = ContinuousEval.from_db_model(db_continuous_eval)
@@ -751,9 +783,23 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 ),
                 judged_span_count=judged_span_count,
             )
+            self._skip_pending_span_runs(
+                db_session,
+                rollup,
+                "Skipped with its trace: no span matches the span filter any more",
+            )
             return
         judged = candidates[: continuous_eval.max_spans_per_trace]
         span_runs = self._ensure_span_runs(db_session, rollup, judged)
+        # A rerun reopens the span runs of the first fan-out. Those the eval no
+        # longer judges (a narrower span filter, a lower max_spans_per_trace) are
+        # never queued, and pending they would keep the rollup from finishing.
+        self._skip_pending_span_runs(
+            db_session,
+            rollup,
+            "Not judged on rerun: the span is no longer among those the eval judges",
+            keep_span_ids={span_run.span_id for span_run in span_runs},
+        )
 
         claimed = (
             db_session.query(DatabaseAgenticAnnotation)
@@ -833,6 +879,37 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             DatabaseAgenticAnnotation.run_level == run_level.value,
             test_run_match,
         )
+
+    def _skip_pending_span_runs(
+        self,
+        db_session: Session,
+        rollup: DatabaseAgenticAnnotation,
+        description: str,
+        keep_span_ids: Optional[set[Optional[str]]] = None,
+    ) -> None:
+        """Skip the trace's pending span runs (those a rerun reopened) that this
+        fan-out will not queue, so none waits for a job that never comes."""
+        query = self._span_run_query(
+            db_session,
+            rollup,
+            ContinuousEvalRunLevel.SPAN,
+        ).filter(
+            DatabaseAgenticAnnotation.run_status
+            == ContinuousEvalRunStatus.PENDING.value,
+        )
+        if keep_span_ids is not None:
+            query = query.filter(
+                DatabaseAgenticAnnotation.span_id.not_in(keep_span_ids),
+            )
+        query.update(
+            {
+                "run_status": ContinuousEvalRunStatus.SKIPPED.value,
+                "annotation_description": description,
+                "updated_at": datetime.now(),
+            },
+            synchronize_session=False,
+        )
+        db_session.commit()
 
     def _ensure_span_runs(
         self,

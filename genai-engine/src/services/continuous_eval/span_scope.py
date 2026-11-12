@@ -11,7 +11,7 @@ from them by the eval's rollup_rule. The rollup itself never calls the judge.
 
 import os
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
 
 from arthur_common.models.enums import ContinuousEvalRunStatus
 
@@ -20,6 +20,7 @@ from schemas.enums import (
     ContinuousEvalRunLevel,
     ContinuousEvalScope,
 )
+from schemas.transform_schemas import TraceTransformDefinition, TransformSpanSelector
 
 
 def _seconds_from_env(name: str, default: int) -> int:
@@ -61,6 +62,45 @@ def first_run_level(scope: str) -> ContinuousEvalRunLevel:
 
 def cap_checked_before_each_span_run() -> bool:
     return SPAN_SCOPE_CAP_CHECK_AT == "span_run"
+
+
+def judged_span_variables(
+    definition: TraceTransformDefinition,
+    mapped_variables: Iterable[str],
+) -> list[str]:
+    """The mapped transform variables that read the judged span (span_selector
+    'current'). They are the only input that differs between a trace's span runs."""
+    mapped = set(mapped_variables)
+    return sorted(
+        variable.variable_name
+        for variable in definition.variables
+        if variable.span_selector == TransformSpanSelector.CURRENT
+        and variable.variable_name in mapped
+    )
+
+
+def scope_variables_problem(
+    scope: str,
+    definition: TraceTransformDefinition,
+    mapped_variables: Iterable[str],
+) -> Optional[str]:
+    """Why the eval's mapped variables don't fit its scope, or None. A span-scope
+    eval without a judged-span variable sends the judge the same input for every
+    span; a trace-scope eval with one has no judged span and skips every trace."""
+    reads_judged_span = judged_span_variables(definition, mapped_variables)
+    if scope == ContinuousEvalScope.SPAN.value and not reads_judged_span:
+        return (
+            "A span-scope continuous eval must map a transform variable that reads "
+            "the judged span (span_selector 'current'). Without one, every span run "
+            "sends the judge the same input."
+        )
+    if scope == ContinuousEvalScope.TRACE.value and reads_judged_span:
+        return (
+            f"Transform variables {reads_judged_span} read the judged span "
+            "(span_selector 'current'), which only exists in span scope. A "
+            "trace-scope eval would skip every trace."
+        )
+    return None
 
 
 @dataclass(frozen=True)

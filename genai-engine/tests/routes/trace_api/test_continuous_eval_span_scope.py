@@ -15,6 +15,7 @@ from arthur_common.models.enums import ContinuousEvalRunStatus
 from litellm.types.utils import ModelResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseSpan
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from schemas.enums import ContinuousEvalRunLevel
@@ -463,5 +464,91 @@ def test_a_span_stored_twice_is_judged_once(
         assert [r.span_id for r in runs["span"]] == ["call-1", "call-2"]
         assert runs["span_rollup"][0].run_status == "passed"
         assert mock_completion.call_count == 2
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_a_transform_that_stops_reading_the_judged_span_skips_the_trace(
+    mock_get_db_session,
+    mock_completion,
+    client: GenaiEngineTestClientBase,
+):
+    """An eval following the latest transform version can lose its 'current'
+    variable after it was created. Every span run would then send the judge the
+    same input, so the trace is skipped and no span run is made."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "any_fail")
+    status_code, same_for_every_span = client.create_transform(
+        task_id=task.id,
+        name="last tool call",
+        description="reads one fixed span",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "tool_output",
+                    "span_name": "lookup_order",
+                    "span_selector": "last",
+                    "attribute_path": "attributes.output.value",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+    db_session = override_get_db_session()
+    db_session.get(DatabaseContinuousEval, eval_id).transform_id = (
+        same_for_every_span.id
+    )
+    db_session.commit()
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        assert queue.drain() == 1
+        runs = _runs(eval_id, trace_id)
+        assert runs["span"] == []
+        (rollup,) = runs["span_rollup"]
+        assert rollup.run_status == "skipped"
+        assert "reads the judged span" in rollup.annotation_description
+        assert mock_completion.call_count == 0
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_worker_start_requeues_rollups_waiting_for_their_trace(
+    mock_get_db_session,
+    client: GenaiEngineTestClientBase,
+):
+    """A rollup waiting out the idle window lives in the in-memory scheduler,
+    which a restart empties. The worker re-queues pending rollups when it starts,
+    whatever their age; the hourly sweep only takes runs older than 15 minutes."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "any_fail")
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        (rollup,) = _runs(eval_id, trace_id)["span_rollup"]
+        queue.jobs.clear()  # the restart dropped it
+
+        queue.service._check_stale_annotations()
+        assert queue.jobs == []
+
+        queue.service._check_stale_annotations(include_pending_rollups=True)
+        assert [job.annotation_id for job in queue.jobs] == [rollup.id]
+        queue.jobs.clear()
+
+        # The background thread does this before its first hourly wait.
+        queue.service.shutdown_event.set()
+        with patch.object(queue.service, "_check_stale_annotations") as sweep:
+            queue.service._background_loop()
+        sweep.assert_called_once_with(include_pending_rollups=True)
     finally:
         _cleanup(client, task, eval_id, queue)

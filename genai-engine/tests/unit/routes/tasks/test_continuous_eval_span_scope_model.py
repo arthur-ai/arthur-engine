@@ -47,13 +47,30 @@ def _eval_body(transform_id: str, llm_eval_name: str, **extra) -> dict:
 
 
 def _setup(client: GenaiEngineTestClientBase, name: str):
+    """A task, a judge and two transforms for its test_variable: one reads the
+    judged span (for span scope), the other a named span (for trace scope)."""
     status_code, task = client.create_task(name=name, is_agentic=True)
     assert status_code == 200
     status_code, llm_eval = create_test_llm_eval(client, task.id, "span_judge")
     assert status_code == 200
-    status_code, transform = create_test_transform(client, task.id)
+    status_code, trace_transform = create_test_transform(client, task.id)
     assert status_code == 200
-    return task, llm_eval, str(transform.id)
+    status_code, span_transform = client.create_transform(
+        task_id=task.id,
+        name="judged_span_transform",
+        description="reads the judged span",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "test_variable",
+                    "attribute_path": "attributes.output.value",
+                    "span_selector": "current",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+    return task, llm_eval, str(trace_transform.id), str(span_transform.id)
 
 
 def _post_eval(client, task_id, body):
@@ -118,11 +135,14 @@ def _delete_runs(continuous_eval_id) -> None:
 def test_span_scope_settings_round_trip_and_are_validated(
     client: GenaiEngineTestClientBase,
 ):
-    task, llm_eval, transform_id = _setup(client, "span_scope_settings")
+    task, llm_eval, transform_id, span_transform_id = _setup(
+        client,
+        "span_scope_settings",
+    )
     try:
         # Span scope needs a span filter and an explicit rollup rule.
         for missing in ("span_filter", "rollup_rule"):
-            body = _eval_body(transform_id, llm_eval.name, **SPAN_SCOPE)
+            body = _eval_body(span_transform_id, llm_eval.name, **SPAN_SCOPE)
             body.pop(missing)
             resp = _post_eval(client, task.id, body)
             assert resp.status_code in (400, 422), resp.text
@@ -139,7 +159,7 @@ def test_span_scope_settings_round_trip_and_are_validated(
             client,
             task.id,
             _eval_body(
-                transform_id,
+                span_transform_id,
                 llm_eval.name,
                 scope="span",
                 span_filter={},
@@ -147,12 +167,25 @@ def test_span_scope_settings_round_trip_and_are_validated(
             ),
         )
         assert resp.status_code in (400, 422), resp.text
+        # Span scope must read the judged span: otherwise every span run of a
+        # trace sends the judge the same input.
+        resp = _post_eval(
+            client,
+            task.id,
+            _eval_body(transform_id, llm_eval.name, **SPAN_SCOPE),
+        )
+        assert resp.status_code == 400, resp.text
+        assert "reads the judged span" in resp.text
+        # Trace scope has no judged span, so it can't read one.
+        resp = _post_eval(client, task.id, _eval_body(span_transform_id, llm_eval.name))
+        assert resp.status_code == 400, resp.text
+        assert "only exists in span scope" in resp.text
 
         resp = _post_eval(
             client,
             task.id,
             _eval_body(
-                transform_id,
+                span_transform_id,
                 llm_eval.name,
                 max_spans_per_trace=5,
                 **SPAN_SCOPE,
@@ -166,8 +199,25 @@ def test_span_scope_settings_round_trip_and_are_validated(
         assert created["rollup_rule"] == "final_attempt"
         assert created["max_spans_per_trace"] == 5
 
-        # Switching back to trace scope drops the span settings.
+        # Switching back to trace scope keeps the judged-span transform: refused.
         resp = _patch_eval(client, created["id"], {"scope": "trace"})
+        assert resp.status_code == 400, resp.text
+        assert "only exists in span scope" in resp.text
+        # With a trace transform it works, and drops the span settings.
+        resp = _patch_eval(
+            client,
+            created["id"],
+            {
+                "scope": "trace",
+                "transform_id": transform_id,
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
+            },
+        )
         assert resp.status_code == 200, resp.text
         assert resp.json()["scope"] == "trace"
         # None fields are left out of continuous eval responses.
@@ -183,6 +233,13 @@ def test_span_scope_settings_round_trip_and_are_validated(
                 "scope": "span",
                 "span_filter": {"span_kind": "TOOL"},
                 "rollup_rule": "any_fail",
+                "transform_id": span_transform_id,
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert resp.status_code == 200, resp.text
@@ -204,11 +261,13 @@ def test_a_span_gets_one_live_run_and_one_per_test_run(
     """The partial unique indexes make a retried fan-out safe: a second live span
     run for the same (eval, trace, span) is refused, while rollups, trace runs,
     human labels and test-run span runs are not affected."""
-    task, llm_eval, transform_id = _setup(client, "span_scope_unique")
+    task, llm_eval, transform_id, span_transform_id = _setup(
+        client, "span_scope_unique"
+    )
     resp = _post_eval(
         client,
         task.id,
-        _eval_body(transform_id, llm_eval.name, **SPAN_SCOPE),
+        _eval_body(span_transform_id, llm_eval.name, **SPAN_SCOPE),
     )
     assert resp.status_code == 200, resp.text
     eval_id = uuid.UUID(resp.json()["id"])
@@ -237,11 +296,11 @@ def test_trace_level_reads_count_the_rollup_not_each_span_run(
     """A retried call: span run call-1 failed, call-2 passed, the final_attempt
     rollup passed. The trace shows one passing verdict; the failed span run is
     still listed as a span run, and its judge cost still counts."""
-    task, llm_eval, transform_id = _setup(client, "span_scope_reads")
+    task, llm_eval, transform_id, span_transform_id = _setup(client, "span_scope_reads")
     resp = _post_eval(
         client,
         task.id,
-        _eval_body(transform_id, llm_eval.name, **SPAN_SCOPE),
+        _eval_body(span_transform_id, llm_eval.name, **SPAN_SCOPE),
     )
     assert resp.status_code == 200, resp.text
     eval_id = uuid.UUID(resp.json()["id"])

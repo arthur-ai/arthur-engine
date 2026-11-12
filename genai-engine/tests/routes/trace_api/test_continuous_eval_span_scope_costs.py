@@ -366,3 +366,113 @@ def test_rerun_in_a_test_run_moves_the_trace_between_counters(
         assert test_run.status == "completed"
     finally:
         _cleanup(client, task, eval_id, queue)
+
+
+def _judge_fails_everything(*args, **kwargs):
+    response = MagicMock(spec=ModelResponse)
+    response.choices = [MagicMock()]
+    response.choices[0].message = {
+        "content": json.dumps({"reason": "Broken.", "score": 0, "label": None}),
+    }
+    return response
+
+
+def _patch_eval(client: GenaiEngineTestClientBase, eval_id: uuid.UUID, body: dict):
+    resp = client.base_client.patch(
+        f"/api/v1/continuous_evals/{eval_id}",
+        json=body,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch(
+    "clients.llm.llm_client.litellm.completion",
+    side_effect=_judge_fails_everything,
+)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_rerun_after_lowering_max_spans_skips_the_span_runs_past_it(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Both calls failed and the rerun reopens both, but the eval now judges one
+    span per trace. The other span run is skipped, not left pending, so the
+    rollup finishes."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "any_fail")
+    try:
+        trace_id = _recent_trace(task.id)
+        _enqueue(task.id, trace_id)
+        queue.drain()
+        rollup = _runs(eval_id, trace_id)["span_rollup"][0]
+        assert rollup.run_status == "failed"
+
+        _patch_eval(client, eval_id, {"max_spans_per_trace": 1})
+        status_code, _ = client.rerun_continuous_eval(str(rollup.id))
+        assert status_code == 200
+        # The rollup job, then call-1's span run only.
+        assert queue.drain() == 2
+        call_1, call_2 = _runs(eval_id, trace_id)["span"]
+        assert call_1.run_status == "failed"
+        assert call_2.run_status == "skipped"
+        assert "no longer among those the eval judges" in (
+            call_2.annotation_description
+        )
+        rollup = _runs(eval_id, trace_id)["span_rollup"][0]
+        assert rollup.run_status == "failed"
+        assert mock_completion.call_count == 3
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch(
+    "clients.llm.llm_client.litellm.completion",
+    side_effect=_judge_fails_everything,
+)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_rerun_after_the_trace_filter_stops_matching_skips_the_span_runs(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """The rollup is skipped by the new trace filter, and so are the span runs the
+    rerun reopened: none is left pending for the stale sweep to judge later."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "any_fail")
+    try:
+        trace_id = _recent_trace(task.id)
+        _enqueue(task.id, trace_id)
+        queue.drain()
+        rollup = _runs(eval_id, trace_id)["span_rollup"][0]
+
+        _patch_eval(
+            client,
+            eval_id,
+            {
+                "trace_filter": [
+                    {
+                        "attribute_path": "attributes.metadata.plan",
+                        "operator": "equals",
+                        "value": "paid",
+                    },
+                ],
+            },
+        )
+        status_code, _ = client.rerun_continuous_eval(str(rollup.id))
+        assert status_code == 200
+        assert queue.drain() == 1
+        runs = _runs(eval_id, trace_id)
+        assert runs["span_rollup"][0].run_status == "skipped"
+        assert [r.run_status for r in runs["span"]] == ["skipped", "skipped"]
+        assert mock_completion.call_count == 2
+    finally:
+        _cleanup(client, task, eval_id, queue)
