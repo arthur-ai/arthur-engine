@@ -163,8 +163,10 @@ class BaseQueueService(ABC, Generic[JobType]):
         def relay(done: Future[Any]) -> None:
             if done.cancelled():
                 outer.set_exception(RuntimeError("job cancelled at shutdown"))
-            elif done.exception() is not None:
-                outer.set_exception(done.exception())  # type: ignore[arg-type]
+                return
+            error = done.exception()
+            if error is not None:
+                outer.set_exception(error)
             else:
                 outer.set_result(done.result())
 

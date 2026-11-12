@@ -796,7 +796,8 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             db_now = datetime.fromisoformat(db_now)
         if isinstance(last_span_at, str):
             last_span_at = datetime.fromisoformat(last_span_at)
-        return max(0.0, (db_now.replace(tzinfo=None) - last_span_at).total_seconds())
+        quiet: float = (db_now.replace(tzinfo=None) - last_span_at).total_seconds()
+        return max(0.0, quiet)
 
     def _span_run_query(
         self,
