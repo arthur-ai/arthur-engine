@@ -37,7 +37,7 @@ and never edited is still there.
 """
 
 import logging
-from typing import Any, ClassVar, Iterator, Mapping, Optional, Sequence
+from typing import Any, ClassVar, Iterator, Mapping, Optional, Sequence, cast
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
@@ -49,6 +49,7 @@ from arthur_common.models.agent_governance_schemas import (
     SourceAddress,
     Tool,
 )
+from azure.core.paging import PageIterator
 
 from discovery.cloud.azure_ai_foundry.client import (
     SENSITIVE_FIELDS,
@@ -88,6 +89,15 @@ class AzureAIFoundryConnector:
     def __init__(self, agents_factory: AgentsFactory = project_agents) -> None:
         self._agents_factory = agents_factory
 
+    @staticmethod
+    def _incomplete(settings: FoundrySettings, what: str) -> FoundryListingError:
+        """The scan fails rather than publish a listing it could not finish."""
+        return FoundryListingError(
+            f"Azure AI Foundry {what} in {settings.resource_name}/"
+            f"{settings.project_name}; the listing was stopped before it could page "
+            f"forever",
+        )
+
     def scan(
         self,
         config: DiscoverySourceConfigSpec,
@@ -110,37 +120,49 @@ class AzureAIFoundryConnector:
 
         listed = skipped = external = 0
         seen: set[str] = set()
+        tokens: set[str] = set()
         batch: list[DiscoveredAgentRecord] = []
         try:
             # The listing is lazy and fetches each page as it is read, so the whole
             # iteration sits inside the translation, not only the call.
             with vendor_status(), self._agents_factory(settings, credential) as agents:
-                for agent in agents.list():
-                    # The SDK's pager asks for the next page for as long as a page
-                    # names a `last_id`, and ignores `has_more`. A service that kept
-                    # naming one would page forever; an agent seen twice is that. The
-                    # scan fails rather than publish a listing it could not finish.
-                    agent_name = getattr(agent, "name", None)
-                    if isinstance(agent_name, str) and agent_name in seen:
-                        raise FoundryListingError(
-                            f"Azure AI Foundry listed agent {agent_name} twice in "
-                            f"{settings.resource_name}/{settings.project_name}; the "
-                            f"listing was stopped before it could page forever",
-                        )
-                    if isinstance(agent_name, str):
-                        seen.add(agent_name)
-                    listed += 1
-                    if _kind(agent) == _EXTERNAL_KIND:
-                        external += 1
-                        continue
-                    record = record_for(agent, settings, logger)
-                    if record is None:
-                        skipped += 1
-                        continue
-                    batch.append(record)
-                    if len(batch) >= BATCH_SIZE:
-                        yield batch
-                        batch = []
+                # `by_page` is typed as a bare iterator; it is a PageIterator, which
+                # carries the token for the page it will ask for next.
+                pages = cast(PageIterator[Any], agents.list().by_page())
+                for page in pages:
+                    for agent in page:
+                        # An agent seen twice means the listing went round again.
+                        agent_name = getattr(agent, "name", None)
+                        if isinstance(agent_name, str) and agent_name in seen:
+                            raise self._incomplete(
+                                settings,
+                                f"listed agent {agent_name} twice",
+                            )
+                        if isinstance(agent_name, str):
+                            seen.add(agent_name)
+                        listed += 1
+                        if _kind(agent) == _EXTERNAL_KIND:
+                            external += 1
+                            continue
+                        record = record_for(agent, settings, logger)
+                        if record is None:
+                            skipped += 1
+                            continue
+                        batch.append(record)
+                        if len(batch) >= BATCH_SIZE:
+                            yield batch
+                            batch = []
+                    # The SDK asks for the next page for as long as a page names a
+                    # `last_id`, ignoring `has_more`. A token handed back twice would
+                    # page forever, even through pages with no agents in them.
+                    token = pages.continuation_token
+                    if token is not None:
+                        if token in tokens:
+                            raise self._incomplete(
+                                settings,
+                                f"repeated the page token {token}",
+                            )
+                        tokens.add(token)
             if batch:
                 yield batch
         finally:

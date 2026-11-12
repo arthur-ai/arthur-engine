@@ -40,7 +40,6 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Iterable,
     Iterator,
     Mapping,
     Optional,
@@ -56,6 +55,7 @@ from arthur_common.models.connectors import (
 from azure.ai.projects import AIProjectClient
 from azure.core.credentials import TokenCredential
 from azure.core.exceptions import ClientAuthenticationError
+from azure.core.paging import ItemPaged
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
 from job_executors.discovery_scan import DiscoveryConfigurationError
@@ -93,11 +93,11 @@ class FoundrySettings:
 class FoundryAgents(Protocol):
     """The part of `AIProjectClient.agents` (azure-ai-projects 2.4) this package calls.
 
-    A seam so tests hand in fakes instead of patching the SDK. `list` yields
-    `AgentDetails`.
+    A seam so tests hand in fakes instead of patching the SDK. `list` pages
+    `AgentDetails`; the scan reads it page by page to watch the continuation token.
     """
 
-    def list(self) -> Iterable[Any]: ...
+    def list(self) -> ItemPaged[Any]: ...
 
 
 # (settings, credential) -> the project's agent operations, closed on exit.

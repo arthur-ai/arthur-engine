@@ -28,6 +28,7 @@ from azure.core.exceptions import (
     ClientAuthenticationError,
     HttpResponseError,
 )
+from azure.core.paging import ItemPaged
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 from responses import matchers
 
@@ -115,14 +116,42 @@ def agent(name: str, **kwargs: Any) -> AgentDetails:
 
 
 class FakeAgents:
-    def __init__(self, agents: Iterable[Any] = (), error: Optional[Exception] = None):
+    """Pages through the SDK's own `ItemPaged`.
+
+    By default one page holding `agents`. `pages` gives (agents, next token) pairs
+    instead. `error` is raised when the page after the last is asked for.
+    """
+
+    def __init__(
+        self,
+        agents: Iterable[Any] = (),
+        error: Optional[Exception] = None,
+        pages: Optional[list[tuple[list[Any], Optional[str]]]] = None,
+    ):
         self.listed = list(agents)
         self.error = error
+        self.pages = pages
 
-    def list(self) -> Iterator[Any]:
-        yield from self.listed
-        if self.error is not None:
-            raise self.error
+    def list(self) -> ItemPaged[Any]:
+        if self.pages is not None:
+            pages = self.pages
+        else:
+            pages = [(self.listed, "more" if self.error else None)]
+        served = iter(pages)
+        error = self.error
+
+        def get_next(_token: Optional[str] = None) -> Any:
+            page = next(served, None)
+            if page is None:
+                assert error is not None
+                raise error
+            return page
+
+        def extract_data(page: Any) -> tuple[Optional[str], Iterator[Any]]:
+            agents, token = page
+            return token, iter(agents)
+
+        return ItemPaged(get_next, extract_data)
 
 
 class FakeFactory:
@@ -273,6 +302,28 @@ def test_an_agent_listed_twice_fails_the_scan(
             published += [resource_id(r) for r in batch]
     assert published == ["a", "b"]
     assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+def test_a_repeated_page_token_fails_the_scan_even_without_agents(
+    config: DiscoverySourceConfigSpec,
+) -> None:
+    """Empty pages that keep naming a next page never repeat an agent."""
+    stalled = FakeAgents(
+        pages=[([agent("a")], "t1"), ([], "t2"), ([], "t2"), ([], "t2")],
+    )
+    with pytest.raises(FoundryListingError, match="repeated the page token t2") as exc:
+        scan(FakeFactory(stalled), config)
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+def test_agents_across_pages_are_all_listed(
+    config: DiscoverySourceConfigSpec,
+) -> None:
+    paged = FakeAgents(
+        pages=[([agent("a"), agent("b")], "t1"), ([agent("c")], "t2"), ([], None)],
+    )
+    [batch] = scan(FakeFactory(paged), config)
+    assert [resource_id(r) for r in batch] == ["a", "b", "c"]
 
 
 def test_an_external_agent_is_not_reported_as_running_on_azure(
@@ -571,6 +622,22 @@ def test_the_real_sdk_lists_the_project_with_the_ai_azure_com_scope(
     assert [resource_id(r) for r in batch] == ["triage", "refunds"]
     assert token.scopes[0] == ("https://ai.azure.com/.default",)
     assert responses.calls[0].request.headers["Authorization"] == "Bearer fake-token"
+
+
+@responses.activate
+def test_the_real_sdk_stalling_on_an_empty_page_fails_the_scan(
+    config: DiscoverySourceConfigSpec,
+) -> None:
+    """The pinned SDK pages on `last_id` and ignores `has_more`, so a service that keeps
+    answering an empty page naming the same `last_id` would be asked forever."""
+    responses.add(
+        responses.GET,
+        f"{ENDPOINT}/agents",
+        json={"data": [], "has_more": True, "first_id": None, "last_id": "asst_x"},
+    )
+    with pytest.raises(FoundryListingError, match="repeated the page token"):
+        scan(wire_factory(StaticToken()), config)
+    assert len(responses.calls) == 2
 
 
 @pytest.mark.parametrize(
