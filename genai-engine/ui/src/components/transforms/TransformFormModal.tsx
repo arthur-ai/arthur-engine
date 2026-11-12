@@ -23,7 +23,16 @@ import { useState, useEffect } from "react";
 import { useTransforms } from "./hooks/useTransforms";
 import { useTransformVersions } from "./hooks/useTransformVersions";
 import { TransformFormModalProps } from "./types";
-import { emptyVariableRow, rowToVariable, SPAN_SELECTORS, validateVariableRow, variableToRow, type VariableRow } from "./variableRows";
+import {
+  DEFAULT_TRACE_MAX_CHARS,
+  emptyVariableRow,
+  MIN_TRACE_MAX_CHARS,
+  rowToVariable,
+  SPAN_SELECTORS,
+  validateVariableRow,
+  variableToRow,
+  type VariableRow,
+} from "./variableRows";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
@@ -293,50 +302,81 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                       required
                       fullWidth
                     />
-                    <Stack direction="row" spacing={2}>
-                      <TextField
-                        label="Span Name"
-                        value={variable.span_name}
-                        onChange={(e) => handleVariableChange(idx, "span_name", e.target.value)}
-                        placeholder="e.g., DatabaseQuery"
-                        size="small"
-                        fullWidth
-                      />
-                      <TextField
-                        label="Span Kind (Optional)"
-                        value={variable.span_kind}
-                        onChange={(e) => handleVariableChange(idx, "span_kind", e.target.value)}
-                        placeholder="e.g., TOOL"
-                        helperText="Alone, matches every span of this kind"
-                        size="small"
-                        fullWidth
-                      />
-                    </Stack>
                     <TextField
                       select
-                      label="When Several Spans Match"
-                      value={variable.span_selector}
-                      onChange={(e) => handleVariableChange(idx, "span_selector", e.target.value as VariableRow["span_selector"])}
-                      helperText={SPAN_SELECTORS.find((s) => s.value === variable.span_selector)?.help}
+                      label="Value Comes From"
+                      value={variable.source}
+                      onChange={(e) => handleVariableChange(idx, "source", e.target.value as VariableRow["source"])}
+                      helperText={
+                        variable.source === "trace"
+                          ? "Every span in tree order with its inputs, outputs, tool calls and errors, as one text for the judge."
+                          : "An attribute of the matching span or spans."
+                      }
                       size="small"
                       fullWidth
                     >
-                      {SPAN_SELECTORS.map((selector) => (
-                        <MenuItem key={selector.value} value={selector.value}>
-                          {selector.label}
-                        </MenuItem>
-                      ))}
+                      <MenuItem value="span">Span attribute</MenuItem>
+                      <MenuItem value="trace">Whole trace</MenuItem>
                     </TextField>
-                    <TextField
-                      label="Attribute Path"
-                      value={variable.attribute_path}
-                      onChange={(e) => handleVariableChange(idx, "attribute_path", e.target.value)}
-                      placeholder="e.g., attributes.input.value or attributes.results.*.name"
-                      helperText="Use * to extract from all items in an array"
-                      size="small"
-                      required
-                      fullWidth
-                    />
+                    {variable.source === "trace" ? (
+                      <TextField
+                        label="Size Budget (Characters, Optional)"
+                        type="number"
+                        value={variable.max_chars}
+                        onChange={(e) => handleVariableChange(idx, "max_chars", e.target.value)}
+                        placeholder={String(DEFAULT_TRACE_MAX_CHARS)}
+                        helperText={`At least ${MIN_TRACE_MAX_CHARS}. Over budget, the text says what was cut.`}
+                        size="small"
+                        fullWidth
+                      />
+                    ) : (
+                      <>
+                        <Stack direction="row" spacing={2}>
+                          <TextField
+                            label="Span Name"
+                            value={variable.span_name}
+                            onChange={(e) => handleVariableChange(idx, "span_name", e.target.value)}
+                            placeholder="e.g., DatabaseQuery"
+                            size="small"
+                            fullWidth
+                          />
+                          <TextField
+                            label="Span Kind (Optional)"
+                            value={variable.span_kind}
+                            onChange={(e) => handleVariableChange(idx, "span_kind", e.target.value)}
+                            placeholder="e.g., TOOL"
+                            helperText="Alone, matches every span of this kind"
+                            size="small"
+                            fullWidth
+                          />
+                        </Stack>
+                        <TextField
+                          select
+                          label="When Several Spans Match"
+                          value={variable.span_selector}
+                          onChange={(e) => handleVariableChange(idx, "span_selector", e.target.value as VariableRow["span_selector"])}
+                          helperText={SPAN_SELECTORS.find((s) => s.value === variable.span_selector)?.help}
+                          size="small"
+                          fullWidth
+                        >
+                          {SPAN_SELECTORS.map((selector) => (
+                            <MenuItem key={selector.value} value={selector.value}>
+                              {selector.label}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          label="Attribute Path"
+                          value={variable.attribute_path}
+                          onChange={(e) => handleVariableChange(idx, "attribute_path", e.target.value)}
+                          placeholder="e.g., attributes.input.value or attributes.results.*.name"
+                          helperText="Use * to extract from all items in an array"
+                          size="small"
+                          required
+                          fullWidth
+                        />
+                      </>
+                    )}
                     <TextField
                       label="Fallback Value (JSON, Optional)"
                       value={variable.fallback}

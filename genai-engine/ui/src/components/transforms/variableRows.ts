@@ -1,8 +1,11 @@
-import type { TraceTransformVariableDefinition, TransformSpanSelector } from "@/lib/api-client/api-client";
+import type { TraceTransformVariableDefinition, TransformSpanSelector, TransformVariableSource } from "@/lib/api-client/api-client";
 
 // One transform variable as the form edits it: strings throughout, "" for unset.
 export type VariableRow = {
   variable_name: string;
+  // "trace" makes the value the whole trace as text; the span fields are then unused.
+  source: TransformVariableSource;
+  max_chars: string;
   span_name: string;
   span_kind: string;
   span_selector: TransformSpanSelector;
@@ -21,8 +24,13 @@ export const SPAN_SELECTORS: { value: TransformSpanSelector; label: string; help
   },
 ];
 
+export const MIN_TRACE_MAX_CHARS = 2000;
+export const DEFAULT_TRACE_MAX_CHARS = 48000;
+
 export const emptyVariableRow = (variable_name = ""): VariableRow => ({
   variable_name,
+  source: "span",
+  max_chars: "",
   span_name: "",
   span_kind: "",
   span_selector: "first",
@@ -32,6 +40,8 @@ export const emptyVariableRow = (variable_name = ""): VariableRow => ({
 
 export const variableToRow = (variable: TraceTransformVariableDefinition): VariableRow => ({
   variable_name: variable.variable_name,
+  source: variable.source ?? "span",
+  max_chars: variable.max_chars != null ? String(variable.max_chars) : "",
   span_name: variable.span_name ?? "",
   span_kind: variable.span_kind ?? "",
   span_selector: variable.span_selector ?? "first",
@@ -45,8 +55,19 @@ export const rowToVariable = (row: VariableRow): TraceTransformVariableDefinitio
     const parsed = JSON.parse(row.fallback);
     fallback = parsed !== null ? parsed : undefined;
   }
+  if (row.source === "trace") {
+    // attribute_path is required by the shared model; a trace variable ignores it.
+    return {
+      variable_name: row.variable_name,
+      source: "trace",
+      max_chars: row.max_chars.trim() ? Number(row.max_chars) : null,
+      attribute_path: "",
+      fallback,
+    };
+  }
   return {
     variable_name: row.variable_name,
+    source: "span",
     span_name: row.span_name.trim() || null,
     span_kind: row.span_kind.trim() || null,
     span_selector: row.span_selector,
@@ -60,6 +81,13 @@ export const validateVariableRow = (row: VariableRow, index: number): string[] =
   const errors: string[] = [];
   const label = `Variable ${index + 1}`;
   if (!row.variable_name.trim()) errors.push(`${label}: Variable name is required`);
+  if (row.source === "trace") {
+    const max = Number(row.max_chars);
+    if (row.max_chars.trim() && (!Number.isInteger(max) || max < MIN_TRACE_MAX_CHARS)) {
+      errors.push(`${label}: Size budget must be a whole number of at least ${MIN_TRACE_MAX_CHARS} characters`);
+    }
+    return errors;
+  }
   if (!row.span_name.trim() && !row.span_kind.trim() && row.span_selector !== "current") {
     errors.push(`${label}: Span name or span kind is required`);
   }
@@ -76,6 +104,7 @@ export const validateVariableRow = (row: VariableRow, index: number): string[] =
 
 /** How a variable's spans read in lists: "lookup_order (TOOL), last match". */
 export const describeVariableSpans = (variable: TraceTransformVariableDefinition): string => {
+  if (variable.source === "trace") return `the whole trace, up to ${(variable.max_chars ?? DEFAULT_TRACE_MAX_CHARS).toLocaleString()} chars`;
   const selector = variable.span_selector ?? "first";
   const target =
     variable.span_name && variable.span_kind
@@ -86,3 +115,7 @@ export const describeVariableSpans = (variable: TraceTransformVariableDefinition
   if (selector === "current") return variable.span_name || variable.span_kind ? `${target}, the judged span` : target;
   return `${target}, ${selectorLabel}`;
 };
+
+/** Variables whose value is the whole trace: in a span-scope eval each one is sent again with every span run. */
+export const wholeTraceVariableNames = (variables: TraceTransformVariableDefinition[] | undefined): string[] =>
+  (variables ?? []).filter((variable) => variable.source === "trace").map((variable) => variable.variable_name);

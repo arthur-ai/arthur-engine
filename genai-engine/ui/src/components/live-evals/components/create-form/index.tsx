@@ -249,7 +249,16 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
               )}
             </form.Field>
             <form.Field name="traceFilter">{(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}</form.Field>
-            <form.Field name="spanScope">{(field) => <SpanScopeField value={field.state.value} onChange={field.handleChange} />}</form.Field>
+            <form.Field name="spanScope">
+              {(field) => (
+                <SpanScopeField
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  transformId={transform.transformId}
+                  transformVersionId={transform.transformVersionId}
+                />
+              )}
+            </form.Field>
           </Stack>
           <Divider sx={{ my: 2 }} />
           <EvaluatorSelector form={form} fields="evaluator" taskId={taskId} onSelectionChange={handleSelectionChange} />

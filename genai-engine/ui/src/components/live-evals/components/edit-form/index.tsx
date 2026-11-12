@@ -232,7 +232,14 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
               {(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}
             </form.Field>
             <form.Field name="spanScope" validators={{ onChange: spanScopeSchema }}>
-              {(field) => <SpanScopeField value={field.state.value} onChange={field.handleChange} />}
+              {(field) => (
+                <SpanScopeField
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  transformId={transform.transformId}
+                  transformVersionId={transform.transformVersionId}
+                />
+              )}
             </form.Field>
           </Stack>
           <Divider sx={{ my: 2 }} />

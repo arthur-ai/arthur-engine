@@ -1,6 +1,12 @@
 import z from "zod";
 
-import type { ContinuousEvalResponse, ContinuousEvalRollupRule, ContinuousEvalScope, ContinuousEvalSpanFilter } from "@/lib/api-client/api-client";
+import type {
+  ContinuousEvalResponse,
+  ContinuousEvalRollupRule,
+  ContinuousEvalScope,
+  ContinuousEvalSpanFilter,
+  TraceTransformVariableDefinition,
+} from "@/lib/api-client/api-client";
 
 // The form holds the span settings as strings; "" means unset.
 export type SpanScopeValues = {
@@ -95,3 +101,22 @@ export const spanFilterJson = (values: SpanScopeValues): string | null => {
 export const describeSpanScopeCost = (values: SpanScopeValues): string =>
   `Each matching span is its own judge call: up to ${values.maxSpans || DEFAULT_MAX_SPANS_PER_TRACE} calls per trace instead of one. ` +
   "A variable that reads the whole trace or every match ('all') is sent again with every span, so its tokens are paid once per span.";
+
+/** The transform definition an eval runs: the pinned version, or the latest. */
+export const effectiveTransformVariables = (
+  versions: { id: string; definition: { variables?: TraceTransformVariableDefinition[] } }[],
+  transformVersionId: string | null | undefined
+): TraceTransformVariableDefinition[] | undefined =>
+  (transformVersionId ? versions.find((version) => version.id === transformVersionId) : versions[0])?.definition.variables;
+
+/** The warning for whole-trace variables in a span-scope eval, or null when there are none. */
+export const describeWholeTraceInSpanScope = (names: string[], maxSpans: string): string | null => {
+  if (names.length === 0) return null;
+  const listed = names.join(", ");
+  const verb = names.length === 1 ? "reads" : "read";
+  return (
+    `${listed} ${verb} the whole trace, so it is sent again with every judged span: ` +
+    `up to ${maxSpans || DEFAULT_MAX_SPANS_PER_TRACE} copies of the trace per trace. ` +
+    "Judge the whole trace once with a trace-scope eval, or read the judged span ('Judged span' in the transform) instead."
+  );
+};

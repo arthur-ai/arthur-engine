@@ -12541,6 +12541,13 @@ export interface TraceTransformVariableDefinition {
   span_kind?: string | null;
   /** Which span to read when several match: 'first' or 'last' in tree order, 'all', or 'current' (the span a span-scope eval is judging). */
   span_selector?: TransformSpanSelector;
+  /** Where the value comes from: 'span' (the default) reads attribute_path from the matching span(s); 'trace' is the whole trace as text for a judge. */
+  source?: TransformVariableSource;
+  /**
+   * Max Chars
+   * Size budget of a 'trace' value in characters; defaults to 48000. Over budget, the text says what was cut.
+   */
+  max_chars?: number | null;
   /**
    * Variable Name
    * Name of the variable to extract.
@@ -12739,6 +12746,9 @@ export interface TransformExtractionResponseList {
    */
   variables: VariableTemplateValue[];
 }
+
+/** TransformVariableSource */
+export type TransformVariableSource = "span" | "trace";
 
 /** TransformSpanSelector */
 export type TransformSpanSelector = "first" | "last" | "all" | "current";

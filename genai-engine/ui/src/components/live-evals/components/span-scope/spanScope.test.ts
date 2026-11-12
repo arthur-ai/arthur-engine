@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultSpanScope, spanFilterJson, spanScopeFromEval, spanScopeSchema, spanScopeToRequest } from "./spanScope";
+import {
+  defaultSpanScope,
+  describeWholeTraceInSpanScope,
+  effectiveTransformVariables,
+  spanFilterJson,
+  spanScopeFromEval,
+  spanScopeSchema,
+  spanScopeToRequest,
+} from "./spanScope";
 
 describe("span scope form values", () => {
   it("leaves trace scope as it was: no span filter, no rollup rule", () => {
@@ -30,5 +38,22 @@ describe("span scope form values", () => {
     expect(spanScopeFromEval(request)).toEqual(values);
     expect(spanFilterJson(values)).toBe('{"span_name":"lookup_order","span_kind":null,"conditions":[]}');
     expect(spanFilterJson({ ...values, spanName: "" })).toBeNull();
+  });
+
+  it("warns that a whole-trace variable is resent with every span run", () => {
+    expect(describeWholeTraceInSpanScope([], "20")).toBeNull();
+    const warning = describeWholeTraceInSpanScope(["conversation"], "5");
+    expect(warning).toContain("conversation reads the whole trace");
+    expect(warning).toContain("up to 5 copies of the trace per trace");
+  });
+
+  it("reads the pinned transform version, or the latest", () => {
+    const versions = [
+      { id: "v2", definition: { variables: [{ variable_name: "new", attribute_path: "a" }] } },
+      { id: "v1", definition: { variables: [{ variable_name: "old", attribute_path: "a" }] } },
+    ];
+    expect(effectiveTransformVariables(versions, null)?.[0].variable_name).toBe("new");
+    expect(effectiveTransformVariables(versions, "v1")?.[0].variable_name).toBe("old");
+    expect(effectiveTransformVariables([], null)).toBeUndefined();
   });
 });

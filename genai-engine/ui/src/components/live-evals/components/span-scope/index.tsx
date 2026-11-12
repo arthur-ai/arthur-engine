@@ -6,13 +6,26 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 
-import { describeSpanScopeCost, ROLLUP_RULES, spanScopeSchema, type SpanScopeValues } from "./spanScope";
+import {
+  describeSpanScopeCost,
+  describeWholeTraceInSpanScope,
+  effectiveTransformVariables,
+  ROLLUP_RULES,
+  spanScopeSchema,
+  type SpanScopeValues,
+} from "./spanScope";
+
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
+import { wholeTraceVariableNames } from "@/components/transforms/variableRows";
 
 export * from "./spanScope";
 
 type Props = {
   value: SpanScopeValues;
   onChange: (value: SpanScopeValues) => void;
+  // The eval's transform, to warn about whole-trace variables in span scope.
+  transformId?: string | null;
+  transformVersionId?: string | null;
 };
 
 const fieldError = (value: SpanScopeValues, field: keyof SpanScopeValues): string | undefined => {
@@ -20,8 +33,13 @@ const fieldError = (value: SpanScopeValues, field: keyof SpanScopeValues): strin
   return result.success ? undefined : result.error.issues.find((issue) => issue.path[0] === field)?.message;
 };
 
-export const SpanScopeField = ({ value, onChange }: Props) => {
+export const SpanScopeField = ({ value, onChange, transformId, transformVersionId }: Props) => {
   const update = (patch: Partial<SpanScopeValues>) => onChange({ ...value, ...patch });
+  const { data: versions = [] } = useTransformVersions(value.scope === "span" ? transformId : null);
+  const wholeTraceWarning = describeWholeTraceInSpanScope(
+    wholeTraceVariableNames(effectiveTransformVariables(versions, transformVersionId)),
+    value.maxSpans
+  );
   const spanNameError = fieldError(value, "spanName");
   const maxSpansError = fieldError(value, "maxSpans");
   const rollupError = fieldError(value, "rollupRule");
@@ -104,6 +122,7 @@ export const SpanScopeField = ({ value, onChange }: Props) => {
             )}
           </Stack>
           <Alert severity="warning">{describeSpanScopeCost(value)}</Alert>
+          {wholeTraceWarning && <Alert severity="error">{wholeTraceWarning}</Alert>}
         </>
       )}
     </Stack>

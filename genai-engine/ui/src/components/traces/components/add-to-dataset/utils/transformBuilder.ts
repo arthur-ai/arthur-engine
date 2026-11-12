@@ -36,6 +36,9 @@ export function validateTransform(transform: TransformDefinition): string[] {
     }
     variableNames.add(varDef.variable_name);
 
+    // A whole-trace variable reads no span and no attribute path.
+    if (varDef.source === "trace") continue;
+
     if (!varDef.span_name && !varDef.span_kind && varDef.span_selector !== "current") {
       errors.push(`Variable ${varDef.variable_name}: span_name or span_kind is required`);
     }

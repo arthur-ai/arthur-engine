@@ -329,7 +329,16 @@ const LiveEvalsNewForm = () => {
         </form.Field>
 
         <form.Field name="traceFilter">{(field) => <TraceFilterField value={field.state.value} onChange={field.handleChange} />}</form.Field>
-        <form.Field name="spanScope">{(field) => <SpanScopeField value={field.state.value} onChange={field.handleChange} />}</form.Field>
+        <form.Field name="spanScope">
+          {(field) => (
+            <SpanScopeField
+              value={field.state.value}
+              onChange={field.handleChange}
+              transformId={transform.transformId}
+              transformVersionId={transform.transformVersionId}
+            />
+          )}
+        </form.Field>
 
         <Divider sx={{ my: 2 }} />
 
