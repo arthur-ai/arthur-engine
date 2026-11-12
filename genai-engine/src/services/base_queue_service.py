@@ -99,13 +99,14 @@ class BaseQueueService(ABC, Generic[JobType]):
             future.cancel()
             with self.active_jobs_lock:
                 self.active_jobs.discard(self._get_job_key(job))
-        if self.scheduler_thread:
+        # A thread that never started (start() failed part way) can't be joined.
+        if self.scheduler_thread and self.scheduler_thread.is_alive():
             self.scheduler_thread.join(timeout=timeout)
 
         if self.executor:
             self.executor.shutdown(wait=True, cancel_futures=True)
 
-        if self.background_thread:
+        if self.background_thread and self.background_thread.is_alive():
             self.background_thread.join(timeout=timeout)
             if self.background_thread.is_alive():
                 logger.warning("Background thread did not shut down gracefully")

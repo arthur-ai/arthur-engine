@@ -161,6 +161,7 @@ class SyncQueue:
     the test thread: the SQLite test session must not be shared across threads."""
 
     def __init__(self):
+        # If this raises, the service has stopped what it started and is not set.
         initialize_continuous_eval_queue_service(
             num_workers=1,
             override_execution_delay=0,

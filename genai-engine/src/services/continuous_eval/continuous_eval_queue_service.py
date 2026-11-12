@@ -1269,11 +1269,17 @@ def initialize_continuous_eval_queue_service(
     """Initialize and start the global continuous eval queue service."""
     global CONTINUOUS_EVAL_QUEUE_SERVICE
     if CONTINUOUS_EVAL_QUEUE_SERVICE is None:
-        CONTINUOUS_EVAL_QUEUE_SERVICE = ContinuousEvalQueueService(
+        service = ContinuousEvalQueueService(
             num_workers,
             override_execution_delay,
         )
-        CONTINUOUS_EVAL_QUEUE_SERVICE.start()
+        try:
+            service.start()
+        except BaseException:
+            # Stop what did start, and leave no half-started global behind.
+            service.stop()
+            raise
+        CONTINUOUS_EVAL_QUEUE_SERVICE = service
 
 
 def shutdown_continuous_eval_queue_service() -> None:

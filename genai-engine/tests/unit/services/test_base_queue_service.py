@@ -1,9 +1,15 @@
+import threading
 import time
 from typing import Hashable
+from unittest.mock import patch
 
 import pytest
 
 from services.base_queue_service import BaseQueueJob, BaseQueueService
+from services.continuous_eval import (
+    get_continuous_eval_queue_service,
+    initialize_continuous_eval_queue_service,
+)
 
 
 class TestQueueService(BaseQueueService[BaseQueueJob]):
@@ -100,3 +106,41 @@ def test_a_queued_key_is_not_queued_twice_and_stop_drops_delayed_jobs():
     assert future.cancelled()
     assert "later" not in svc.active_jobs
     assert "later" not in svc.ran_at
+
+
+def _fail_the_second_thread_start():
+    """Patches Thread.start so the scheduler thread starts and the background
+    thread does not, as when the process can't create another thread."""
+    real_start = threading.Thread.start
+    started = []
+
+    def start(thread: threading.Thread) -> None:
+        if started:
+            raise RuntimeError("can't start new thread")
+        started.append(thread)
+        real_start(thread)
+
+    return patch.object(threading.Thread, "start", start)
+
+
+@pytest.mark.unit_tests
+def test_stop_after_a_start_that_failed_part_way():
+    svc = TestQueueService(num_workers=1)
+    with _fail_the_second_thread_start(), pytest.raises(RuntimeError):
+        svc.start()
+    assert svc.scheduler_thread is not None and svc.scheduler_thread.is_alive()
+
+    # The background thread never started; stop() must not try to join it.
+    svc.stop(timeout=5)
+    assert not svc.scheduler_thread.is_alive()
+
+
+@pytest.mark.unit_tests
+def test_a_failed_start_leaves_no_continuous_eval_service_behind():
+    with _fail_the_second_thread_start(), pytest.raises(RuntimeError):
+        initialize_continuous_eval_queue_service(num_workers=1)
+    assert get_continuous_eval_queue_service() is None
+    assert not any(
+        thread.name.startswith("continuous-eval-background")
+        for thread in threading.enumerate()
+    )
