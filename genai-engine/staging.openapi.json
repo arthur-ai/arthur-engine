@@ -16255,6 +16255,27 @@
                             "title": "Continuous Eval Enabled"
                         },
                         "description": "Whether the continuous eval is enabled."
+                    },
+                    {
+                        "name": "run_levels",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContinuousEvalRunLevel"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Run levels to include: 'trace', 'span' (one judged span), 'span_rollup' (a trace's summary of its span runs). Omit for all.",
+                            "title": "Run Levels"
+                        },
+                        "description": "Run levels to include: 'trace', 'span' (one judged span), 'span_rollup' (a trace's summary of its span runs). Omit for all."
                     }
                 ],
                 "responses": {
@@ -20904,6 +20925,41 @@
                         ],
                         "title": "Trace Filter",
                         "description": "Conditions a trace must meet to be judged; all must hold. A trace that doesn't match is skipped before the judge is called. Null or empty judges every sampled trace."
+                    },
+                    "scope": {
+                        "$ref": "#/components/schemas/ContinuousEvalScope",
+                        "description": "'trace' (default) judges each trace once. 'span' judges every span that matches span_filter, one run each, and records a per-trace rollup of their verdicts decided by rollup_rule.",
+                        "default": "trace"
+                    },
+                    "span_filter": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalSpanFilter"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Spans to judge. Required when scope is 'span', null otherwise."
+                    },
+                    "max_spans_per_trace": {
+                        "type": "integer",
+                        "maximum": 200.0,
+                        "minimum": 1.0,
+                        "title": "Max Spans Per Trace",
+                        "description": "Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.",
+                        "default": 20
+                    },
+                    "rollup_rule": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalRollupRule"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "How span verdicts decide the trace when scope is 'span' (required then): 'any_fail' fails the trace on any failing span; 'final_attempt' lets only the last span of each name under the same parent decide, so a call that failed and was retried successfully passes."
                     }
                 },
                 "type": "object",
@@ -21202,6 +21258,39 @@
                         ],
                         "title": "Trace Filter",
                         "description": "Conditions a trace must meet to be judged. Null judges every sampled trace."
+                    },
+                    "scope": {
+                        "$ref": "#/components/schemas/ContinuousEvalScope",
+                        "description": "'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup.",
+                        "default": "trace"
+                    },
+                    "span_filter": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalSpanFilter"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Spans judged when scope is 'span'."
+                    },
+                    "max_spans_per_trace": {
+                        "type": "integer",
+                        "title": "Max Spans Per Trace",
+                        "description": "Most spans judged per trace when scope is 'span'.",
+                        "default": 20
+                    },
+                    "rollup_rule": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalRollupRule"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "How span verdicts decide the trace when scope is 'span'."
                     }
                 },
                 "type": "object",
@@ -21216,6 +21305,25 @@
                 "title": "ContinuousEvalResponse",
                 "description": "The continuous eval response, with its sample rate and trace filter.\n\nExtends the shared model only until `arthur_common` carries these fields on\n`ContinuousEvalResponse` itself, at which point this subclass goes. Named the\nsame so the OpenAPI component, and the generated clients built from it, keep\ntheir name either way."
             },
+            "ContinuousEvalRollupRule": {
+                "type": "string",
+                "enum": [
+                    "any_fail",
+                    "final_attempt"
+                ],
+                "title": "ContinuousEvalRollupRule",
+                "description": "How a span-scope eval's span verdicts decide the trace's rollup."
+            },
+            "ContinuousEvalRunLevel": {
+                "type": "string",
+                "enum": [
+                    "trace",
+                    "span",
+                    "span_rollup"
+                ],
+                "title": "ContinuousEvalRunLevel",
+                "description": "What an agentic_annotations row is a run for. Only continuous eval rows use\nanything but 'trace'; human annotations keep the default."
+            },
             "ContinuousEvalRunStatus": {
                 "type": "string",
                 "enum": [
@@ -21227,6 +21335,54 @@
                     "error"
                 ],
                 "title": "ContinuousEvalRunStatus"
+            },
+            "ContinuousEvalScope": {
+                "type": "string",
+                "enum": [
+                    "trace",
+                    "span"
+                ],
+                "title": "ContinuousEvalScope",
+                "description": "What one continuous eval run judges."
+            },
+            "ContinuousEvalSpanFilter": {
+                "properties": {
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name",
+                        "description": "Only judge spans with this name."
+                    },
+                    "span_kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Kind",
+                        "description": "Only judge spans of this kind, such as TOOL or LLM."
+                    },
+                    "conditions": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalTraceFilterCondition"
+                        },
+                        "type": "array",
+                        "title": "Conditions",
+                        "description": "Conditions the span itself must meet; all must hold. A condition's span_name, if set, must also be the candidate's name."
+                    }
+                },
+                "type": "object",
+                "title": "ContinuousEvalSpanFilter",
+                "description": "Which spans a span-scope continuous eval judges, one run per matching span.\n\nA span matches when it has span_name (if set), span_kind (if set) and meets\nevery condition. Conditions are checked against the candidate span alone, not\nthe rest of the trace; the eval's trace_filter decides the trace first."
             },
             "ContinuousEvalSpendResponse": {
                 "properties": {
@@ -35488,6 +35644,53 @@
                         ],
                         "title": "Trace Filter",
                         "description": "Conditions a trace must meet to be judged; all must hold. Omit to leave it unchanged; send null or an empty list to judge every sampled trace."
+                    },
+                    "scope": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalScope"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "'trace' or 'span'. Omit to leave it unchanged. Switching to 'trace' clears span_filter and rollup_rule; switching to 'span' needs both, here or already on the eval."
+                    },
+                    "span_filter": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalSpanFilter"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Spans to judge in span scope. Omit to leave it unchanged."
+                    },
+                    "max_spans_per_trace": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "maximum": 200.0,
+                                "minimum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Spans Per Trace",
+                        "description": "Most spans judged per trace in span scope. Omit to leave it unchanged."
+                    },
+                    "rollup_rule": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalRollupRule"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "How span verdicts decide the trace in span scope. Omit to leave it unchanged."
                     }
                 },
                 "type": "object",
@@ -38020,6 +38223,23 @@
                         ],
                         "title": "Label",
                         "description": "Category of the result, such as 'wrong_tool', given by a person or by a judge whose instructions define categories."
+                    },
+                    "run_level": {
+                        "$ref": "#/components/schemas/ContinuousEvalRunLevel",
+                        "description": "'trace' for human annotations and trace-scope runs; for a span-scope continuous eval, 'span' (one judged span, span_id set) or 'span_rollup' (the trace's verdict from its span runs).",
+                        "default": "trace"
+                    },
+                    "judged_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Judged Span Count",
+                        "description": "Spans in the trace when it was judged. Fewer than the trace has now means spans arrived after the run."
                     }
                 },
                 "type": "object",

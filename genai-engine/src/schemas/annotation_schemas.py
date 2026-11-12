@@ -14,6 +14,7 @@ from arthur_common.models.response_schemas import (
 )
 from pydantic import Field
 
+from schemas.enums import ContinuousEvalRunLevel
 from schemas.model_compat import AcceptsCommonModel
 
 ANNOTATION_LABEL_MAX_LENGTH = 100
@@ -29,6 +30,21 @@ class AgenticAnnotationResponse(AcceptsCommonModel, CommonAgenticAnnotationRespo
         description=(
             "Category of the result, such as 'wrong_tool', given by a person or by a "
             "judge whose instructions define categories."
+        ),
+    )
+    run_level: ContinuousEvalRunLevel = Field(
+        default=ContinuousEvalRunLevel.TRACE,
+        description=(
+            "'trace' for human annotations and trace-scope runs; for a span-scope "
+            "continuous eval, 'span' (one judged span, span_id set) or 'span_rollup' "
+            "(the trace's verdict from its span runs)."
+        ),
+    )
+    judged_span_count: Optional[int] = Field(
+        default=None,
+        description=(
+            "Spans in the trace when it was judged. Fewer than the trace has now means "
+            "spans arrived after the run."
         ),
     )
 

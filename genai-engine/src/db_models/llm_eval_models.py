@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from arthur_common.models.llm_model_providers import LLMBaseConfigSettings
 from sqlalchemy import (
@@ -203,6 +203,33 @@ class DatabaseContinuousEval(Base):
     # ContinuousEvalTraceFilterCondition dicts. NULL judges every sampled trace.
     trace_filter: Mapped[Optional[List[dict[str, Optional[str]]]]] = mapped_column(
         JSON,
+        default=None,
+        nullable=True,
+    )
+    # 'trace': one run per trace. 'span': one run per span matching span_filter,
+    # plus a per-trace rollup decided by rollup_rule (ContinuousEvalScope).
+    scope: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="trace",
+        server_default="trace",
+    )
+    # ContinuousEvalSpanFilter as a dict; set only when scope is 'span'.
+    span_filter: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON,
+        default=None,
+        nullable=True,
+    )
+    # Most span runs one trace gets; spans past it (in tree order) are not judged.
+    max_spans_per_trace: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=20,
+        server_default="20",
+    )
+    # ContinuousEvalRollupRule; set only when scope is 'span'.
+    rollup_rule: Mapped[Optional[str]] = mapped_column(
+        String,
         default=None,
         nullable=True,
     )

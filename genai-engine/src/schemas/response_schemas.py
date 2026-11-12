@@ -30,9 +30,14 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from schemas.annotation_schemas import AgenticAnnotationResponse
-from schemas.common_schemas import ContinuousEvalTraceFilterCondition
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
 from schemas.enums import (
     ConnectionCheckOutcome,
+    ContinuousEvalRollupRule,
+    ContinuousEvalScope,
     EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -472,6 +477,22 @@ class ContinuousEvalResponse(CommonContinuousEvalResponse):
     trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
         default=None,
         description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
+    )
+    scope: ContinuousEvalScope = Field(
+        default=ContinuousEvalScope.TRACE,
+        description="'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup.",
+    )
+    span_filter: Optional[ContinuousEvalSpanFilter] = Field(
+        default=None,
+        description="Spans judged when scope is 'span'.",
+    )
+    max_spans_per_trace: int = Field(
+        default=20,
+        description="Most spans judged per trace when scope is 'span'.",
+    )
+    rollup_rule: Optional[ContinuousEvalRollupRule] = Field(
+        default=None,
+        description="How span verdicts decide the trace when scope is 'span'.",
     )
 
 

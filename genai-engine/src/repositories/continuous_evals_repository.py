@@ -23,7 +23,15 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from repositories.organizations_repository import lookup_org_id
-from schemas.common_schemas import ContinuousEvalTraceFilterCondition
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
+from schemas.enums import (
+    ContinuousEvalRollupRule,
+    ContinuousEvalRunLevel,
+    ContinuousEvalScope,
+)
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
@@ -32,6 +40,7 @@ from schemas.request_schemas import (
     ContinuousEvalRunResultsListFilterRequest,
     ContinuousEvalTransformVariableMappingRequest,
     UpdateContinuousEvalRequest,
+    validate_scope_fields,
 )
 from schemas.response_schemas import (
     ContinuousEvalRerunResponse,
@@ -67,6 +76,12 @@ def is_trace_sampled(trace_id: str, sample_rate: Optional[float]) -> bool:
         return True
     digest = hashlib.sha256(trace_id.encode()).digest()
     return int.from_bytes(digest[:8], "big") / 2**64 < sample_rate
+
+
+def span_filter_to_db(
+    span_filter: Optional[ContinuousEvalSpanFilter],
+) -> Optional[dict[str, Any]]:
+    return span_filter.model_dump(mode="json") if span_filter else None
 
 
 def trace_filter_to_db(
@@ -198,6 +213,14 @@ class ContinuousEvalsRepository:
             sample_rate=continuous_eval_request.sample_rate,
             daily_cost_cap_usd=continuous_eval_request.daily_cost_cap_usd,
             trace_filter=trace_filter_to_db(continuous_eval_request.trace_filter),
+            scope=continuous_eval_request.scope.value,
+            span_filter=span_filter_to_db(continuous_eval_request.span_filter),
+            max_spans_per_trace=continuous_eval_request.max_spans_per_trace,
+            rollup_rule=(
+                continuous_eval_request.rollup_rule.value
+                if continuous_eval_request.rollup_rule
+                else None
+            ),
         )
 
         try:
@@ -299,6 +322,8 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.trace_filter,
             )
             has_changes = True
+        if self._apply_scope_update(db_continuous_eval, update_continuous_eval):
+            has_changes = True
 
         if not has_changes:
             return ContinuousEval.from_db_model(db_continuous_eval)
@@ -307,6 +332,58 @@ class ContinuousEvalsRepository:
         self.db_session.commit()
 
         return ContinuousEval.from_db_model(db_continuous_eval)
+
+    @staticmethod
+    def _apply_scope_update(
+        db_continuous_eval: DatabaseContinuousEval,
+        update: UpdateContinuousEvalRequest,
+    ) -> bool:
+        """Apply scope, span_filter, max_spans_per_trace and rollup_rule, then check
+        the eval they leave behind: span scope needs a span filter and a rollup
+        rule; trace scope keeps neither. Returns whether anything changed."""
+        fields = update.model_fields_set & {
+            "scope",
+            "span_filter",
+            "max_spans_per_trace",
+            "rollup_rule",
+        }
+        if not fields:
+            return False
+        scope = update.scope or ContinuousEvalScope(db_continuous_eval.scope)
+        span_filter = (
+            update.span_filter
+            if "span_filter" in fields
+            else (
+                ContinuousEvalSpanFilter.model_validate(db_continuous_eval.span_filter)
+                if db_continuous_eval.span_filter
+                else None
+            )
+        )
+        rollup_rule = (
+            update.rollup_rule
+            if "rollup_rule" in fields
+            else (
+                ContinuousEvalRollupRule(db_continuous_eval.rollup_rule)
+                if db_continuous_eval.rollup_rule
+                else None
+            )
+        )
+        if scope == ContinuousEvalScope.TRACE and "scope" in fields:
+            # Switching back to trace scope drops the span settings with it.
+            if "span_filter" not in fields:
+                span_filter = None
+            if "rollup_rule" not in fields:
+                rollup_rule = None
+        try:
+            validate_scope_fields(scope, span_filter, rollup_rule)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        db_continuous_eval.scope = scope.value
+        db_continuous_eval.span_filter = span_filter_to_db(span_filter)
+        db_continuous_eval.rollup_rule = rollup_rule.value if rollup_rule else None
+        if update.max_spans_per_trace is not None:
+            db_continuous_eval.max_spans_per_trace = update.max_spans_per_trace
+        return True
 
     def get_continuous_eval_by_id(
         self,
@@ -474,6 +551,13 @@ class ContinuousEvalsRepository:
                 base_query = base_query.filter(
                     DatabaseContinuousEval.enabled
                     == filter_request.continuous_eval_enabled,
+                )
+
+            if filter_request.run_levels:
+                base_query = base_query.filter(
+                    DatabaseAgenticAnnotation.run_level.in_(
+                        [level.value for level in filter_request.run_levels],
+                    ),
                 )
 
         total_count = base_query.count()
@@ -775,21 +859,23 @@ class ContinuousEvalsRepository:
         # Use func.date() for database-agnostic date truncation
         date_col = func.date(DatabaseAgenticAnnotation.created_at)
 
-        # Conditional counts using CASE WHEN
+        # Counts are per trace verdict: a span-scope eval's span runs are left out
+        # (their rollup counts once), but their judge costs are what it spent.
+        verdict = DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN
         passed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 1, 1)),
+            case((verdict & (DatabaseAgenticAnnotation.annotation_score == 1), 1)),
         )
         failed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 0, 1)),
+            case((verdict & (DatabaseAgenticAnnotation.annotation_score == 0), 1)),
         )
         error_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "error", 1)),
+            case((verdict & (DatabaseAgenticAnnotation.run_status == "error"), 1)),
         )
         skipped_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "skipped", 1)),
+            case((verdict & (DatabaseAgenticAnnotation.run_status == "skipped"), 1)),
         )
         total_cost = func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0)
-        total_count = func.count(DatabaseAgenticAnnotation.id)
+        total_count = func.count(case((verdict, 1)))
 
         # Build query with JOIN to continuous_evals for task_id filtering
         # Note: This will only include annotations with a continuous_eval_id (not human annotations)
@@ -851,6 +937,7 @@ class ContinuousEvalsRepository:
                 DatabaseAgenticAnnotation.annotation_score,
                 DatabaseAgenticAnnotation.run_status,
                 DatabaseAgenticAnnotation.cost,
+                DatabaseAgenticAnnotation.run_level,
             )
             .join(
                 DatabaseContinuousEval,
@@ -886,12 +973,15 @@ class ContinuousEvalsRepository:
         for run in runs:
             day = run.created_at.date().isoformat()
             t = totals[(day, groups.get(run.trace_id) if run.trace_id else None)]
+            t["cost"] += run.cost or 0.0
+            # As in the ungrouped stats: span runs cost, their rollup counts.
+            if run.run_level == ContinuousEvalRunLevel.SPAN.value:
+                continue
             t["total"] += 1
             t["passed"] += run.annotation_score == 1
             t["failed"] += run.annotation_score == 0
             t["error"] += run.run_status == "error"
             t["skipped"] += run.run_status == "skipped"
-            t["cost"] += run.cost or 0.0
 
         stats = [
             DailyAgenticAnnotationStats(

@@ -122,6 +122,39 @@ class ContinuousEvalTraceFilterCondition(BaseModel):
                 raise ValueError("value must be null when operator is 'exists'")
         elif self.value is None:
             raise ValueError(
-                f"value is required when operator is '{self.operator.value}'"
+                f"value is required when operator is '{self.operator.value}'",
+            )
+        return self
+
+
+class ContinuousEvalSpanFilter(BaseModel):
+    """Which spans a span-scope continuous eval judges, one run per matching span.
+
+    A span matches when it has span_name (if set), span_kind (if set) and meets
+    every condition. Conditions are checked against the candidate span alone, not
+    the rest of the trace; the eval's trace_filter decides the trace first.
+    """
+
+    span_name: Optional[str] = Field(
+        default=None,
+        description="Only judge spans with this name.",
+    )
+    span_kind: Optional[str] = Field(
+        default=None,
+        description="Only judge spans of this kind, such as TOOL or LLM.",
+    )
+    conditions: List[ContinuousEvalTraceFilterCondition] = Field(
+        default_factory=list,
+        description=(
+            "Conditions the span itself must meet; all must hold. A condition's "
+            "span_name, if set, must also be the candidate's name."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_selector(self) -> "ContinuousEvalSpanFilter":
+        if not self.span_name and not self.span_kind and not self.conditions:
+            raise ValueError(
+                "A span filter needs a span_name, a span_kind or at least one condition.",
             )
         return self

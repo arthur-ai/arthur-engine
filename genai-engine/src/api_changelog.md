@@ -3,6 +3,45 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/11/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property `annotations/items/judged_span_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property `annotations/items/run_level` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `max_spans_per_trace` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `rollup_rule` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `scope` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `span_filter` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property `max_spans_per_trace`
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property `rollup_rule`
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property `scope`
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property `span_filter`
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `max_spans_per_trace` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `rollup_rule` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `scope` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `span_filter` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `evals/items/max_spans_per_trace` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `evals/items/rollup_rule` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `evals/items/scope` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `evals/items/span_filter` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property `max_spans_per_trace`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property `rollup_rule`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property `scope`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property `span_filter`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `max_spans_per_trace` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `rollup_rule` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `scope` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property `span_filter` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional `query` request parameter `run_levels`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property `annotations/items/judged_span_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property `annotations/items/run_level` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/annotations/anyOf[subschema #1]/items/judged_span_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/annotations/anyOf[subschema #1]/items/run_level` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property `judged_span_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property `run_level` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `annotations/items/judged_span_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `annotations/items/run_level` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `judged_span_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property `run_level` to the response with the `200` status
+
+# 11/11/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  the response property `transforms/items/definition/variables/items/span_name` became optional for the status `200`
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  response property `transforms/items/definition/variables/items/span_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  the response property `definition/variables/items/span_name` became optional for the status `200`
