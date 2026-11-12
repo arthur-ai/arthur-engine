@@ -11,17 +11,15 @@ from them by the eval's rollup_rule. The rollup itself never calls the judge.
 
 import os
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol, Sequence
+from typing import Optional, Sequence
 
 from arthur_common.models.enums import ContinuousEvalRunStatus
 
-from schemas.common_schemas import ContinuousEvalSpanFilter
 from schemas.enums import (
     ContinuousEvalRollupRule,
     ContinuousEvalRunLevel,
     ContinuousEvalScope,
 )
-from utils.transform_executor import FilterableSpan, span_meets_condition
 
 
 def _seconds_from_env(name: str, default: int) -> int:
@@ -65,34 +63,6 @@ def cap_checked_before_each_span_run() -> bool:
     return SPAN_SCOPE_CAP_CHECK_AT == "span_run"
 
 
-class SelectableSpan(FilterableSpan, Protocol):
-    @property
-    def span_id(self) -> str: ...
-
-    @property
-    def span_kind(self) -> Optional[str]: ...
-
-
-def span_matches_filter(
-    span: SelectableSpan,
-    span_filter: ContinuousEvalSpanFilter,
-) -> bool:
-    """Name, kind and every condition, checked against this span alone."""
-    if span_filter.span_name is not None and span.span_name != span_filter.span_name:
-        return False
-    if span_filter.span_kind is not None and span.span_kind != span_filter.span_kind:
-        return False
-    return all(span_meets_condition(span, c) for c in span_filter.conditions)
-
-
-def select_spans(
-    ordered_spans: Sequence[Any],
-    span_filter: ContinuousEvalSpanFilter,
-) -> list[Any]:
-    """The spans to judge, in the given (tree) order."""
-    return [span for span in ordered_spans if span_matches_filter(span, span_filter)]
-
-
 @dataclass(frozen=True)
 class SpanVerdict:
     """A finished or unfinished span run, as the rollup sees it."""
@@ -122,9 +92,16 @@ def _deciding_runs(
     if rule == ContinuousEvalRollupRule.ANY_FAIL:
         return list(verdicts)
     # final_attempt: the last run (tree order) of each span name under one parent.
+    # A skipped run judged nothing, so it cannot overrule an earlier verdict: the
+    # last run that was judged (or errored) decides, and a group that was skipped
+    # throughout is decided by its last run.
     last: dict[tuple[Optional[str], Optional[str]], SpanVerdict] = {}
     for verdict in verdicts:
-        last[(verdict.parent_span_id, verdict.span_name)] = verdict
+        key = (verdict.parent_span_id, verdict.span_name)
+        if verdict.status != ContinuousEvalRunStatus.SKIPPED or (
+            key not in last or last[key].status == ContinuousEvalRunStatus.SKIPPED
+        ):
+            last[key] = verdict
     return [v for v in verdicts if last[(v.parent_span_id, v.span_name)] is v]
 
 

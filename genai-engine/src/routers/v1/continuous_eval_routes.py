@@ -27,10 +27,15 @@ from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.annotation_schemas import ListAgenticAnnotationsResponse
-from schemas.common_schemas import ContinuousEvalTraceFilterCondition
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
+    DEFAULT_MAX_SPANS_PER_TRACE,
+    MAX_SPANS_PER_TRACE_LIMIT,
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
     ContinuousEvalRunResultsListFilterRequest,
@@ -740,6 +745,24 @@ def estimate_continuous_eval_spend(
             ),
         ),
     ] = None,
+    span_filter: Annotated[
+        Optional[str],
+        Query(
+            description=(
+                "For a span-scope eval: its span filter as JSON, the same shape as "
+                "span_filter on create. Each span is one judge call, so the estimate "
+                "is multiplied by the spans it would judge per recent trace."
+            ),
+        ),
+    ] = None,
+    max_spans_per_trace: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=MAX_SPANS_PER_TRACE_LIMIT,
+            description="For a span-scope eval: most spans judged per trace.",
+        ),
+    ] = DEFAULT_MAX_SPANS_PER_TRACE,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -750,6 +773,14 @@ def estimate_continuous_eval_spend(
         )
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=f"Invalid trace_filter: {e}")
+    try:
+        parsed_span_filter = (
+            ContinuousEvalSpanFilter.model_validate_json(span_filter)
+            if span_filter
+            else None
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid span_filter: {e}")
     try:
         # 404 for an evaluator the task doesn't have
         llm_eval = LLMEvalsRepository(db_session).get_llm_item(
@@ -765,6 +796,8 @@ def estimate_continuous_eval_spend(
             llm_eval.version,
             sample_rate,
             trace_filter=conditions,
+            span_filter=parsed_span_filter,
+            max_spans_per_trace=max_spans_per_trace,
         )
     except HTTPException:
         raise

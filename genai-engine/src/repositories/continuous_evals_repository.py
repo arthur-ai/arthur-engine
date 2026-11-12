@@ -61,6 +61,15 @@ logger = logging.getLogger(__name__)
 # runs one request may group; narrow the time range past this.
 GROUPED_ANALYTICS_MAX_RUNS = 20_000
 _SPAN_READ_CHUNK = 500
+_RERUNNABLE_STATUSES = (
+    ContinuousEvalRunStatus.FAILED.value,
+    ContinuousEvalRunStatus.ERROR.value,
+    ContinuousEvalRunStatus.SKIPPED.value,
+)
+_UNFINISHED_STATUSES = (
+    ContinuousEvalRunStatus.PENDING.value,
+    ContinuousEvalRunStatus.RUNNING.value,
+)
 
 
 def _pass_rate(passed: int, failed: int) -> Optional[float]:
@@ -727,6 +736,70 @@ class ContinuousEvalsRepository:
                     commit=commit,
                 )
 
+    def _span_runs_of(self, run: DatabaseAgenticAnnotation) -> Query[Any]:
+        """The span runs of run's eval, trace and test run."""
+        return self._runs_like(run, ContinuousEvalRunLevel.SPAN)
+
+    def _runs_like(
+        self,
+        run: DatabaseAgenticAnnotation,
+        run_level: ContinuousEvalRunLevel,
+    ) -> Query[Any]:
+        test_run_match = (
+            DatabaseAgenticAnnotation.test_run_id.is_(None)
+            if run.test_run_id is None
+            else DatabaseAgenticAnnotation.test_run_id == run.test_run_id
+        )
+        return self.db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.continuous_eval_id == run.continuous_eval_id,
+            DatabaseAgenticAnnotation.trace_id == run.trace_id,
+            DatabaseAgenticAnnotation.run_level == run_level.value,
+            test_run_match,
+        )
+
+    def _reopen_rollups(self, span_run: DatabaseAgenticAnnotation) -> None:
+        """A rerun span run makes its trace's finished rollup undecided again; it
+        is decided anew when the span run finishes."""
+        for rollup in self._runs_like(span_run, ContinuousEvalRunLevel.SPAN_ROLLUP):
+            if rollup.run_status in _UNFINISHED_STATUSES:
+                continue
+            self._uncount_test_run_result(rollup)
+            rollup.run_status = ContinuousEvalRunStatus.RUNNING.value
+            rollup.annotation_score = None
+            rollup.label = None
+            rollup.annotation_description = (
+                f"Re-deciding after span {span_run.span_id} was rerun"
+            )
+            rollup.updated_at = datetime.now()
+
+    def _uncount_test_run_result(self, run: DatabaseAgenticAnnotation) -> None:
+        """Take a finished run's result back out of its test run's counters."""
+        if run.test_run_id is None:
+            return
+        old_status = run.run_status
+        update_values: dict[Any, Any] = {
+            "completed_count": DatabaseContinuousEvalTestRun.completed_count - 1,
+            "status": "running",
+            "updated_at": datetime.now(),
+        }
+        if old_status == ContinuousEvalRunStatus.PASSED.value:
+            update_values["passed_count"] = (
+                DatabaseContinuousEvalTestRun.passed_count - 1
+            )
+        elif old_status == ContinuousEvalRunStatus.FAILED.value:
+            update_values["failed_count"] = (
+                DatabaseContinuousEvalTestRun.failed_count - 1
+            )
+        elif old_status == ContinuousEvalRunStatus.ERROR.value:
+            update_values["error_count"] = DatabaseContinuousEvalTestRun.error_count - 1
+        elif old_status == ContinuousEvalRunStatus.SKIPPED.value:
+            update_values["skipped_count"] = (
+                DatabaseContinuousEvalTestRun.skipped_count - 1
+            )
+        self.db_session.query(DatabaseContinuousEvalTestRun).filter(
+            DatabaseContinuousEvalTestRun.id == run.test_run_id,
+        ).update(update_values, synchronize_session=False)
+
     def rerun_continuous_eval_by_annotation_id(
         self,
         run_id: uuid.UUID,
@@ -750,11 +823,7 @@ class ContinuousEvalsRepository:
         if annotation.annotation_type != AgenticAnnotationType.CONTINUOUS_EVAL.value:
             raise HTTPException(status_code=400, detail="Run is not a continuous eval.")
 
-        if annotation.run_status not in [
-            ContinuousEvalRunStatus.FAILED.value,
-            ContinuousEvalRunStatus.ERROR.value,
-            ContinuousEvalRunStatus.SKIPPED.value,
-        ]:
+        if annotation.run_status not in _RERUNNABLE_STATUSES:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot rerun a non-failed continuous eval.",
@@ -780,35 +849,28 @@ class ContinuousEvalsRepository:
                 detail="Continuous eval queue service is not available.",
             )
 
-        # If this annotation belongs to a test run, decrement the old status counter
-        # and completed count so re-execution doesn't corrupt the totals
-        if annotation.test_run_id is not None:
-            old_status = annotation.run_status
-            update_values: dict[Any, Any] = {
-                "completed_count": DatabaseContinuousEvalTestRun.completed_count - 1,
-                "status": "running",
-                "updated_at": datetime.now(),
-            }
-            if old_status == ContinuousEvalRunStatus.PASSED.value:
-                update_values["passed_count"] = (
-                    DatabaseContinuousEvalTestRun.passed_count - 1
-                )
-            elif old_status == ContinuousEvalRunStatus.FAILED.value:
-                update_values["failed_count"] = (
-                    DatabaseContinuousEvalTestRun.failed_count - 1
-                )
-            elif old_status == ContinuousEvalRunStatus.ERROR.value:
-                update_values["error_count"] = (
-                    DatabaseContinuousEvalTestRun.error_count - 1
-                )
-            elif old_status == ContinuousEvalRunStatus.SKIPPED.value:
-                update_values["skipped_count"] = (
-                    DatabaseContinuousEvalTestRun.skipped_count - 1
-                )
-
-            self.db_session.query(DatabaseContinuousEvalTestRun).filter(
-                DatabaseContinuousEvalTestRun.id == annotation.test_run_id,
-            ).update(update_values, synchronize_session=False)
+        # A test run counts traces: through the run itself, or through the rollup
+        # of a span run. Undo the old count so re-execution doesn't corrupt it.
+        if annotation.run_level == ContinuousEvalRunLevel.SPAN.value:
+            self._reopen_rollups(annotation)
+        else:
+            self._uncount_test_run_result(annotation)
+        if annotation.run_level == ContinuousEvalRunLevel.SPAN_ROLLUP.value:
+            # Rerunning a trace's rollup re-judges the span runs that did not pass;
+            # the fan-out reuses the ones that did.
+            self._span_runs_of(annotation).filter(
+                DatabaseAgenticAnnotation.run_status.in_(_RERUNNABLE_STATUSES),
+            ).update(
+                {
+                    "run_status": ContinuousEvalRunStatus.PENDING.value,
+                    "annotation_score": None,
+                    "annotation_description": None,
+                    "label": None,
+                    "input_variables": None,
+                    "updated_at": datetime.now(),
+                },
+                synchronize_session=False,
+            )
 
         # Reset annotation to PENDING status
         annotation.run_status = ContinuousEvalRunStatus.PENDING.value

@@ -44,8 +44,8 @@ from services.continuous_eval.span_scope import (
     SpanVerdict,
     cap_checked_before_each_span_run,
     decide_rollup,
-    select_spans,
 )
+from utils.span_selection import select_spans
 from utils.span_tree import tree_order
 from utils.stored_value import cap_stored_value
 from utils.trace import validate_span_version
@@ -699,6 +699,23 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
         # The cap is checked once per trace, here: see SPAN_SCOPE_CAP_CHECK_AT.
         if self._skip_if_cap_reached(db_session, job, rollup, db_continuous_eval):
+            # Span runs a rerun reopened are not judged either.
+            self._span_run_query(
+                db_session,
+                rollup,
+                ContinuousEvalRunLevel.SPAN,
+            ).filter(
+                DatabaseAgenticAnnotation.run_status
+                == ContinuousEvalRunStatus.PENDING.value,
+            ).update(
+                {
+                    "run_status": ContinuousEvalRunStatus.SKIPPED.value,
+                    "annotation_description": "Skipped with its trace: daily spend cap reached",
+                    "updated_at": datetime.now(),
+                },
+                synchronize_session=False,
+            )
+            db_session.commit()
             return
 
         continuous_eval = ContinuousEval.from_db_model(db_continuous_eval)

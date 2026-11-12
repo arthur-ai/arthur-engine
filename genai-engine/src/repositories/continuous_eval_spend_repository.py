@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, List, Optional
 from uuid import UUID
@@ -9,14 +10,23 @@ from sqlalchemy.orm import Session
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
-from schemas.common_schemas import ContinuousEvalTraceFilterCondition
-from schemas.enums import SpendEstimateUnavailableReason
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
+from schemas.enums import (
+    ContinuousEvalRunLevel,
+    ContinuousEvalScope,
+    SpendEstimateUnavailableReason,
+)
 from schemas.internal_schemas import ContinuousEval
 from schemas.response_schemas import (
     ContinuousEvalDailySpendEstimate,
     ContinuousEvalSpendResponse,
 )
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
+from utils.span_selection import select_spans
+from utils.span_tree import tree_order
 from utils.transform_executor import spans_match_filter
 
 SPEND_ESTIMATE_WINDOW_DAYS = 7
@@ -42,6 +52,17 @@ _FINISHED_RUN_STATUSES = (
 )
 # continuous_evals.eval_type of evals that call an LLM judge ("ml_eval" otherwise).
 _LLM_EVAL_TYPE = "llm_eval"
+
+
+@dataclass
+class _Priced:
+    """The cost columns _build_estimate reads, when they come from two queries."""
+
+    run_count: int
+    average_run_cost: Optional[float]
+    unpriced_run_count: int
+    judged_run_count: int
+    finished_run_count: int
 
 
 class ContinuousEvalSpendRepository:
@@ -73,6 +94,9 @@ class ContinuousEvalSpendRepository:
             .filter(
                 DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval.id,
                 *self._live_runs_since(window_start),
+                # A rollup summarises span runs; it is not a run of its own.
+                DatabaseAgenticAnnotation.run_level
+                != ContinuousEvalRunLevel.SPAN_ROLLUP.value,
             )
             .one()
         )
@@ -80,8 +104,26 @@ class ContinuousEvalSpendRepository:
         # mixes models for the whole window (measured: 29-37x too high for days
         # after switching GPT-5.5 to Haiku).
         priced_since = max(
-            window_start, continuous_eval.judge_changed_at or window_start
+            window_start,
+            continuous_eval.judge_changed_at or window_start,
         )
+        if continuous_eval.scope == ContinuousEvalScope.SPAN:
+            spent_today = self.spent_today(continuous_eval.id, now)
+            cap = continuous_eval.daily_cost_cap_usd
+            return ContinuousEvalSpendResponse(
+                continuous_eval_id=continuous_eval.id,
+                last_24h_run_count=row.day_run_count,
+                last_24h_cost=float(row.day_cost),
+                spent_today=spent_today,
+                daily_cost_cap_usd=cap,
+                cap_reached=cap is not None and spent_today >= cap,
+                estimate=self._span_scope_estimate(
+                    continuous_eval,
+                    priced_since=priced_since,
+                    window_start=window_start,
+                    now=now,
+                ),
+            )
         priced = (
             self.db_session.query(*self._average_run_cost_columns())
             .join(
@@ -153,11 +195,15 @@ class ContinuousEvalSpendRepository:
         sample_rate: Optional[float],
         now: Optional[datetime] = None,
         trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = None,
+        span_filter: Optional[ContinuousEvalSpanFilter] = None,
+        max_spans_per_trace: int = 20,
     ) -> ContinuousEvalDailySpendEstimate:
         """Estimate for a continuous eval not created yet, priced from the live
         runs of the task's existing continuous evals that use the same evaluator
         version (each version can use a different judge model). With a trace
-        filter, also scaled by the share of recent traces it matches."""
+        filter, also scaled by the share of recent traces it matches. With a span
+        filter (a span-scope eval), each run is one span's judge call, so the
+        estimate is multiplied by the spans it would judge per recent trace."""
         now = now or datetime.now()
         window_start = now - timedelta(days=SPEND_ESTIMATE_WINDOW_DAYS)
 
@@ -192,6 +238,29 @@ class ContinuousEvalSpendRepository:
             window_start=window_start,
             now=now,
         )
+        if span_filter is not None:
+            # Judged spans per trace already count 0 for traces with no matching
+            # span or left out by the trace filter, so they replace judged_share.
+            spans_per_trace, checked, share = self._span_matches_per_trace(
+                task_id,
+                window_start,
+                now,
+                span_filter,
+                max_spans_per_trace,
+                trace_filter,
+            )
+            estimate.spans_per_trace = spans_per_trace
+            estimate.filter_traces_checked = checked
+            estimate.filter_match_share = share
+            estimate.judged_share = 1.0
+            if estimate.estimated_daily_cost is not None:
+                estimate.estimated_daily_cost = (
+                    estimate.traces_per_day
+                    * estimate.sample_rate
+                    * spans_per_trace
+                    * (estimate.average_run_cost or 0.0)
+                )
+            return estimate
         if not trace_filter:
             return estimate
 
@@ -217,6 +286,22 @@ class ContinuousEvalSpendRepository:
     ) -> tuple[int, int]:
         """How many of the task's latest traces in the window match the filter,
         out of how many checked (at most FILTER_SHARE_MAX_TRACES)."""
+        spans_by_trace = self._latest_trace_spans(task_id, window_start, now)
+        matched = sum(
+            1
+            for spans in spans_by_trace.values()
+            if spans_match_filter(spans, trace_filter)
+        )
+        return matched, len(spans_by_trace)
+
+    def _latest_trace_spans(
+        self,
+        task_id: str,
+        window_start: datetime,
+        now: datetime,
+    ) -> dict[str, list[DatabaseSpan]]:
+        """Spans of the task's latest traces in the window, at most
+        FILTER_SHARE_MAX_TRACES of them, by trace id."""
         trace_ids = [
             trace_id
             for (trace_id,) in self.db_session.query(DatabaseTraceMetadata.trace_id)
@@ -224,23 +309,16 @@ class ContinuousEvalSpendRepository:
             .order_by(DatabaseTraceMetadata.start_time.desc())
             .limit(FILTER_SHARE_MAX_TRACES)
         ]
-        if not trace_ids:
-            return 0, 0
-
         spans_by_trace: dict[str, list[DatabaseSpan]] = {
             trace_id: [] for trace_id in trace_ids
         }
+        if not trace_ids:
+            return spans_by_trace
         for span in self.db_session.query(DatabaseSpan).filter(
             DatabaseSpan.trace_id.in_(trace_ids),
         ):
             spans_by_trace[span.trace_id].append(span)
-
-        matched = sum(
-            1
-            for spans in spans_by_trace.values()
-            if spans_match_filter(spans, trace_filter)
-        )
-        return matched, len(trace_ids)
+        return spans_by_trace
 
     @staticmethod
     def _task_traces_in_window(
@@ -270,14 +348,133 @@ class ContinuousEvalSpendRepository:
             DatabaseAgenticAnnotation.created_at >= window_start,
         ]
 
+    def _span_scope_estimate(
+        self,
+        continuous_eval: ContinuousEval,
+        priced_since: datetime,
+        window_start: datetime,
+        now: datetime,
+    ) -> ContinuousEvalDailySpendEstimate:
+        """traces/day x sample rate x share of sampled traces that reached the judge
+        x judged spans per such trace x average cost of a span run. The shares
+        come from the rollups (one per trace), the cost from the span runs."""
+        since = [
+            DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval.id,
+            *self._live_runs_since(priced_since),
+        ]
+        span_runs = (
+            self.db_session.query(*self._average_run_cost_columns())
+            .filter(
+                *since,
+                DatabaseAgenticAnnotation.run_level
+                == ContinuousEvalRunLevel.SPAN.value,
+            )
+            .one()
+        )
+        rollups = (
+            self.db_session.query(
+                func.count(
+                    case(
+                        (
+                            DatabaseAgenticAnnotation.run_status.in_(
+                                _LLM_CALLING_RUN_STATUSES,
+                            ),
+                            1,
+                        ),
+                    ),
+                ).label("judged"),
+                func.count(
+                    case(
+                        (
+                            DatabaseAgenticAnnotation.run_status.in_(
+                                _FINISHED_RUN_STATUSES,
+                            ),
+                            1,
+                        ),
+                    ),
+                ).label("finished"),
+            )
+            .filter(
+                *since,
+                DatabaseAgenticAnnotation.run_level
+                == ContinuousEvalRunLevel.SPAN_ROLLUP.value,
+            )
+            .one()
+        )
+        priced = _Priced(
+            run_count=span_runs.run_count,
+            average_run_cost=span_runs.average_run_cost,
+            unpriced_run_count=span_runs.unpriced_run_count,
+            judged_run_count=rollups.judged,
+            finished_run_count=rollups.finished,
+        )
+        spans_per_trace = (
+            span_runs.judged_run_count / rollups.judged if rollups.judged else None
+        )
+        estimate = self._build_estimate(
+            task_id=continuous_eval.task_id,
+            sample_rate=continuous_eval.sample_rate,
+            priced=priced,
+            priced_since=priced_since if priced_since > window_start else None,
+            window_start=window_start,
+            now=now,
+        )
+        estimate.spans_per_trace = spans_per_trace
+        if estimate.estimated_daily_cost is not None:
+            if spans_per_trace is None:
+                estimate.estimated_daily_cost = None
+                estimate.unavailable_reason = SpendEstimateUnavailableReason.NO_RUNS
+            else:
+                estimate.estimated_daily_cost *= spans_per_trace
+        return estimate
+
+    def _span_matches_per_trace(
+        self,
+        task_id: str,
+        window_start: datetime,
+        now: datetime,
+        span_filter: ContinuousEvalSpanFilter,
+        max_spans_per_trace: int,
+        trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+    ) -> tuple[float, int, Optional[float]]:
+        """Over the task's latest traces (at most FILTER_SHARE_MAX_TRACES): the
+        average number of spans a span-scope eval would judge per trace, how many
+        traces were checked, and the share matching the trace filter (if any)."""
+        spans_by_trace = self._latest_trace_spans(task_id, window_start, now)
+        if not spans_by_trace:
+            return 0.0, 0, None
+        judged = 0
+        matched_traces = 0
+        for spans in spans_by_trace.values():
+            if trace_filter and not spans_match_filter(spans, trace_filter):
+                continue
+            matched_traces += 1
+            judged += min(
+                len(select_spans(tree_order(spans), span_filter)),
+                max_spans_per_trace,
+            )
+        checked = len(spans_by_trace)
+        return (
+            judged / checked,
+            checked,
+            matched_traces / checked if trace_filter else None,
+        )
+
     @staticmethod
     def _average_run_cost_columns() -> list[Any]:
         cost = DatabaseAgenticAnnotation.cost
-        called_llm = DatabaseAgenticAnnotation.run_status.in_(
+        # A rollup has a pass/fail status but never calls the judge.
+        judge_call = (
+            DatabaseAgenticAnnotation.run_level
+            != ContinuousEvalRunLevel.SPAN_ROLLUP.value
+        )
+        called_llm = judge_call & DatabaseAgenticAnnotation.run_status.in_(
             _LLM_CALLING_RUN_STATUSES,
         )
         priced = called_llm & cost.is_not(None)
-        finished = DatabaseAgenticAnnotation.run_status.in_(_FINISHED_RUN_STATUSES)
+        finished = judge_call & DatabaseAgenticAnnotation.run_status.in_(
+            _FINISHED_RUN_STATUSES,
+        )
         return [
             func.count(case((priced, 1))).label("run_count"),
             # A run without a cost (a model litellm has no price for) would pull the

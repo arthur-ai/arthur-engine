@@ -8,11 +8,8 @@ from arthur_common.models.enums import ContinuousEvalRunStatus
 
 from schemas.common_schemas import ContinuousEvalSpanFilter
 from schemas.enums import ContinuousEvalRollupRule
-from services.continuous_eval.span_scope import (
-    SpanVerdict,
-    decide_rollup,
-    select_spans,
-)
+from services.continuous_eval.span_scope import SpanVerdict, decide_rollup
+from utils.span_selection import select_spans
 
 PASSED = ContinuousEvalRunStatus.PASSED
 FAILED = ContinuousEvalRunStatus.FAILED
@@ -65,6 +62,15 @@ def test_final_attempt_still_fails_when_the_last_attempt_fails():
     ]
     decision = decide_rollup(verdicts, FINAL_ATTEMPT)
     assert (decision.status, decision.label) == (FAILED, "wrong_args")
+
+
+@pytest.mark.unit_tests
+def test_a_skipped_retry_does_not_overrule_a_failure():
+    """The retry was never judged (cap reached, variable missing): the failure
+    that was judged still decides."""
+    verdicts = [_v("call-1", FAILED, label="tool_error"), _v("call-2", SKIPPED)]
+    decision = decide_rollup(verdicts, FINAL_ATTEMPT)
+    assert (decision.status, decision.label) == (FAILED, "tool_error")
 
 
 @pytest.mark.unit_tests

@@ -16693,6 +16693,38 @@
                             "title": "Trace Filter"
                         },
                         "description": "The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it."
+                    },
+                    {
+                        "name": "span_filter",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "For a span-scope eval: its span filter as JSON, the same shape as span_filter on create. Each span is one judge call, so the estimate is multiplied by the spans it would judge per recent trace.",
+                            "title": "Span Filter"
+                        },
+                        "description": "For a span-scope eval: its span filter as JSON, the same shape as span_filter on create. Each span is one judge call, so the estimate is multiplied by the spans it would judge per recent trace."
+                    },
+                    {
+                        "name": "max_spans_per_trace",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 200,
+                            "minimum": 1,
+                            "description": "For a span-scope eval: most spans judged per trace.",
+                            "default": 20,
+                            "title": "Max Spans Per Trace"
+                        },
+                        "description": "For a span-scope eval: most spans judged per trace."
                     }
                 ],
                 "responses": {
@@ -21082,6 +21114,18 @@
                         ],
                         "title": "Filter Traces Checked",
                         "description": "How many recent traces filter_match_share was measured on."
+                    },
+                    "spans_per_trace": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Spans Per Trace",
+                        "description": "Span scope only: judge calls per sampled trace, one per judged span. For an existing eval, its judged span runs per judged trace; for a new one, the average number of spans in the task's recent traces that match the span filter (capped at max_spans_per_trace), with traces the trace filter leaves out counted as 0. The estimate is multiplied by it."
                     }
                 },
                 "type": "object",

@@ -1177,6 +1177,16 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
         default=None,
         description="How many recent traces filter_match_share was measured on.",
     )
+    spans_per_trace: Optional[float] = Field(
+        default=None,
+        description=(
+            "Span scope only: judge calls per sampled trace, one per judged span. For "
+            "an existing eval, its judged span runs per judged trace; for a new one, "
+            "the average number of spans in the task's recent traces that match the "
+            "span filter (capped at max_spans_per_trace), with traces the trace filter "
+            "leaves out counted as 0. The estimate is multiplied by it."
+        ),
+    )
 
 
 class ContinuousEvalSpendResponse(BaseModel):
