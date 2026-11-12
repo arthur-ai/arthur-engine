@@ -39,7 +39,8 @@ export function ChatbotDrawer({ taskId, open, onClose }: ChatbotDrawerProps) {
             left: SIDEBAR_CLEARANCE_PX,
             width: 380,
             height: 560,
-            zIndex: 1200,
+            // Above page content, below modal drawers and dialogs: their focus trap would pull focus out of the panel.
+            zIndex: (theme) => theme.zIndex.fab,
             display: "flex",
             flexDirection: "column",
             borderRadius: 3,
