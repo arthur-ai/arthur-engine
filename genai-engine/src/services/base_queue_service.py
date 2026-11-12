@@ -1,3 +1,5 @@
+import heapq
+import itertools
 import logging
 import threading
 import time
@@ -42,6 +44,13 @@ class BaseQueueService(ABC, Generic[JobType]):
         self.override_execution_delay = override_execution_delay
         self.active_jobs_lock = threading.Lock()
         self.active_jobs: set[Hashable] = set()
+        # Delayed jobs wait here, not in a pool thread: one scheduler thread hands
+        # each to the pool when it is due, so a burst of delayed jobs (or an idle
+        # window re-queue) never ties up the workers that run due jobs.
+        self._delayed: list[tuple[float, int, JobType, Future[Any]]] = []
+        self._delayed_cv = threading.Condition()
+        self._delayed_seq = itertools.count()
+        self.scheduler_thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
         """Start executor and background thread."""
@@ -51,6 +60,13 @@ class BaseQueueService(ABC, Generic[JobType]):
 
         # Create executor for job execution
         self.executor = ThreadPoolExecutor(max_workers=self.num_workers)
+
+        self.scheduler_thread = threading.Thread(
+            target=self._scheduler_loop,
+            name=f"{self.background_thread_name}-scheduler",
+            daemon=True,
+        )
+        self.scheduler_thread.start()
 
         # Start background thread that checks for stale annotations
         self.background_thread = threading.Thread(
@@ -67,6 +83,17 @@ class BaseQueueService(ABC, Generic[JobType]):
         logger.info(f"Stopping {self.service_name}")
         self.shutdown_event.set()
 
+        with self._delayed_cv:
+            self._delayed_cv.notify_all()
+            dropped = self._delayed
+            self._delayed = []
+        for _, _, job, future in dropped:
+            future.cancel()
+            with self.active_jobs_lock:
+                self.active_jobs.discard(self._get_job_key(job))
+        if self.scheduler_thread:
+            self.scheduler_thread.join(timeout=timeout)
+
         if self.executor:
             self.executor.shutdown(wait=True, cancel_futures=True)
 
@@ -82,19 +109,63 @@ class BaseQueueService(ABC, Generic[JobType]):
         """Get a hashable key for a job to prevent duplicate enqueueing."""
         raise NotImplementedError
 
-    def _submit_job(self, job: JobType, wait_time: float) -> Any:
-        """Submit a job to the executor after the wait time and return its result."""
+    def _run_due_job(self, job: JobType) -> Any:
+        """Run a job that is due, on the pool thread executing this call."""
         if self.shutdown_event.is_set():
             logger.warning(f"Skipping job due to shutdown")
+            with self.active_jobs_lock:
+                self.active_jobs.discard(self._get_job_key(job))
             return None
-
-        if self.shutdown_event.wait(wait_time):
-            return None
-
-        # Run the job directly on this thread — it is already executing inside the
-        # executor, so re-submitting to the same pool would cause a deadlock when
-        # all worker threads are occupied waiting on their own inner futures.
         return self._execute_job_wrapper(job)
+
+    def _scheduler_loop(self) -> None:
+        """Hand delayed jobs to the pool as they come due."""
+        while not self.shutdown_event.is_set():
+            due: list[tuple[JobType, Future[Any]]] = []
+            with self._delayed_cv:
+                if not self._delayed:
+                    self._delayed_cv.wait()
+                else:
+                    wait = self._delayed[0][0] - time.time()
+                    if wait > 0:
+                        self._delayed_cv.wait(timeout=wait)
+                now = time.time()
+                while self._delayed and self._delayed[0][0] <= now:
+                    _, _, job, future = heapq.heappop(self._delayed)
+                    due.append((job, future))
+            for job, future in due:
+                self._submit_due(job, future)
+
+    def _submit_due(self, job: JobType, outer: Future[Any]) -> None:
+        """Submit a due job and pass its outcome to the future enqueue returned."""
+        if not outer.set_running_or_notify_cancel():
+            with self.active_jobs_lock:
+                self.active_jobs.discard(self._get_job_key(job))
+            return
+        try:
+            assert self.executor is not None
+            inner = self.executor.submit(self._run_due_job, job)
+        except Exception as e:
+            logger.error(f"Failed to submit due job: {e}", exc_info=True)
+            with self.active_jobs_lock:
+                self.active_jobs.discard(self._get_job_key(job))
+            outer.set_exception(e)
+            return
+
+        def relay(done: Future[Any]) -> None:
+            if done.cancelled():
+                outer.set_exception(RuntimeError("job cancelled at shutdown"))
+            elif done.exception() is not None:
+                outer.set_exception(done.exception())  # type: ignore[arg-type]
+            else:
+                outer.set_result(done.result())
+
+        inner.add_done_callback(relay)
+
+    def delayed_job_count(self) -> int:
+        """How many jobs are waiting for their delay to pass."""
+        with self._delayed_cv:
+            return len(self._delayed)
 
     def _execute_job_wrapper(self, job: JobType) -> Any:
         """Wrapper that tracks job execution and removes from active set when done."""
@@ -145,7 +216,16 @@ class BaseQueueService(ABC, Generic[JobType]):
                     f"{self.service_name} is not initialized. Start the {self.service_name} first.",
                 )
 
-            future = self.executor.submit(self._submit_job, job, wait_time)
+            if wait_time > 0:
+                future: Future[Any] = Future()
+                with self._delayed_cv:
+                    heapq.heappush(
+                        self._delayed,
+                        (time.time() + wait_time, next(self._delayed_seq), job, future),
+                    )
+                    self._delayed_cv.notify()
+            else:
+                future = self.executor.submit(self._run_due_job, job)
         except Exception as e:
             # Executor might be shutting down or have other issues
             logger.error(
