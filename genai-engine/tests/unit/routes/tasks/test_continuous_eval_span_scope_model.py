@@ -249,6 +249,7 @@ def test_trace_level_reads_count_the_rollup_not_each_span_run(
     db_session = override_get_db_session()
     db_session.get(DatabaseTraceMetadata, trace_id).start_time = datetime.now()
     db_session.commit()
+    other_eval_id = None
     try:
         _add_run(
             eval_id,
@@ -324,7 +325,37 @@ def test_trace_level_reads_count_the_rollup_not_each_span_run(
             ("call-2", "passed"),
         ]
         assert {r["run_level"] for r in runs} == {"span"}
+
+        # The eval page's request: one eval's trace verdicts. A second eval that
+        # judged the same trace stays out, so the trace is listed once.
+        resp = _post_eval(client, task.id, _eval_body(transform_id, llm_eval.name))
+        assert resp.status_code == 200, resp.text
+        other_eval_id = uuid.UUID(resp.json()["id"])
+        other_run_id = _add_run(
+            other_eval_id,
+            trace_id,
+            ContinuousEvalRunLevel.TRACE,
+            ContinuousEvalRunStatus.PASSED,
+        )
+        for listed_eval_id, expected_ids in (
+            (eval_id, [str(rollup_id)]),
+            (other_eval_id, [str(other_run_id)]),
+        ):
+            resp = client.base_client.get(
+                f"/api/v1/tasks/{task.id}/continuous_evals/results",
+                params={
+                    "continuous_eval_ids": [str(listed_eval_id)],
+                    "run_levels": ["trace", "span_rollup"],
+                    "page": 0,
+                    "page_size": 10,
+                },
+                headers=client.authorized_user_api_key_headers,
+            )
+            assert resp.status_code == 200, resp.text
+            assert [r["id"] for r in resp.json()["annotations"]] == expected_ids
     finally:
         _delete_runs(eval_id)
+        if other_eval_id is not None:
+            _delete_runs(other_eval_id)
         delete_traces(task.id)
         client.delete_task(task.id)
