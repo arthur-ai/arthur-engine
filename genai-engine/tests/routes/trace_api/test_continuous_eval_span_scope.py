@@ -1,0 +1,407 @@
+"""A span-scope continuous eval end to end in the worker: fan-out to one span run
+per matching span, one judge call each, and the rollup decided by the eval's rule.
+
+The trace is the retry case: lookup_order fails with a timeout (call-1), the agent
+calls it again and it succeeds (call-2). The mocked judge fails any call whose
+output is the timeout.
+"""
+
+import json
+import uuid
+from unittest.mock import MagicMock, patch
+
+import pytest
+from arthur_common.models.enums import ContinuousEvalRunStatus
+from litellm.types.utils import ModelResponse
+
+from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from repositories.continuous_evals_repository import ContinuousEvalsRepository
+from schemas.enums import ContinuousEvalRunLevel
+from services.continuous_eval import (
+    ContinuousEvalJob,
+    get_continuous_eval_queue_service,
+    initialize_continuous_eval_queue_service,
+    shutdown_continuous_eval_queue_service,
+)
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
+from tests.routes.trace_api.test_continuous_eval_execution import (
+    cleanup_model_provider,
+    mock_get_db_session_generator,
+)
+from tests.unit.routes.transforms.test_transform_span_order import (
+    RETRY_TRACE,
+    add_trace,
+    delete_traces,
+)
+
+WORKER = "services.continuous_eval.continuous_eval_queue_service"
+UNFINISHED = (
+    ContinuousEvalRunStatus.PENDING.value,
+    ContinuousEvalRunStatus.RUNNING.value,
+)
+
+
+def _judge_reply(*args, **kwargs):
+    """Fails a tool call whose output is the upstream timeout, passes the rest."""
+    prompt = json.dumps(kwargs.get("messages", ""))
+    failed = "upstream timeout" in prompt
+    response = MagicMock(spec=ModelResponse)
+    response.choices = [MagicMock()]
+    response.choices[0].message = {
+        "content": json.dumps(
+            {
+                "reason": "The call timed out." if failed else "The call worked.",
+                "score": 0 if failed else 1,
+                "label": "tool_error" if failed else None,
+            },
+        ),
+    }
+    return response
+
+
+def _setup_eval(client: GenaiEngineTestClientBase, rollup_rule: str, **extra):
+    status_code, task = client.create_task(
+        name=f"span_scope_{rollup_rule}",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+    status_code, _ = client.save_llm_eval(
+        task_id=task.id,
+        llm_eval_name="tool_call_judge",
+        llm_eval_data={
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Did this tool call work? {{tool_output}}",
+        },
+    )
+    assert status_code == 200
+    status_code, transform = client.create_transform(
+        task_id=task.id,
+        name="judged span",
+        description="the tool call being judged",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "tool_output",
+                    "attribute_path": "attributes.output.value",
+                    "span_selector": "current",
+                },
+            ],
+        },
+    )
+    assert status_code == 200, transform
+    resp = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/continuous_evals",
+        json={
+            "name": "tool calls",
+            "llm_eval_name": "tool_call_judge",
+            "llm_eval_version": 1,
+            "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {"transform_variable": "tool_output", "eval_variable": "tool_output"},
+            ],
+            "scope": "span",
+            "span_filter": {"span_name": "lookup_order"},
+            "rollup_rule": rollup_rule,
+            **extra,
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    return task, uuid.UUID(resp.json()["id"])
+
+
+def _runs(
+    eval_id: uuid.UUID,
+    trace_id: str,
+) -> dict[str, list[DatabaseAgenticAnnotation]]:
+    db_session = override_get_db_session()
+    db_session.expire_all()
+    rows = (
+        db_session.query(DatabaseAgenticAnnotation)
+        .filter(
+            DatabaseAgenticAnnotation.continuous_eval_id == eval_id,
+            DatabaseAgenticAnnotation.trace_id == trace_id,
+        )
+        .all()
+    )
+    by_level: dict[str, list[DatabaseAgenticAnnotation]] = {
+        level.value: [] for level in ContinuousEvalRunLevel
+    }
+    for row in rows:
+        by_level[row.run_level].append(row)
+    by_level["span"].sort(key=lambda r: r.span_id)
+    return by_level
+
+
+class SyncQueue:
+    """Collects the jobs the code under test enqueues and runs them one by one on
+    the test thread: the SQLite test session must not be shared across threads."""
+
+    def __init__(self):
+        initialize_continuous_eval_queue_service(
+            num_workers=1,
+            override_execution_delay=0,
+        )
+        self.service = get_continuous_eval_queue_service()
+        self.jobs: list[ContinuousEvalJob] = []
+        self._patch = patch.object(self.service, "enqueue", side_effect=self._enqueue)
+        self._patch.start()
+
+    def _enqueue(self, job):
+        self.jobs.append(job)
+        return True, None
+
+    def drain(self) -> int:
+        ran = 0
+        while self.jobs:
+            self.service._execute_job(self.jobs.pop(0))
+            ran += 1
+        return ran
+
+    def close(self):
+        self._patch.stop()
+        shutdown_continuous_eval_queue_service()
+
+
+def _finished_rollup(eval_id: uuid.UUID, trace_id: str) -> DatabaseAgenticAnnotation:
+    (rollup,) = _runs(eval_id, trace_id)["span_rollup"]
+    assert rollup.run_status not in UNFINISHED, rollup.annotation_description
+    return rollup
+
+
+def _cleanup(client, task, eval_id, queue):
+    db_session = override_get_db_session()
+    db_session.query(DatabaseAgenticAnnotation).filter(
+        DatabaseAgenticAnnotation.continuous_eval_id == eval_id,
+    ).delete(synchronize_session=False)
+    db_session.commit()
+    delete_traces(task.id)
+    client.delete_task(task.id)
+    queue.close()
+    cleanup_model_provider(client)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    ("rollup_rule", "rollup_status", "rollup_label"),
+    [
+        # The retry recovered, so the trace passes; the failed call keeps its verdict.
+        ("final_attempt", "passed", None),
+        # Any failing call fails the trace (e.g. a PII check).
+        ("any_fail", "failed", "tool_error"),
+    ],
+)
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_span_scope_judges_each_call_and_rolls_up_by_rule(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    rollup_rule,
+    rollup_status,
+    rollup_label,
+    client: GenaiEngineTestClientBase,
+):
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, rollup_rule)
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    expected_jobs = 3
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        # The rollup job, then one job per span run it queued.
+        assert queue.drain() == expected_jobs
+        rollup = _finished_rollup(eval_id, trace_id)
+        runs = _runs(eval_id, trace_id)
+
+        # One judge call per lookup_order span, none for the agent span or rollup.
+        assert mock_completion.call_count == 2
+        assert runs["trace"] == []
+        call_1, call_2 = runs["span"]
+        assert (call_1.span_id, call_1.run_status, call_1.label) == (
+            "call-1",
+            "failed",
+            "tool_error",
+        )
+        assert (call_2.span_id, call_2.run_status, call_2.label) == (
+            "call-2",
+            "passed",
+            None,
+        )
+        # Each span run read its own span through the 'current' selector.
+        assert call_1.input_variables == [
+            {"name": "tool_output", "value": "upstream timeout"},
+        ]
+        assert call_2.input_variables == [{"name": "tool_output", "value": "delivered"}]
+        assert call_1.cost == call_2.cost == pytest.approx(0.002)
+        assert call_1.judged_span_count == call_2.judged_span_count == 3
+
+        assert rollup.run_status == rollup_status
+        assert rollup.label == rollup_label
+        assert rollup.cost is None
+        assert rollup.span_id is None
+        assert rollup.judged_span_count == 3
+        assert "1 of 2 judged spans passed" in rollup.annotation_description
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_a_repeated_fan_out_reuses_span_runs_and_judges_nothing_twice(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "final_attempt")
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    expected_jobs = 3
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        # The rollup job, then one job per span run it queued.
+        assert queue.drain() == expected_jobs
+        rollup = _finished_rollup(eval_id, trace_id)
+        assert mock_completion.call_count == 2
+
+        # A stale-run recovery or retry runs the rollup job again.
+        db_session = override_get_db_session()
+        db_session.get(DatabaseAgenticAnnotation, rollup.id).run_status = "pending"
+        db_session.commit()
+        queue.service._execute_job(
+            ContinuousEvalJob(
+                annotation_id=rollup.id,
+                trace_id=trace_id,
+                continuous_eval_id=eval_id,
+                task_id=task.id,
+                delay_seconds=0,
+            ),
+        )
+        # Both span runs are already judged, so nothing new is queued.
+        assert queue.drain() == 0
+        runs = _runs(eval_id, trace_id)
+        assert [r.span_id for r in runs["span"]] == ["call-1", "call-2"]
+        assert runs["span_rollup"][0].run_status == "passed"
+        assert mock_completion.call_count == 2
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 60)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_fan_out_waits_while_the_trace_is_still_receiving_spans(
+    mock_get_db_session,
+    mock_completion,
+    client: GenaiEngineTestClientBase,
+):
+    """Spans stored just now: the rollup job asks to run again once the trace has
+    been quiet for the idle window, and creates no span runs yet."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "final_attempt")
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=3600)
+        (rollup,) = _runs(eval_id, trace_id)["span_rollup"]
+        job = ContinuousEvalJob(
+            annotation_id=rollup.id,
+            trace_id=trace_id,
+            continuous_eval_id=eval_id,
+            task_id=task.id,
+            delay_seconds=0,
+        )
+        queue.service._execute_job(job)
+        assert 0 < job.requeue_in <= 60
+        runs = _runs(eval_id, trace_id)
+        assert runs["span"] == []
+        assert runs["span_rollup"][0].run_status == "pending"
+        mock_completion.assert_not_called()
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_max_spans_per_trace_judges_the_first_spans_in_tree_order(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "any_fail", max_spans_per_trace=1)
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    expected_jobs = 2
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        # The rollup job, then one job per span run it queued.
+        assert queue.drain() == expected_jobs
+        rollup = _finished_rollup(eval_id, trace_id)
+        assert [r.span_id for r in _runs(eval_id, trace_id)["span"]] == ["call-1"]
+        assert mock_completion.call_count == 1
+        assert rollup.run_status == "failed"
+        assert "1 more matching spans past max_spans_per_trace" in (
+            rollup.annotation_description
+        )
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 3600)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_a_test_run_counts_each_trace_once_through_its_rollup(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Two span runs, one trace: the test run counts one finished trace. A test
+    run picks finished traces, so it skips the idle window (set to an hour here)."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "final_attempt")
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    try:
+        status_code, test_run = client.create_test_run(str(eval_id), [trace_id])
+        assert status_code == 200, test_run
+        assert queue.drain() == 3
+        status_code, test_run = client.get_test_run(str(test_run.id))
+        assert (
+            test_run.total_count,
+            test_run.completed_count,
+            test_run.passed_count,
+            test_run.failed_count,
+        ) == (1, 1, 1, 0)
+        assert test_run.status == "completed"
+        assert mock_completion.call_count == 2
+    finally:
+        _cleanup(client, task, eval_id, queue)

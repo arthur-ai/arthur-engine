@@ -30,6 +30,8 @@ class TransformSpanSelector(str, Enum):
     FIRST = "first"
     LAST = "last"
     ALL = "all"
+    # The span a span-scope continuous eval is judging; only that eval sets one.
+    CURRENT = "current"
 
 
 class TraceTransformVariableDefinition(
@@ -56,13 +58,19 @@ class TraceTransformVariableDefinition(
             "Which span to read when several match: 'first' (the default) or 'last' in "
             "tree order (depth-first, siblings by start time then span id), so 'last' "
             "is a retried tool call; 'all' reads every match in tree order and joins "
-            "their values into one block, each headed by its span id."
+            "their values into one block, each headed by its span id. 'current' "
+            "reads the span a span-scope continuous eval is judging (span_name and "
+            "span_kind, if set, must match it); elsewhere it finds no span."
         ),
     )
 
     @model_validator(mode="after")
     def _needs_span_name_or_kind(self) -> "TraceTransformVariableDefinition":
-        if not self.span_name and not self.span_kind:
+        if (
+            not self.span_name
+            and not self.span_kind
+            and self.span_selector != TransformSpanSelector.CURRENT
+        ):
             raise ValueError(
                 f"Variable {self.variable_name} needs a span_name, a span_kind or both.",
             )
@@ -74,7 +82,9 @@ class TraceTransformVariableDefinition(
             return f"{self.span_name} ({self.span_kind})"
         if self.span_name:
             return self.span_name
-        return f"any {self.span_kind} span"
+        if self.span_kind:
+            return f"any {self.span_kind} span"
+        return "the judged span"
 
 
 class TraceTransformDefinition(AcceptsCommonModel, CommonTraceTransformDefinition):

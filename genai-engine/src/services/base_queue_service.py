@@ -23,6 +23,14 @@ class BaseQueueJob:
         self.enqueued_at = datetime.now()
         self.delay_seconds = delay_seconds
         self.execute_at = time.time() + delay_seconds
+        # Set by a job that ran too early (e.g. its trace is still growing) to be
+        # queued again this many seconds after it finishes and frees its key.
+        self.requeue_in: Optional[float] = None
+
+    def reschedule(self, delay_seconds: float) -> None:
+        self.delay_seconds = delay_seconds  # type: ignore[assignment]
+        self.execute_at = time.time() + delay_seconds
+        self.requeue_in = None
 
 
 class BaseQueueService(ABC, Generic[JobType]):
@@ -176,6 +184,9 @@ class BaseQueueService(ABC, Generic[JobType]):
         finally:
             with self.active_jobs_lock:
                 self.active_jobs.discard(job_key)
+            if job.requeue_in is not None and not self.shutdown_event.is_set():
+                job.reschedule(job.requeue_in)
+                self.enqueue(job)
 
     def enqueue(self, job: JobType) -> tuple[bool, Optional[Future[Any]]]:
         """Schedule a job to be executed.

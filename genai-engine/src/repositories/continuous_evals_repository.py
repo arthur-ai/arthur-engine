@@ -51,6 +51,7 @@ from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
 )
+from services.continuous_eval.span_scope import first_run_level
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 from utils.trace import get_nested_value
 
@@ -663,6 +664,9 @@ class ContinuousEvalsRepository:
                     trace_id=trace_id,
                     continuous_eval_id=continuous_eval.id,
                     run_status=ContinuousEvalRunStatus.PENDING,
+                    # A span-scope eval queues the trace's rollup, which fans out
+                    # to span runs once the trace is idle.
+                    run_level=first_run_level(continuous_eval.scope).value,
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                     org_id=task_org_id,

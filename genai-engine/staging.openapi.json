@@ -34785,7 +34785,7 @@
                     },
                     "span_selector": {
                         "$ref": "#/components/schemas/TransformSpanSelector",
-                        "description": "Which span to read when several match: 'first' (the default) or 'last' in tree order (depth-first, siblings by start time then span id), so 'last' is a retried tool call; 'all' reads every match in tree order and joins their values into one block, each headed by its span id.",
+                        "description": "Which span to read when several match: 'first' (the default) or 'last' in tree order (depth-first, siblings by start time then span id), so 'last' is a retried tool call; 'all' reads every match in tree order and joins their values into one block, each headed by its span id. 'current' reads the span a span-scope continuous eval is judging (span_name and span_kind, if set, must match it); elsewhere it finds no span.",
                         "default": "first"
                     }
                 },
@@ -35113,7 +35113,8 @@
                 "enum": [
                     "first",
                     "last",
-                    "all"
+                    "all",
+                    "current"
                 ],
                 "title": "TransformSpanSelector"
             },

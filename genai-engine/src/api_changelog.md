@@ -3,6 +3,12 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/11/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new `current` enum value to the `transforms/items/definition/variables/items/span_selector` response property for the response status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new `current` enum value to the `definition/variables/items/span_selector` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new `current` enum value to the request property `definition/variables/items/span_selector`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new `current` enum value to the request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/span_selector`
+
+# 11/11/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property `annotations/items/judged_span_count` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property `annotations/items/run_level` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property `max_spans_per_trace` to the response with the `200` status

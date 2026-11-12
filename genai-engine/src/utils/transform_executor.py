@@ -154,13 +154,15 @@ def execute_transform(
 def execute_transform_on_spans(
     spans: Sequence[TransformableSpan],
     transform_definition: TraceTransformDefinition,
+    current_span_id: Optional[str] = None,
 ) -> TransformExtractionResponseList:
     """Execute a transform over a trace's spans given as a flat list.
 
     Spans are put in tree order first (utils.span_tree), the one order every
     span_selector uses: 'first' and 'last' are its two ends, 'all' reads every
     match in it. The response names the spans each value was read from, so the UI
-    preview shows the same spans the worker judges.
+    preview shows the same spans the worker judges. current_span_id is the span a
+    span-scope eval is judging, which 'current' variables read.
     """
     ordered_spans = tree_order(spans)
 
@@ -176,7 +178,13 @@ def execute_transform_on_spans(
         fallback = var_def.fallback
 
         matching_spans = [
-            span for span in ordered_spans if span_matches_variable(span, var_def)
+            span
+            for span in ordered_spans
+            if span_matches_variable(span, var_def)
+            and (
+                var_def.span_selector != TransformSpanSelector.CURRENT
+                or span.span_id == current_span_id
+            )
         ]
 
         is_missing = False
@@ -185,7 +193,12 @@ def execute_transform_on_spans(
         if not matching_spans:
             # No matching span found, use fallback
             if fallback is None:
-                described = var_def.describe_spans()
+                described = (
+                    "the judged span"
+                    if var_def.span_selector == TransformSpanSelector.CURRENT
+                    and current_span_id is None
+                    else var_def.describe_spans()
+                )
                 if described not in missing_spans:
                     missing_spans.append(described)
                 value = ""
@@ -247,6 +260,17 @@ class FilterableSpan(Protocol):
 
     @property
     def raw_data(self) -> Any: ...
+
+
+def span_meets_condition(
+    span: FilterableSpan,
+    condition: ContinuousEvalTraceFilterCondition,
+) -> bool:
+    """A filter condition checked against one span alone. A condition naming
+    another span never holds here, whatever its operator."""
+    if condition.span_name is not None and span.span_name != condition.span_name:
+        return False
+    return _trace_filter_condition_holds([span], condition)
 
 
 def _trace_filter_condition_holds(
