@@ -25,9 +25,11 @@ from schemas.transform_schemas import (
     TraceTransformDefinition,
     TraceTransformVariableDefinition,
     TransformSpanSelector,
+    TransformVariableSource,
 )
 from utils.span_tree import tree_order
 from utils.trace import get_nested_value, get_nested_value_wildcard
+from utils.trace_serializer import DEFAULT_MAX_CHARS, serialize_trace
 
 
 def stringify_value(value: Any) -> str:
@@ -88,6 +90,12 @@ class TransformableSpan(Protocol):
 
     @property
     def raw_data(self) -> Any: ...
+
+    @property
+    def end_time(self) -> datetime: ...
+
+    @property
+    def status_code(self) -> Optional[str]: ...
 
 
 def _read_span(span: TransformableSpan, attribute_path: str) -> Any:
@@ -176,6 +184,21 @@ def execute_transform_on_spans(
         variable_name = var_def.variable_name
         attribute_path = var_def.attribute_path
         fallback = var_def.fallback
+
+        if var_def.source == TransformVariableSource.TRACE:
+            # The whole trace, every span, so no span matching and nothing missing.
+            text, _ = serialize_trace(
+                spans,
+                max_chars=var_def.max_chars or DEFAULT_MAX_CHARS,
+            )
+            variables.append(VariableTemplateValue(name=variable_name, value=text))
+            variable_spans.append(
+                TransformVariableSpans(
+                    variable_name=variable_name,
+                    span_ids=[span.span_id for span in ordered_spans],
+                ),
+            )
+            continue
 
         matching_spans = [
             span

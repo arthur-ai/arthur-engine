@@ -3,6 +3,24 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/11/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/max_chars`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/source`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/max_chars`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/source`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+
+# 11/11/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  added the optional property `estimate/spans_per_trace` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the new optional `query` request parameter `max_spans_per_trace`
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  added the new optional `query` request parameter `span_filter`

@@ -6,8 +6,8 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
 def _without_default_selector(definition: dict) -> dict:
-    """Responses now carry each variable's span_selector ("first" by default) and
-    span_kind (None by default)."""
+    """Responses now carry each variable's span_selector ("first" by default),
+    span_kind (None by default), source ("span" by default) and max_chars (None)."""
     return {
         "variables": [
             {
@@ -15,6 +15,8 @@ def _without_default_selector(definition: dict) -> dict:
                 for k, v in variable.items()
                 if not (k == "span_selector" and v == "first")
                 and not (k == "span_kind" and v is None)
+                and not (k == "source" and v == "span")
+                and not (k == "max_chars" and v is None)
             }
             for variable in definition["variables"]
         ],

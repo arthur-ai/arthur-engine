@@ -34827,6 +34827,24 @@
                         "title": "Span Kind",
                         "description": "Kind of the span to read from, such as TOOL or LLM. Alone it matches every span of that kind; with span_name it narrows the named spans."
                     },
+                    "source": {
+                        "$ref": "#/components/schemas/TransformVariableSource",
+                        "description": "Where the value comes from: 'span' (the default) reads attribute_path from the matching span(s); 'trace' is the whole trace as text for a judge, every span in tree order with its inputs, outputs, tool calls and errors, cut to max_chars. With 'trace' the span fields are not used and attribute_path is ignored (send an empty string).",
+                        "default": "span"
+                    },
+                    "max_chars": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 2000.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Chars",
+                        "description": "Size budget of a 'trace' value in characters; defaults to 48000. Over budget, the text says what was cut."
+                    },
                     "span_selector": {
                         "$ref": "#/components/schemas/TransformSpanSelector",
                         "description": "Which span to read when several match: 'first' (the default) or 'last' in tree order (depth-first, siblings by start time then span id), so 'last' is a retried tool call; 'all' reads every match in tree order and joins their values into one block, each headed by its span id. 'current' reads the span a span-scope continuous eval is judging (span_name and span_kind, if set, must match it); elsewhere it finds no span.",
@@ -35183,6 +35201,14 @@
                 ],
                 "title": "TransformVariableExperimentOutputSource",
                 "description": "Reference to experiment output using transform variable extraction (agentic experiments only)"
+            },
+            "TransformVariableSource": {
+                "type": "string",
+                "enum": [
+                    "span",
+                    "trace"
+                ],
+                "title": "TransformVariableSource"
             },
             "TransformVariableSpans": {
                 "properties": {

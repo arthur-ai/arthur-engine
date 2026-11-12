@@ -24,6 +24,7 @@ from arthur_common.models.task_eval_schemas import (
 from pydantic import Field, model_validator
 
 from schemas.model_compat import AcceptsCommonModel
+from utils.trace_serializer import DEFAULT_MAX_CHARS, MIN_MAX_CHARS
 
 # OPEN DECISION (maintainers): whether a variable may match on span_kind alone.
 # True: span_name becomes optional, so transform responses can return a null
@@ -40,6 +41,13 @@ class TransformSpanSelector(str, Enum):
     ALL = "all"
     # The span a span-scope continuous eval is judging; only that eval sets one.
     CURRENT = "current"
+
+
+class TransformVariableSource(str, Enum):
+    # Read one attribute from the matching span(s).
+    SPAN = "span"
+    # The whole trace as judge-ready text (utils.trace_serializer).
+    TRACE = "trace"
 
 
 class TraceTransformVariableDefinition(
@@ -61,6 +69,24 @@ class TraceTransformVariableDefinition(
             "span of that kind; with span_name it narrows the named spans."
         ),
     )
+    source: TransformVariableSource = Field(
+        default=TransformVariableSource.SPAN,
+        description=(
+            "Where the value comes from: 'span' (the default) reads attribute_path from "
+            "the matching span(s); 'trace' is the whole trace as text for a judge, every "
+            "span in tree order with its inputs, outputs, tool calls and errors, cut to "
+            "max_chars. With 'trace' the span fields are not used and attribute_path is "
+            "ignored (send an empty string)."
+        ),
+    )
+    max_chars: Optional[int] = Field(
+        default=None,
+        ge=MIN_MAX_CHARS,
+        description=(
+            f"Size budget of a 'trace' value in characters; defaults to {DEFAULT_MAX_CHARS}. "
+            "Over budget, the text says what was cut."
+        ),
+    )
     span_selector: TransformSpanSelector = Field(
         default=TransformSpanSelector.FIRST,
         description=(
@@ -75,6 +101,8 @@ class TraceTransformVariableDefinition(
 
     @model_validator(mode="after")
     def _needs_span_name_or_kind(self) -> "TraceTransformVariableDefinition":
+        if self.source == TransformVariableSource.TRACE:
+            return self
         if (
             not self.span_name
             and not self.span_kind
@@ -87,6 +115,8 @@ class TraceTransformVariableDefinition(
 
     def describe_spans(self) -> str:
         """How a skip message names the spans this variable looks for."""
+        if self.source == TransformVariableSource.TRACE:
+            return "the trace"
         if self.span_name and self.span_kind:
             return f"{self.span_name} ({self.span_kind})"
         if self.span_name:
