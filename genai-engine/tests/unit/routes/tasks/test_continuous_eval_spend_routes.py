@@ -379,6 +379,12 @@ def test_spend_estimate_scales_by_the_filter_match_share(
         ],
     )
 
+    status_code, other_task = client.create_task(
+        name="spend_filter_other",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
     try:
         now = datetime.now()
         # 8 traces in the window: 2 from paid users, 5 from free ones, and one
@@ -396,6 +402,8 @@ def test_spend_estimate_scales_by_the_filter_match_share(
             {"metadata": {"plan": "paid"}},
             span_version="arthur_span_v0",
         )
+        # Another task's span under a free trace's id doesn't make it match.
+        _add_root_span(other_task.id, trace_ids[2], {"metadata": {"plan": "paid"}})
         _add_run(
             continuous_eval.id,
             trace_ids[0],
@@ -443,9 +451,10 @@ def test_spend_estimate_scales_by_the_filter_match_share(
     finally:
         db_session = override_get_db_session()
         db_session.query(DatabaseSpan).filter(
-            DatabaseSpan.task_id == task.id,
+            DatabaseSpan.task_id.in_([task.id, other_task.id]),
         ).delete(synchronize_session=False)
         db_session.commit()
+        client.delete_task(other_task.id)
         _cleanup(client, task.id, [continuous_eval.id])
 
 

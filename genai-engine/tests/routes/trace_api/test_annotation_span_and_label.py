@@ -7,6 +7,10 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 from litellm.types.utils import ModelResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from schemas.annotation_schemas import (
+    AgenticAnnotationResponse,
+    ListAgenticAnnotationsResponse,
+)
 from schemas.llm_eval_schemas import ReasonedScore
 from services.continuous_eval import (
     ContinuousEvalJob,
@@ -34,6 +38,18 @@ def _annotate(client, trace_id, body):
         json=body,
         headers=client.authorized_user_api_key_headers,
     )
+
+
+def _list_annotations(
+    client: GenaiEngineTestClientBase,
+    trace_id: str,
+) -> list[AgenticAnnotationResponse]:
+    resp = client.base_client.get(
+        f"/api/v1/traces/{trace_id}/annotations",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    return ListAgenticAnnotationsResponse.model_validate(resp.json()).annotations
 
 
 @pytest.mark.unit_tests
@@ -94,12 +110,11 @@ def test_human_annotation_keeps_span_id_and_label(client: GenaiEngineTestClientB
             ).status_code
             == 200
         )
-        listed = client.base_client.get(
-            f"/api/v1/traces/{trace_id}/annotations",
-            headers=client.authorized_user_api_key_headers,
-        ).json()["annotations"]
+        listed = _list_annotations(client, trace_id)
         labels = sorted(
-            a.get("label") or "" for a in listed if a["annotation_type"] == "human"
+            a.label or ""
+            for a in listed
+            if a.annotation_type == AgenticAnnotationType.HUMAN
         )
         assert labels == ["", "ok", "wrong_args"]
 
@@ -115,12 +130,11 @@ def test_human_annotation_keeps_span_id_and_label(client: GenaiEngineTestClientB
             headers=client.authorized_user_api_key_headers,
         )
         assert resp.status_code == 204, resp.text
-        listed = client.base_client.get(
-            f"/api/v1/traces/{trace_id}/annotations",
-            headers=client.authorized_user_api_key_headers,
-        ).json()["annotations"]
+        listed = _list_annotations(client, trace_id)
         assert sorted(
-            a.get("label") for a in listed if a["annotation_type"] == "human"
+            a.label or ""
+            for a in listed
+            if a.annotation_type == AgenticAnnotationType.HUMAN
         ) == ["ok", "wrong_args"]
     finally:
         db_session = override_get_db_session()

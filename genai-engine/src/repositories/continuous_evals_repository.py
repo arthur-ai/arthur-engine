@@ -173,6 +173,16 @@ class ContinuousEvalsRepository:
         mapped_eval_vars = {
             mapping.eval_variable for mapping in transform_variable_mapping
         }
+        # Each eval variable takes one value; a second mapping would overwrite it.
+        eval_targets = [mapping.eval_variable for mapping in transform_variable_mapping]
+        repeated_eval_vars = {
+            name for name in eval_targets if eval_targets.count(name) > 1
+        }
+        if repeated_eval_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Each eval variable can be mapped once. Mapped more than once: {sorted(repeated_eval_vars)}",
+            )
 
         # Check that all transform variables in the mapping exist in the transform
         invalid_transform_vars = mapped_transform_vars - transform_vars
@@ -304,15 +314,29 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.transform_version_id
             )
             has_changes = True
-        # A new judge or a new transform (which decides what the judge reads, e.g. a
-        # bigger 'all' value) changes the cost per run, so spend is priced afresh.
+        # A new judge, a new transform or a new mapping (each decides what the
+        # judge reads, e.g. a bigger 'all' value) changes the cost per run, so
+        # spend is priced afresh.
         if (
-            db_continuous_eval.llm_eval_name,
-            db_continuous_eval.llm_eval_version,
-        ) != previous_judge or (
-            db_continuous_eval.transform_id,
-            db_continuous_eval.transform_version_id,
-        ) != previous_transform:
+            (
+                update_continuous_eval.transform_variable_mapping
+                and [
+                    mapping.model_dump()
+                    for mapping in update_continuous_eval.transform_variable_mapping
+                ]
+                != db_continuous_eval.transform_variable_mapping
+            )
+            or (
+                db_continuous_eval.llm_eval_name,
+                db_continuous_eval.llm_eval_version,
+            )
+            != previous_judge
+            or (
+                db_continuous_eval.transform_id,
+                db_continuous_eval.transform_version_id,
+            )
+            != previous_transform
+        ):
             db_continuous_eval.judge_changed_at = datetime.now()
         if update_continuous_eval.transform_variable_mapping:
             # Convert Pydantic models to dicts for JSON serialization

@@ -106,6 +106,11 @@ def runs_often_enough_to_cache(
     return recent_runs >= CACHE_BREAKPOINT_MIN_RECENT_RUNS
 
 
+# How long after start the worker re-queues pending span-scope rollups: one idle
+# window, since a rollup is not fanned out before its trace has been idle that long.
+STARTUP_SWEEP_DELAY_SECONDS = SPAN_SCOPE_IDLE_SECONDS
+
+
 class RunAlreadyClaimed(Exception):
     """The run is no longer pending: another worker has claimed or finished it,
     so this job leaves it alone."""
@@ -145,13 +150,14 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         logger.info(f"Background thread started for {self.service_name}")
 
         # A span-scope rollup waits for its trace to go idle in the in-memory
-        # scheduler, which a restart empties. Its jobs are picked up now rather
-        # than by the hourly sweep below; a rollup another worker still holds is
-        # fanned out once, as the fan-out claims it.
-        try:
-            self._check_stale_annotations(include_pending_rollups=True)
-        except Exception as e:
-            logger.error(f"Error re-queueing pending rollups: {e}", exc_info=True)
+        # scheduler, which a restart empties. Its jobs are picked up one idle
+        # window after start rather than by the hourly sweep below; a rollup
+        # another worker still holds is fanned out once, as the fan-out claims it.
+        if not self.shutdown_event.wait(timeout=STARTUP_SWEEP_DELAY_SECONDS):
+            try:
+                self._check_stale_annotations(include_pending_rollups=True)
+            except Exception as e:
+                logger.error(f"Error re-queueing pending rollups: {e}", exc_info=True)
 
         while not self.shutdown_event.is_set():
             try:
@@ -372,16 +378,36 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         )
 
     @staticmethod
-    def _load_spans(db_session: Session, trace_id: str) -> list[DatabaseSpan]:
-        """The trace's spans as a flat list, straight from the spans table, the
-        same spans get_trace_by_id serves (current span version only). A span id
-        stored twice (re-sent by an exporter) keeps its first row, so fan-out and
-        'current' reads see one span per id."""
+    def _scope_variables_problem(
+        db_continuous_eval: DatabaseContinuousEval,
+        definition: TraceTransformDefinition,
+    ) -> Optional[str]:
+        return scope_variables_problem(
+            db_continuous_eval.scope,
+            definition,
+            (
+                mapping["transform_variable"]
+                for mapping in db_continuous_eval.transform_variable_mapping or []
+            ),
+        )
+
+    @staticmethod
+    def _load_spans(
+        db_session: Session,
+        trace_id: str,
+        task_id: str,
+    ) -> list[DatabaseSpan]:
+        """The trace's spans in the eval's task as a flat list, straight from the
+        spans table (current span version only). Another task's spans under the
+        same trace id are never judged or read. A span id stored twice (re-sent by
+        an exporter) keeps its first row, so fan-out and 'current' reads see one
+        span per id."""
         spans: dict[str, DatabaseSpan] = {}
         for span in (
             db_session.query(DatabaseSpan)
             .filter(
                 DatabaseSpan.trace_id == trace_id,
+                DatabaseSpan.task_id == task_id,
             )
             .order_by(DatabaseSpan.created_at, DatabaseSpan.id)
         ):
@@ -456,14 +482,26 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
     ) -> None:
         """One span run: the transform reads the trace with this span as the
         'current' one, and the judge is called once for it."""
-        spans = self._load_spans(db_session, job.trace_id)
+        spans = self._load_spans(db_session, job.trace_id, job.task_id)
         if annotation.span_id not in {span.span_id for span in spans}:
             raise ValueError(
                 f"Span {annotation.span_id} not found in trace {job.trace_id}",
             )
+        definition = self._transform_definition(db_session, db_continuous_eval)
+        # The transform may have changed since the fan-out checked it.
+        problem = self._scope_variables_problem(db_continuous_eval, definition)
+        if problem:
+            self._update_annotation_status(
+                db_session,
+                job.annotation_id,
+                ContinuousEvalRunStatus.SKIPPED.value,
+                annotation_description=problem,
+            )
+            self._finish_rollups_if_done(db_session, annotation)
+            return
         transform_results = execute_transform_on_spans(
             spans,
-            self._transform_definition(db_session, db_continuous_eval),
+            definition,
             current_span_id=annotation.span_id,
         )
         self._judge_and_store(
@@ -694,13 +732,9 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         # Create and update reject this, but an eval that follows the latest
         # transform version can lose its judged-span variable later. Its span runs
         # would all send the judge the same input, so none is made.
-        problem = scope_variables_problem(
-            db_continuous_eval.scope,
+        problem = self._scope_variables_problem(
+            db_continuous_eval,
             self._transform_definition(db_session, db_continuous_eval),
-            (
-                mapping["transform_variable"]
-                for mapping in db_continuous_eval.transform_variable_mapping or []
-            ),
         )
         if problem:
             self._update_annotation_status(
@@ -712,7 +746,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             self._skip_pending_span_runs(db_session, rollup, problem)
             return
 
-        spans = self._load_spans(db_session, job.trace_id)
+        spans = self._load_spans(db_session, job.trace_id, job.task_id)
         if not spans:
             raise ValueError(f"Trace {job.trace_id} not found")
 
@@ -994,7 +1028,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         span_runs = list(
             self._span_run_query(db_session, run, ContinuousEvalRunLevel.SPAN),
         )
-        spans = self._load_spans(db_session, run.trace_id or "")
+        spans = self._load_spans(
+            db_session,
+            run.trace_id or "",
+            db_continuous_eval.task_id,
+        )
         ordered = tree_order(spans)
         position = {span.span_id: i for i, span in enumerate(ordered)}
         by_id = {span.span_id: span for span in spans}

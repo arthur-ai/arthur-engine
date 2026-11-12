@@ -471,3 +471,75 @@ def test_new_transform_version_restarts_the_pricing_window(
     finally:
         client.delete_continuous_eval(continuous_eval.id)
         client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+def test_a_new_variable_mapping_reprices_the_eval(
+    client: GenaiEngineTestClientBase,
+):
+    """Mapping the judge's variable to another transform variable changes what the
+    judge reads, so spend is priced afresh; sending the same mapping again does not."""
+    status_code, task = client.create_task(name="mapping_window", is_agentic=True)
+    assert status_code == 200
+    try:
+        status_code, llm_eval = create_test_llm_eval(client, task.id, "mapping_eval")
+        assert status_code == 200
+        variable = {"span_name": "test_span", "attribute_path": "test_attribute"}
+        status_code, transform = client.create_transform(
+            task_id=task.id,
+            name="two variables",
+            description="short and long",
+            definition={
+                "variables": [
+                    {"variable_name": "short", **variable},
+                    {"variable_name": "long", "span_selector": "all", **variable},
+                ],
+            },
+        )
+        assert status_code == 200
+
+        def mapping(transform_variable: str) -> list[dict]:
+            return [
+                {
+                    "transform_variable": transform_variable,
+                    "eval_variable": "test_variable",
+                },
+            ]
+
+        status_code, continuous_eval = client.save_continuous_eval(
+            task_id=task.id,
+            continuous_eval_data={
+                "name": "mapping",
+                "llm_eval_name": llm_eval.name,
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": mapping("short"),
+            },
+        )
+        assert status_code == 200
+
+        def changed_at():
+            db_session = override_get_db_session()
+            row = db_session.get(DatabaseContinuousEval, continuous_eval.id)
+            db_session.refresh(row)
+            return row.judge_changed_at
+
+        for transform_variable, reset in (("short", False), ("long", True)):
+            status_code, _ = client.update_continuous_eval(
+                continuous_eval_id=continuous_eval.id,
+                continuous_eval_data={
+                    "transform_variable_mapping": mapping(transform_variable),
+                },
+            )
+            assert status_code == 200
+            assert (changed_at() is not None) == reset
+
+        # Each eval variable takes one value: two mappings onto it are refused.
+        status_code, _ = client.update_continuous_eval(
+            continuous_eval_id=continuous_eval.id,
+            continuous_eval_data={
+                "transform_variable_mapping": mapping("short") + mapping("long"),
+            },
+        )
+        assert status_code == 400
+    finally:
+        client.delete_task(task.id)

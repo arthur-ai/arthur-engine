@@ -347,7 +347,10 @@ class ContinuousEvalSpendRepository:
             DatabaseSpan.span_kind,
             DatabaseSpan.start_time,
             DatabaseSpan.raw_data,
-        ).filter(DatabaseSpan.trace_id.in_(trace_ids)):
+        ).filter(
+            DatabaseSpan.trace_id.in_(trace_ids),
+            DatabaseSpan.task_id == task_id,
+        ):
             if validate_span_version(span.raw_data):
                 spans_by_trace[span.trace_id].append(span)
         return spans_by_trace

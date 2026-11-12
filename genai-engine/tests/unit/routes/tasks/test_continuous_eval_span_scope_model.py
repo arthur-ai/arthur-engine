@@ -51,25 +51,30 @@ def _setup(client: GenaiEngineTestClientBase, name: str):
     judged span (for span scope), the other a named span (for trace scope)."""
     status_code, task = client.create_task(name=name, is_agentic=True)
     assert status_code == 200
-    status_code, llm_eval = create_test_llm_eval(client, task.id, "span_judge")
-    assert status_code == 200
-    status_code, trace_transform = create_test_transform(client, task.id)
-    assert status_code == 200
-    status_code, span_transform = client.create_transform(
-        task_id=task.id,
-        name="judged_span_transform",
-        description="reads the judged span",
-        definition={
-            "variables": [
-                {
-                    "variable_name": "test_variable",
-                    "attribute_path": "attributes.output.value",
-                    "span_selector": "current",
-                },
-            ],
-        },
-    )
-    assert status_code == 200
+    try:
+        status_code, llm_eval = create_test_llm_eval(client, task.id, "span_judge")
+        assert status_code == 200
+        status_code, trace_transform = create_test_transform(client, task.id)
+        assert status_code == 200
+        status_code, span_transform = client.create_transform(
+            task_id=task.id,
+            name="judged_span_transform",
+            description="reads the judged span",
+            definition={
+                "variables": [
+                    {
+                        "variable_name": "test_variable",
+                        "attribute_path": "attributes.output.value",
+                        "span_selector": "current",
+                    },
+                ],
+            },
+        )
+        assert status_code == 200
+    except BaseException:
+        # A failed step leaves no task behind for later tests.
+        client.delete_task(task.id)
+        raise
     return task, llm_eval, str(trace_transform.id), str(span_transform.id)
 
 
