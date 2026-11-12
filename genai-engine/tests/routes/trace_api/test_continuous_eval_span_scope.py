@@ -63,7 +63,12 @@ def _judge_reply(*args, **kwargs):
     return response
 
 
-def _setup_eval(client: GenaiEngineTestClientBase, rollup_rule: str, **extra):
+def _setup_eval(
+    client: GenaiEngineTestClientBase,
+    rollup_rule: str | None,
+    transform_variable: dict | None = None,
+    **extra,
+):
     status_code, task = client.create_task(
         name=f"span_scope_{rollup_rule}",
         is_agentic=True,
@@ -91,7 +96,8 @@ def _setup_eval(client: GenaiEngineTestClientBase, rollup_rule: str, **extra):
         description="the tool call being judged",
         definition={
             "variables": [
-                {
+                transform_variable
+                or {
                     "variable_name": "tool_output",
                     "attribute_path": "attributes.output.value",
                     "span_selector": "current",
@@ -463,5 +469,68 @@ def test_a_span_stored_twice_is_judged_once(
         assert [r.span_id for r in runs["span"]] == ["call-1", "call-2"]
         assert runs["span_rollup"][0].run_status == "passed"
         assert mock_completion.call_count == 2
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_trace_scope_reads_spans_caught_in_a_parent_cycle(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """lookup_order and its tool wrapper name each other as parent. The trace tree
+    drops both; the flat span list keeps them, so a trace-scope eval still reads
+    the call instead of skipping the trace for a missing span."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(
+        client,
+        None,
+        transform_variable={
+            "variable_name": "tool_output",
+            "span_name": "lookup_order",
+            "attribute_path": "attributes.output.value",
+        },
+        scope="trace",
+        span_filter=None,
+    )
+    trace_id = add_trace(
+        task.id,
+        [
+            {
+                "span_id": "root",
+                "span_name": "agent",
+                "span_kind": "AGENT",
+                "offset_s": 0,
+            },
+            {
+                "span_id": "call",
+                "parent_span_id": "wrapper",
+                "span_name": "lookup_order",
+                "offset_s": 1,
+                "output": "delivered",
+            },
+            {
+                "span_id": "wrapper",
+                "parent_span_id": "call",
+                "span_name": "tool_wrapper",
+                "offset_s": 2,
+            },
+        ],
+    )
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        assert queue.drain() == 1
+        (run,) = _runs(eval_id, trace_id)["trace"]
+        assert run.run_status == "passed", run.annotation_description
+        assert run.input_variables == [{"name": "tool_output", "value": "delivered"}]
+        assert run.judged_span_count == 3
+        assert mock_completion.call_count == 1
     finally:
         _cleanup(client, task, eval_id, queue)

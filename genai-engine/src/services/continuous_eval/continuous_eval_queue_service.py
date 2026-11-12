@@ -19,13 +19,10 @@ from dependencies import get_db_session
 from repositories.continuous_eval_spend_repository import ContinuousEvalSpendRepository
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
-from repositories.metrics_repository import MetricRepository
 from repositories.organizations_repository import (
     enforce_token_quota,
     extract_token_limit_message,
 )
-from repositories.span_repository import SpanRepository
-from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import (
@@ -50,11 +47,8 @@ from utils.span_tree import tree_order
 from utils.stored_value import cap_stored_value
 from utils.trace import validate_span_version
 from utils.transform_executor import (
-    execute_transform,
     execute_transform_on_spans,
-    flatten_trace_spans,
     spans_match_filter,
-    trace_matches_filter,
 )
 
 logger = logging.getLogger(__name__)
@@ -378,24 +372,18 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         annotation: DatabaseAgenticAnnotation,
         db_continuous_eval: DatabaseContinuousEval,
     ) -> None:
-        # Validate trace exists
-        tasks_metrics_repository = TasksMetricsRepository(db_session)
-        metric_repository = MetricRepository(db_session)
-        span_repository = SpanRepository(
-            db_session,
-            tasks_metrics_repository,
-            metric_repository,
-        )
-
-        trace = span_repository.get_trace_by_id(job.trace_id)
-        if not trace:
+        # The flat span list, as span scope reads it, rather than the trace tree:
+        # the tree builder drops spans caught in a parent cycle, and tree_order
+        # (inside the transform) promotes them to roots instead.
+        spans = self._load_spans(db_session, job.trace_id)
+        if not spans:
             raise ValueError(f"Trace {job.trace_id} not found")
-        judged_span_count = len(flatten_trace_spans(trace))
+        judged_span_count = len(spans)
 
         # Checked here rather than at enqueue: the worker sees the whole trace,
         # so conditions on child spans (a model name, a tool's output) work too.
-        if db_continuous_eval.trace_filter and not trace_matches_filter(
-            trace,
+        if db_continuous_eval.trace_filter and not spans_match_filter(
+            spans,
             [
                 ContinuousEvalTraceFilterCondition.model_validate(condition)
                 for condition in db_continuous_eval.trace_filter
@@ -418,7 +406,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         )
 
         # Execute the transform over the trace
-        transform_results = execute_transform(trace, transform_definition)
+        transform_results = execute_transform_on_spans(spans, transform_definition)
         self._judge_and_store(
             db_session,
             job,
