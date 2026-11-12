@@ -4,7 +4,9 @@ Lists the agents in one Foundry project -- the Foundry Agent Service's agents
 (`GET {project_endpoint}/agents`, `AIProjectClient.agents.list()` in azure-ai-projects
 2.4), prompt, hosted and workflow agents alike -- and emits one record per agent. The
 classic Assistants API's agents are a different resource that this list does not
-return, so they are not reported.
+return, so they are not reported. External agents (`kind: external`) are listed too but
+skipped: Foundry only holds their metadata, they run wherever their owner hosts them, so
+a record saying they run on Azure would be wrong.
 
 THE RECORD. An agent's name is its identity in Foundry: it is unique in the project, it
 is what every API addresses (`/agents/{agent_name}`), and it never
@@ -65,6 +67,13 @@ VENDOR = "azure_ai_foundry"
 # failure part-way through the listing can cost rather than mirroring Azure's pages.
 BATCH_SIZE = 100
 
+# Agents Foundry only registers; they run outside it. See the module docstring.
+_EXTERNAL_KIND = "external"
+
+
+class FoundryListingError(RuntimeError):
+    """Foundry's listing could not be read to the end; the scan is incomplete."""
+
 
 def external_id_for(settings: FoundrySettings, agent_name: str) -> str:
     """The record's external id; see the module docstring."""
@@ -99,46 +108,60 @@ class AzureAIFoundryConnector:
             describe_credential(credential),
         )
 
-        listed = skipped = 0
+        listed = skipped = external = 0
         seen: set[str] = set()
         batch: list[DiscoveredAgentRecord] = []
-        # The listing is lazy and fetches each page as it is read, so the whole
-        # iteration sits inside the translation, not only the call.
-        with vendor_status(), self._agents_factory(settings, credential) as agents:
-            for agent in agents.list():
-                # The SDK's pager asks for the next page for as long as a page names a
-                # `last_id`, and ignores `has_more`. A service that kept naming one
-                # would page forever; an agent seen twice is that, so the listing ends.
-                agent_name = getattr(agent, "name", None)
-                if isinstance(agent_name, str) and agent_name in seen:
-                    logger.warning(
-                        "Azure AI Foundry listed agent %s twice in %s/%s; the listing "
-                        "is ended there rather than paged again",
-                        agent_name,
-                        settings.resource_name,
-                        settings.project_name,
-                    )
-                    break
-                if isinstance(agent_name, str):
-                    seen.add(agent_name)
-                listed += 1
-                record = record_for(agent, settings, logger)
-                if record is None:
-                    skipped += 1
-                    continue
-                batch.append(record)
-                if len(batch) >= BATCH_SIZE:
-                    yield batch
-                    batch = []
-        if batch:
-            yield batch
+        try:
+            # The listing is lazy and fetches each page as it is read, so the whole
+            # iteration sits inside the translation, not only the call.
+            with vendor_status(), self._agents_factory(settings, credential) as agents:
+                for agent in agents.list():
+                    # The SDK's pager asks for the next page for as long as a page
+                    # names a `last_id`, and ignores `has_more`. A service that kept
+                    # naming one would page forever; an agent seen twice is that. The
+                    # scan fails rather than publish a listing it could not finish.
+                    agent_name = getattr(agent, "name", None)
+                    if isinstance(agent_name, str) and agent_name in seen:
+                        raise FoundryListingError(
+                            f"Azure AI Foundry listed agent {agent_name} twice in "
+                            f"{settings.resource_name}/{settings.project_name}; the "
+                            f"listing was stopped before it could page forever",
+                        )
+                    if isinstance(agent_name, str):
+                        seen.add(agent_name)
+                    listed += 1
+                    if _kind(agent) == _EXTERNAL_KIND:
+                        external += 1
+                        continue
+                    record = record_for(agent, settings, logger)
+                    if record is None:
+                        skipped += 1
+                        continue
+                    batch.append(record)
+                    if len(batch) >= BATCH_SIZE:
+                        yield batch
+                        batch = []
+            if batch:
+                yield batch
+        finally:
+            close = getattr(credential, "close", None)
+            if callable(close):
+                close()
         logger.info(
-            "Azure AI Foundry scan listed %s agent(s) in %s/%s, %s skipped",
+            "Azure AI Foundry scan listed %s agent(s) in %s/%s, %s external, %s skipped",
             listed,
             settings.resource_name,
             settings.project_name,
+            external,
             skipped,
         )
+
+
+def _kind(agent: Any) -> Optional[str]:
+    """The latest version's definition kind (`prompt`, `hosted`, `workflow`, `external`)."""
+    latest = getattr(getattr(agent, "versions", None), "latest", None)
+    kind = getattr(getattr(latest, "definition", None), "kind", None)
+    return str(getattr(kind, "value", kind)) if kind else None
 
 
 def record_for(

@@ -43,6 +43,7 @@ from discovery.cloud.azure_ai_foundry.client import (
 from discovery.cloud.azure_ai_foundry.connector import (
     VENDOR,
     AzureAIFoundryConnector,
+    FoundryListingError,
     external_id_for,
 )
 from job_executors.discovery_output_contract import check_batch
@@ -186,7 +187,8 @@ def test_external_id_is_stable_across_spellings_of_the_endpoint(
     config: DiscoverySourceConfigSpec,
 ) -> None:
     spelled = ENDPOINT.replace("contoso-foundry", "Contoso-Foundry").replace(
-        "https", "HTTPS"
+        "https",
+        "HTTPS",
     )
     fields = {**FIELDS, "project_endpoint": f"  {spelled}/ "}
     [[record]] = scan(FakeFactory(FakeAgents([agent("triage")])), config, fields=fields)
@@ -251,14 +253,65 @@ def test_an_agent_with_no_creation_time_is_skipped_not_dated_to_the_scan(
     assert "no latest version with a creation time" in caplog.text
 
 
-def test_an_agent_listed_twice_ends_the_listing(
+def test_an_agent_listed_twice_fails_the_scan(
+    config: DiscoverySourceConfigSpec,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The SDK pages on `last_id` alone; a repeat means it would page forever. What was
+    already published stays, but the scan must not read as a complete inventory."""
+    monkeypatch.setattr(foundry, "BATCH_SIZE", 1)
+    looping = FakeAgents([agent("a"), agent("b"), agent("a"), agent("b")])
+    published: list[str] = []
+    with pytest.raises(FoundryListingError, match="listed agent a twice") as exc:
+        for batch in AzureAIFoundryConnector(FakeFactory(looping)).scan(
+            config,
+            24,
+            CREDS,
+            FIELDS,
+            LOG,
+        ):
+            published += [resource_id(r) for r in batch]
+    assert published == ["a", "b"]
+    assert failure_code(exc.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+def test_an_external_agent_is_not_reported_as_running_on_azure(
     config: DiscoverySourceConfigSpec,
 ) -> None:
-    """The SDK pages on `last_id` alone; a repeat means it would page forever."""
-    looping = FakeAgents([agent("a"), agent("b")])
-    looping.listed = [agent("a"), agent("b"), agent("a"), agent("b")]
-    [batch] = scan(FakeFactory(looping), config)
-    assert [resource_id(r) for r in batch] == ["a", "b"]
+    external = agent(
+        "on-gcp",
+        definition={"kind": "external", "otel_agent_id": "on-gcp"},
+    )
+    [batch] = scan(FakeFactory(FakeAgents([agent("triage"), external])), config)
+    assert [resource_id(r) for r in batch] == ["triage"]
+
+
+class ClosingCredential(ClientSecretCredential):
+    closed = 0
+
+    def close(self) -> None:
+        ClosingCredential.closed += 1
+
+
+@pytest.mark.parametrize("error", [None, HttpResponseError(message="boom")])
+def test_the_credential_is_closed_after_the_scan(
+    error: Optional[Exception],
+    config: DiscoverySourceConfigSpec,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ClosingCredential, "closed", 0)
+    monkeypatch.setattr(
+        foundry,
+        "credential_from",
+        lambda settings, creds: ClosingCredential(TENANT, CLIENT, SECRET),
+    )
+    factory = FakeFactory(FakeAgents([agent("triage")], error))
+    if error is None:
+        scan(factory, config)
+    else:
+        with pytest.raises(HttpResponseError):
+            scan(factory, config)
+    assert ClosingCredential.closed == 1
 
 
 def test_records_are_batched(
@@ -316,11 +369,31 @@ def test_a_missing_project_endpoint_is_named(value: Optional[str]) -> None:
         "https://contoso.services.ai.azure.com/projects/p",
         "https://contoso.services.ai.azure.com/api/projects/p?x=1",
         "contoso.services.ai.azure.com/api/projects/p",
+        # The scan sends the host a token, so only public Azure's Foundry domain.
+        "https://attacker.example.com/api/projects/p",
+        "https://contoso.services.ai.azure.com.example.com/api/projects/p",
+        "https://services.ai.azure.com/api/projects/p",
+        "https://a.contoso.services.ai.azure.com/api/projects/p",
+        "https://contoso.services.ai.azure.us/api/projects/p",
+        "https://user@contoso.services.ai.azure.com/api/projects/p",
+        "https://contoso.services.ai.azure.com:8443/api/projects/p",
+        "https://contoso.services.ai.azure.com:abc/api/projects/p",
     ],
 )
 def test_an_endpoint_that_is_not_a_project_endpoint_is_refused(endpoint: str) -> None:
-    with pytest.raises(DiscoveryConfigurationError, match="not a Foundry project"):
+    with pytest.raises(
+        DiscoveryConfigurationError,
+        match="not a Foundry project",
+    ) as exc:
         settings_from({"project_endpoint": endpoint})
+    assert failure_code(exc.value) is DiscoveryErrorCode.NOT_CONFIGURED
+
+
+def test_the_default_https_port_is_normalised_away() -> None:
+    settings = settings_from(
+        {"project_endpoint": ENDPOINT.replace(".com/", ".com:443/")},
+    )
+    assert settings.project_endpoint == ENDPOINT
 
 
 # --- credentials -------------------------------------------------------------------
@@ -476,8 +549,8 @@ def add_listing(rsps: responses.RequestsMock, *agents: dict[str, Any]) -> None:
             f"{ENDPOINT}/agents",
             match=[
                 matchers.query_param_matcher(
-                    {"api-version": "v1", "after": agents[-1]["id"]}
-                )
+                    {"api-version": "v1", "after": agents[-1]["id"]},
+                ),
             ],
             json={"data": [], "has_more": False, "first_id": None, "last_id": None},
         )

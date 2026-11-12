@@ -6,6 +6,13 @@ Foundry portal shows on the project's overview page and what `AIProjectClient` t
 The resource (the Foundry account) and the project are read back out of it for the
 record's address, so the endpoint is the one thing a person types.
 
+PUBLIC AZURE ONLY. The host must be `<resource>.services.ai.azure.com`. The scan hands
+the endpoint a bearer token, for the engine's own identity when the default credential
+is allowed, so a source must not be able to point it at a host of its choosing. The SDK
+also asks for the public cloud's `https://ai.azure.com/.default` scope, which a sovereign
+cloud's Foundry would not accept; supporting one means adding its domain, its scope and
+its Entra authority together.
+
 CREDENTIALS. A source's `tenant_id`, `client_id` (source fields, not secrets) and
 `client_secret` (a secret) are a Microsoft Entra service principal, used through
 `ClientSecretCredential`. All three or none: a partial set is the source's to fix. A
@@ -67,6 +74,7 @@ ALLOW_DEFAULT_CREDENTIAL_ENV_VAR = (
 )
 
 _SOURCE = "Azure AI Foundry source"
+_ENDPOINT_DOMAIN = ".services.ai.azure.com"
 _TRUE = frozenset({"1", "true", "yes"})
 
 
@@ -94,7 +102,8 @@ class FoundryAgents(Protocol):
 
 # (settings, credential) -> the project's agent operations, closed on exit.
 AgentsFactory = Callable[
-    [FoundrySettings, TokenCredential], ContextManager[FoundryAgents]
+    [FoundrySettings, TokenCredential],
+    ContextManager[FoundryAgents],
 ]
 
 
@@ -134,15 +143,23 @@ def settings_from(source_fields: Mapping[str, str]) -> FoundrySettings:
 def parse_project_endpoint(raw: str) -> tuple[str, str, str]:
     """(normalised endpoint, resource name, project name), or DiscoveryConfigurationError.
 
-    The host is not checked against `services.ai.azure.com`, so a sovereign cloud's
-    endpoint works; the path is, because the project name is read from it.
+    The host must be a public Azure Foundry resource's; see the module docstring.
     """
     parts = urlsplit(raw.strip())
     segments = [s for s in parts.path.split("/") if s]
     host = (parts.hostname or "").lower()
+    resource = host.removesuffix(_ENDPOINT_DOMAIN)
+    try:
+        port = parts.port
+    except ValueError:
+        port = -1
     if (
         parts.scheme.lower() != "https"
-        or not host
+        or not host.endswith(_ENDPOINT_DOMAIN)
+        or not resource
+        or "." in resource
+        or port not in (None, 443)
+        or parts.username is not None
         or parts.query
         or parts.fragment
         or len(segments) != 3
@@ -154,9 +171,8 @@ def parse_project_endpoint(raw: str) -> tuple[str, str, str]:
             f"endpoint: expected https://<resource>.services.ai.azure.com/api/projects/"
             f"<project>.",
         )
-    netloc = host if parts.port is None else f"{host}:{parts.port}"
     project = segments[2]
-    return f"https://{netloc}/api/projects/{project}", host.split(".")[0], project
+    return f"https://{host}/api/projects/{project}", resource, project
 
 
 def default_credential_allowed() -> bool:

@@ -759,10 +759,12 @@ container reads as denied, not as an account without workloads.
 
 Lists the Foundry Agent Service agents (prompt, hosted and workflow) in one Foundry
 project. Classic Assistants API agents are a different resource and are not listed.
+External agents, which Foundry only registers and which run elsewhere, are skipped.
+Only public Azure is supported.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
-| `project_endpoint` | no | yes | The project endpoint from the project's overview page, `https://<resource>.services.ai.azure.com/api/projects/<project>` |
+| `project_endpoint` | no | yes | The project endpoint from the project's overview page, `https://<resource>.services.ai.azure.com/api/projects/<project>`. Any other host is refused, since the scan sends it a token |
 | `tenant_id` | no | no | The service principal's Microsoft Entra tenant |
 | `client_id` | no | no | The service principal's application (client) ID |
 | `client_secret` | yes | no | The service principal's secret. Set all three of `tenant_id`, `client_id` and `client_secret`, or none; with none, the engine uses its `DefaultAzureCredential` (managed or workload identity, `az login`) only if `ARTHUR_ENGINE_AZURE_AI_FOUNDRY_ALLOW_DEFAULT_CREDENTIAL=true` is set |
@@ -779,7 +781,8 @@ tools are reported. A prompt agent's instructions and a hosted agent's environme
 variables arrive in the same listing and are never copied into the record or logged.
 
 The lookback window is not applied: the list is an inventory, so every scan reports
-every agent in the project.
+every agent in the project. If Foundry's paging repeats an agent, the scan fails
+rather than report a partial inventory.
 
 #### `splunk_enterprise` — Splunk Enterprise
 
