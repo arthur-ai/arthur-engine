@@ -32,12 +32,12 @@ const blank: TraceFilterRow = { spanName: "", attributePath: "", operator: "equa
 
 describe("SpendEstimateLine with a trace filter", () => {
   it("says when a condition is left out because it isn't filled in", () => {
-    render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="" traceFilter={[paid, blank]} />);
+    render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" llmEvalVersion={null} samplePercent="" traceFilter={[paid, blank]} />);
     expect(screen.getByText(/1 trace filter condition isn't filled in yet/)).toBeTruthy();
   });
 
   it("says nothing extra when every condition is complete", () => {
-    render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="" traceFilter={[paid]} />);
+    render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" llmEvalVersion={null} samplePercent="" traceFilter={[paid]} />);
     expect(screen.queryByText(/filled in yet/)).toBeNull();
   });
 });
