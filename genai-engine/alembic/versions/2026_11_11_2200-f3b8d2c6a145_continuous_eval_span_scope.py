@@ -105,6 +105,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Without run_level a span run reads as one more whole-trace verdict, so drop
+    # them first; each trace keeps its rollup, which holds the trace's verdict.
+    op.execute("DELETE FROM agentic_annotations WHERE run_level = 'span'")
     op.drop_index(
         "uq_agentic_annotations_test_span_run",
         table_name="agentic_annotations",

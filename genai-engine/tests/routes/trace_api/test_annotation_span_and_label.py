@@ -6,6 +6,7 @@ import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 from litellm.types.utils import ModelResponse
 
+from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from schemas.llm_eval_schemas import ReasonedScore
 from services.continuous_eval import (
     ContinuousEvalJob,
@@ -13,7 +14,10 @@ from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
 )
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 from tests.routes.trace_api.test_continuous_eval_execution import (
     cleanup_model_provider,
     cleanup_test_data,
@@ -104,11 +108,26 @@ def test_human_annotation_keeps_span_id_and_label(client: GenaiEngineTestClientB
         )
         assert resp.status_code == 400
         assert "not in trace" in resp.json()["detail"]
-    finally:
-        client.base_client.delete(
+
+        # Deleting the trace's annotation leaves the span labels on it.
+        resp = client.base_client.delete(
             f"/api/v1/traces/{trace_id}/annotations",
             headers=client.authorized_user_api_key_headers,
         )
+        assert resp.status_code == 204, resp.text
+        listed = client.base_client.get(
+            f"/api/v1/traces/{trace_id}/annotations",
+            headers=client.authorized_user_api_key_headers,
+        ).json()["annotations"]
+        assert sorted(
+            a.get("label") for a in listed if a["annotation_type"] == "human"
+        ) == ["ok", "wrong_args"]
+    finally:
+        db_session = override_get_db_session()
+        db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.trace_id == trace_id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
         cleanup_test_data(test_data)
 
 

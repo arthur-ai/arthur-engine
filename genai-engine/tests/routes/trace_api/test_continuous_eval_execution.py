@@ -891,15 +891,12 @@ def test_continuous_eval_execution_annotation_eval_errors(
         delay_seconds=0,
     )
 
-    with pytest.raises(
-        ValueError,
-        match=f"Annotation {annotation.id} is running or has already finished executing",
-    ):
-        continuous_eval_queue_service._execute_job(job)
+    # Another worker has claimed it: the duplicate job leaves its status alone.
+    continuous_eval_queue_service._execute_job(job)
 
     status_code, received_annotation = client.get_annotation_by_id(annotation.id)
     assert status_code == 200
-    assert received_annotation.run_status == ContinuousEvalRunStatus.ERROR.value
+    assert received_annotation.run_status == ContinuousEvalRunStatus.RUNNING.value
 
     delete_mock_annotation(annotation.id)
 

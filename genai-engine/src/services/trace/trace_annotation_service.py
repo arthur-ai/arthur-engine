@@ -240,6 +240,8 @@ class TraceAnnotationService:
             DatabaseAgenticAnnotation.trace_id == trace_id,
             DatabaseAgenticAnnotation.annotation_type
             == AgenticAnnotationType.HUMAN.value,
+            # The trace's own annotation; span annotations on it are kept.
+            DatabaseAgenticAnnotation.span_id.is_(None),
         )
         if org_scope is not None:
             q = q.filter(DatabaseAgenticAnnotation.org_id == org_scope)

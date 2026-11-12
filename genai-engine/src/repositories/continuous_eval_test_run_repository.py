@@ -19,7 +19,7 @@ from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.organizations_repository import lookup_org_id
-from schemas.enums import TestRunStatus
+from schemas.enums import ContinuousEvalRunLevel, TestRunStatus
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEvalTestRun
 from services.continuous_eval import (
     ContinuousEvalJob,
@@ -222,9 +222,11 @@ class ContinuousEvalTestRunRepository:
         pagination_parameters: Optional[PaginationParameters] = None,
         org_scope: uuid.UUID | None = None,
     ) -> List[AgenticAnnotation]:
-        """Get individual test case results for a test run."""
+        """Get individual test case results for a test run: one per trace, so a
+        span-scope eval's rollups are listed and its span runs are not."""
         base_query = self.db_session.query(DatabaseAgenticAnnotation).filter(
             DatabaseAgenticAnnotation.test_run_id == test_run_id,
+            DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN.value,
         )
         # agentic_annotations carries denormalized org_id — direct filter.
         if org_scope is not None:
@@ -291,9 +293,13 @@ class ContinuousEvalTestRunRepository:
         self.db_session.commit()
 
     def count_test_run_results(self, test_run_id: uuid.UUID) -> int:
-        """Count results for a test run."""
+        """Count results for a test run, one per trace as get_test_run_results."""
         return (
             self.db_session.query(DatabaseAgenticAnnotation)
-            .filter(DatabaseAgenticAnnotation.test_run_id == test_run_id)
+            .filter(
+                DatabaseAgenticAnnotation.test_run_id == test_run_id,
+                DatabaseAgenticAnnotation.run_level
+                != ContinuousEvalRunLevel.SPAN.value,
+            )
             .count()
         )

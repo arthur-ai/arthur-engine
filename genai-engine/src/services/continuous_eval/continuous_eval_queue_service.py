@@ -105,6 +105,11 @@ def runs_often_enough_to_cache(
     return recent_runs >= CACHE_BREAKPOINT_MIN_RECENT_RUNS
 
 
+class RunAlreadyClaimed(Exception):
+    """The run is no longer pending: another worker has claimed or finished it,
+    so this job leaves it alone."""
+
+
 class ContinuousEvalJob(BaseQueueJob):
     """Represents a continuous eval job to be executed."""
 
@@ -259,6 +264,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             else:
                 self._judge_trace(db_session, job, annotation, db_continuous_eval)
 
+        except RunAlreadyClaimed as e:
+            # A duplicate job (a stale-run re-queue, another node) found the run
+            # taken: writing ERROR here would clobber the claiming worker's result
+            # and could finish a span-scope rollup early.
+            logger.info(str(e))
         except Exception as e:
             logger.error(
                 f"Error executing job for trace {job.trace_id}: {e}",
@@ -312,7 +322,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 f"Annotation's continuous eval ID does not match the job's continuous eval ID",
             )
         if annotation.run_status != ContinuousEvalRunStatus.PENDING.value:
-            raise ValueError(
+            raise RunAlreadyClaimed(
                 f"Annotation {job.annotation_id} is running or has already finished executing",
             )
         return annotation
@@ -346,14 +356,20 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
     @staticmethod
     def _load_spans(db_session: Session, trace_id: str) -> list[DatabaseSpan]:
         """The trace's spans as a flat list, straight from the spans table, the
-        same spans get_trace_by_id serves (current span version only)."""
-        return [
-            span
-            for span in db_session.query(DatabaseSpan).filter(
+        same spans get_trace_by_id serves (current span version only). A span id
+        stored twice (re-sent by an exporter) keeps its first row, so fan-out and
+        'current' reads see one span per id."""
+        spans: dict[str, DatabaseSpan] = {}
+        for span in (
+            db_session.query(DatabaseSpan)
+            .filter(
                 DatabaseSpan.trace_id == trace_id,
             )
-            if validate_span_version(span.raw_data)
-        ]
+            .order_by(DatabaseSpan.created_at, DatabaseSpan.id)
+        ):
+            if span.span_id not in spans and validate_span_version(span.raw_data):
+                spans[span.span_id] = span
+        return list(spans.values())
 
     def _judge_trace(
         self,

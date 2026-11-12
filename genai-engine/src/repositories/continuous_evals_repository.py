@@ -759,8 +759,13 @@ class ContinuousEvalsRepository:
 
     def _reopen_rollups(self, span_run: DatabaseAgenticAnnotation) -> None:
         """A rerun span run makes its trace's finished rollup undecided again; it
-        is decided anew when the span run finishes."""
-        for rollup in self._runs_like(span_run, ContinuousEvalRunLevel.SPAN_ROLLUP):
+        is decided anew when the span run finishes. The rollup row is locked first:
+        two sibling span runs rerun at once must not both take its result out of
+        the test run's counters."""
+        for rollup in self._runs_like(
+            span_run,
+            ContinuousEvalRunLevel.SPAN_ROLLUP,
+        ).with_for_update():
             if rollup.run_status in _UNFINISHED_STATUSES:
                 continue
             self._uncount_test_run_result(rollup)
@@ -1028,6 +1033,7 @@ class ContinuousEvalsRepository:
                 ),
             )
         groups = self._trace_attribute_values(
+            task_id,
             {run.trace_id for run in runs if run.trace_id},
             group_by,
             group_by_span_name,
@@ -1069,19 +1075,24 @@ class ContinuousEvalsRepository:
 
     def _trace_attribute_values(
         self,
+        task_id: str,
         trace_ids: set[str],
         attribute_path: str,
         span_name: Optional[str],
     ) -> dict[str, str]:
         """Each trace's value at attribute_path, from the earliest span (named
-        span_name, if given) that has it."""
+        span_name, if given) that has it. Only the task's own spans are read: a
+        trace id is not unique across tasks."""
         values: dict[str, str] = {}
         ordered = sorted(trace_ids)
         for i in range(0, len(ordered), _SPAN_READ_CHUNK):
             query = self.db_session.query(
                 DatabaseSpan.trace_id,
                 DatabaseSpan.raw_data,
-            ).filter(DatabaseSpan.trace_id.in_(ordered[i : i + _SPAN_READ_CHUNK]))
+            ).filter(
+                DatabaseSpan.task_id == task_id,
+                DatabaseSpan.trace_id.in_(ordered[i : i + _SPAN_READ_CHUNK]),
+            )
             if span_name:
                 query = query.filter(DatabaseSpan.span_name == span_name)
             for trace_id, raw_data in query.order_by(DatabaseSpan.start_time):

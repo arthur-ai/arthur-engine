@@ -15,6 +15,7 @@ from arthur_common.models.enums import ContinuousEvalRunStatus
 from litellm.types.utils import ModelResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.telemetry_models import DatabaseSpan
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from schemas.enums import ContinuousEvalRunLevel
 from services.continuous_eval import (
@@ -402,6 +403,65 @@ def test_a_test_run_counts_each_trace_once_through_its_rollup(
             test_run.failed_count,
         ) == (1, 1, 1, 0)
         assert test_run.status == "completed"
+        assert mock_completion.call_count == 2
+        # The test run's results list the trace once, through its rollup.
+        resp = client.base_client.get(
+            f"/api/v1/continuous_evals/test_runs/{test_run.id}/results",
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert [a["run_level"] for a in resp.json()["annotations"]] == ["span_rollup"]
+        assert resp.json()["count"] == 1
+    finally:
+        _cleanup(client, task, eval_id, queue)
+
+
+@pytest.mark.unit_tests
+@patch(f"{WORKER}.SPAN_SCOPE_IDLE_SECONDS", 0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.002)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_judge_reply)
+@patch(f"{WORKER}.get_db_session", side_effect=mock_get_db_session_generator)
+def test_a_span_stored_twice_is_judged_once(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """An exporter re-sent call-1, so the spans table has two rows for it. The
+    fan-out still makes one span run per span id and decides the trace."""
+    queue = SyncQueue()
+    task, eval_id = _setup_eval(client, "final_attempt")
+    trace_id = add_trace(task.id, RETRY_TRACE)
+    db_session = override_get_db_session()
+    original = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.trace_id == trace_id, DatabaseSpan.span_id == "call-1")
+        .one()
+    )
+    db_session.add(
+        DatabaseSpan(
+            id=uuid.uuid4().hex,
+            trace_id=trace_id,
+            span_id="call-1",
+            parent_span_id=original.parent_span_id,
+            span_name=original.span_name,
+            span_kind=original.span_kind,
+            start_time=original.start_time,
+            end_time=original.end_time,
+            task_id=task.id,
+            org_id=original.org_id,
+            raw_data=original.raw_data,
+        ),
+    )
+    db_session.commit()
+    try:
+        ContinuousEvalsRepository(
+            override_get_db_session(),
+        )._enqueue_continuous_evals_for_trace(trace_id, task.id, delay_seconds=0)
+        assert queue.drain() == 3
+        runs = _runs(eval_id, trace_id)
+        assert [r.span_id for r in runs["span"]] == ["call-1", "call-2"]
+        assert runs["span_rollup"][0].run_status == "passed"
         assert mock_completion.call_count == 2
     finally:
         _cleanup(client, task, eval_id, queue)

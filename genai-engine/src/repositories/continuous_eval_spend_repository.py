@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, List, Optional
 from uuid import UUID
 
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from pydantic import BaseModel
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
@@ -56,15 +56,29 @@ _FINISHED_RUN_STATUSES = (
 _LLM_EVAL_TYPE = "llm_eval"
 
 
-@dataclass
-class _Priced:
-    """The cost columns _build_estimate reads, when they come from two queries."""
+class _Priced(BaseModel):
+    """The cost figures _build_estimate prices from: one row of
+    _average_run_cost_columns, or span runs and rollups combined in span scope."""
 
     run_count: int
     average_run_cost: Optional[float]
     unpriced_run_count: int
     judged_run_count: int
     finished_run_count: int
+
+    @classmethod
+    def from_row(cls, row: Any) -> "_Priced":
+        return cls(
+            run_count=row.run_count,
+            average_run_cost=(
+                float(row.average_run_cost)
+                if row.average_run_cost is not None
+                else None
+            ),
+            unpriced_run_count=row.unpriced_run_count,
+            judged_run_count=row.judged_run_count,
+            finished_run_count=row.finished_run_count,
+        )
 
 
 class ContinuousEvalSpendRepository:
@@ -126,7 +140,7 @@ class ContinuousEvalSpendRepository:
                     now=now,
                 ),
             )
-        priced = (
+        priced = _Priced.from_row(
             self.db_session.query(*self._average_run_cost_columns())
             .join(
                 DatabaseContinuousEval,
@@ -209,7 +223,7 @@ class ContinuousEvalSpendRepository:
         now = now or datetime.now()
         window_start = now - timedelta(days=SPEND_ESTIMATE_WINDOW_DAYS)
 
-        priced = (
+        priced = _Priced.from_row(
             self.db_session.query(*self._average_run_cost_columns())
             .join(
                 DatabaseContinuousEval,
@@ -415,7 +429,11 @@ class ContinuousEvalSpendRepository:
         )
         priced = _Priced(
             run_count=span_runs.run_count,
-            average_run_cost=span_runs.average_run_cost,
+            average_run_cost=(
+                float(span_runs.average_run_cost)
+                if span_runs.average_run_cost is not None
+                else None
+            ),
             unpriced_run_count=span_runs.unpriced_run_count,
             judged_run_count=rollups.judged,
             finished_run_count=rollups.finished,
@@ -521,7 +539,7 @@ class ContinuousEvalSpendRepository:
         self,
         task_id: str,
         sample_rate: Optional[float],
-        priced: Any,
+        priced: _Priced,
         priced_since: Optional[datetime],
         window_start: datetime,
         now: datetime,
