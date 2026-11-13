@@ -3973,6 +3973,10 @@ class ContinuousEval(BaseModel):
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
     )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -3999,6 +4003,7 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=db_eval.enabled,
             sample_rate=db_eval.sample_rate,
+            daily_cost_cap_usd=db_eval.daily_cost_cap_usd,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -4025,6 +4030,7 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
             sample_rate=self.sample_rate,
+            daily_cost_cap_usd=self.daily_cost_cap_usd,
         )
 
 
