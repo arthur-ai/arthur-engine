@@ -349,7 +349,8 @@ def _validate_url_format(value: str) -> bool:
         if result.scheme.lower() not in valid_schemes:
             return False
 
-        host = result.netloc.split(":")[0]
+        # hostname drops any user:password@ prefix, the port, and IPv6 brackets.
+        host = result.hostname or ""
 
         if is_ip(host):
             return True
