@@ -558,10 +558,11 @@ the image):
 
 | File | Written by | Holds |
 |---|---|---|
-| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read. Windows has no collector: there, the file is the output of upstream's [`discovery-windows.sql`](../../integrations/endpoint-ai-discovery/vendor/ai-detection-spec/dist/discovery-windows.sql) run through `osqueryi --json` (osquery 5.17.0 or later), kept as osqueryi writes it, in UTF-8 | the scan's rows |
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux, [`dist/collect-windows.ps1`](../../integrations/endpoint-ai-discovery/dist/collect-windows.ps1) on Windows. It needs [osquery](https://osquery.io/downloads) on the machine (5.17.0 or later on Windows), and not root: run as a user, it sees what that user can read | the scan's rows |
 | `machine.json` | whatever ran the collector | who the machine is, below |
 
-The collector also writes `status.txt` and `inventory.ea` there; neither is read.
+The collector also writes `status.txt` there, and `inventory.ea` on macOS and Linux; neither
+is read.
 
 `machine.json` names the machine, because an engine in a container cannot see the host's
 own id or hostname:

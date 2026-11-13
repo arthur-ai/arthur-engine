@@ -2,6 +2,9 @@
 # in a checkout, and raw.githubusercontent.com serves the blob. A checkout that rewrote their line
 # endings (core.autocrlf on Windows) would pin bytes no URL serves, so they are LF everywhere.
 dist/collect-linux.sh                   text eol=lf
+# Downloaded by Deckard's scan-local.ps1 and pinned by sha256 the same way, and it is the one
+# file here a Windows checkout is likely to hold.
+dist/collect-windows.ps1                text eol=lf
 deploy/report-guest-attributes.sh       text eol=lf
 deploy/arthur-ai-discovery.service      text eol=lf
 deploy/arthur-ai-discovery.timer        text eol=lf

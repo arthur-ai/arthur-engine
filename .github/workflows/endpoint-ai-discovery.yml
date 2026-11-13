@@ -1,8 +1,8 @@
 name: Endpoint AI Discovery CI
 
-# lint.sh READS both collectors; the macOS and Linux jobs RUN them. Both are needed: a static
-# check cannot catch a shell bug that only fires on a real machine, and the deployable is bash
-# against a stock system.
+# lint.sh READS every collector; the macOS, Linux and Windows jobs RUN them. Both are needed: a
+# static check cannot catch a shell bug that only fires on a real machine, and the deployable
+# is bash, or on Windows PowerShell, against a stock system.
 #
 # The queries, the runner and the Docker guard are vendored at a pinned ref and tested by
 # upstream. Do not re-create that suite here.
@@ -80,6 +80,20 @@ jobs:
           [ "$status" -eq 1 ] || { echo "::error::expected exit 1 on Linux, got $status"; exit 1; }
           case "$out" in
             *discovery-darwin.sql*) echo "ok: refused, naming the artifact it carries" ;;
+            *) echo "::error::the refusal does not name the cause"; exit 1 ;;
+          esac
+
+      # The Windows build is PowerShell, which runs here as PowerShell 7. It must refuse by
+      # name too, where every branch of the pack it carries would otherwise fail.
+      - name: The Windows collector refuses to run off Windows, and says why
+        run: |
+          set +e
+          out="$(pwsh -NoProfile -NonInteractive -File dist/collect-windows.ps1 2>&1)"; status=$?
+          set -e
+          echo "$out"
+          [ "$status" -eq 1 ] || { echo "::error::expected exit 1 on Linux, got $status"; exit 1; }
+          case "$out" in
+            *discover.ps1*) echo "ok: refused, naming the runner it carries" ;;
             *) echo "::error::the refusal does not name the cause"; exit 1 ;;
           esac
 
@@ -253,3 +267,58 @@ jobs:
         run: |
           tools/render-cfn-template.sh HEAD > "$RUNNER_TEMP/arthur-ai-discovery.cfn.yaml"
           sudo -n env ARTHUR_TEST_INSTALLS_UNITS=1 test/run-ec2-install.sh "$RUNNER_TEMP/arthur-ai-discovery.cfn.yaml"
+
+  collector-windows:
+    name: The Windows deployable, run on Windows
+    # Windows Server 2025, which is what GitHub hosts. A Windows 11 laptop is not covered here.
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install osquery
+        shell: powershell
+        run: |
+          $msi = "$env:RUNNER_TEMP\osquery.msi"
+          curl.exe --retry 3 --retry-all-errors --retry-delay 5 -fsSL -o $msi "https://pkg.osquery.io/windows/osquery-$env:OSQUERY_VERSION.msi"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$msi`" /qn /norestart /l*v `"$env:RUNNER_TEMP\msi.log`""
+          if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\msi.log" -Tail 40; exit 1 }
+          & "$env:ProgramFiles\osquery\osqueryi.exe" --version
+        env:
+          OSQUERY_VERSION: 5.23.1
+
+      # `shell: powershell` is Windows PowerShell 5.1, the one every supported Windows ships,
+      # and the test starts each collector under the PowerShell running it. As an
+      # administrator, which a hosted runner is. ~30s.
+      - name: test/run-collector.ps1
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File test\run-collector.ps1
+          exit $LASTEXITCODE
+
+      # AGAIN IN CONSTRAINEDLANGUAGE MODE, which is what an unsigned script gets where AppLocker
+      # or WDAC is enforced. __PSLockdownPolicy is the test switch PowerShell reads from the
+      # machine's environment when it starts, so the test and every collector it starts run
+      # in that mode. Asserted first: a step that stayed in FullLanguage would prove nothing.
+      - name: test/run-collector.ps1, in ConstrainedLanguage mode
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          [Environment]::SetEnvironmentVariable('__PSLockdownPolicy', '4', 'Machine')
+          $env:__PSLockdownPolicy = '4'
+          $code = 1
+          try {
+            $mode = powershell.exe -NoProfile -Command '$ExecutionContext.SessionState.LanguageMode'
+            if ($mode -ne 'ConstrainedLanguage') {
+              Write-Host "::error::PowerShell started in $mode mode, so this step would prove nothing"
+            } else {
+              powershell.exe -NoProfile -ExecutionPolicy Bypass -File test\run-collector.ps1
+              $code = $LASTEXITCODE
+            }
+          } finally {
+            [Environment]::SetEnvironmentVariable('__PSLockdownPolicy', $null, 'Machine')
+            Remove-Item Env:\__PSLockdownPolicy -ErrorAction SilentlyContinue
+          }
+          exit $code

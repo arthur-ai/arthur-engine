@@ -12,7 +12,9 @@ inventory does not see them.
 
 1. A scheduled script runs [osquery](https://osquery.io) and writes what it found to
    `/var/lib/arthur/`. The script is `dist/collect.sh` on macOS and `dist/collect-linux.sh`
-   on Linux.
+   on Linux. `dist/collect-windows.ps1` is the same script for Windows, where it writes to
+   `C:\ProgramData\Arthur\`. No carrier reads a Windows machine yet: the standalone `local`
+   source reads the folder it writes.
 2. The platform that already manages the machine carries that file. On Jamf Pro it is Extension
    Attributes; on Compute Engine, guest attributes; on EC2, SSM custom inventory.
 3. Arthur's collector reads the file through that platform's API and matches it against the
@@ -66,20 +68,21 @@ things:
 |---|---|
 | `vendor/ai-detection-spec/` | the queries and the runner at a pinned ref. **Do not edit**; re-vendor instead |
 | `tools/vendor-queries.sh` | vendors upstream's osquery binding (`osquery/bin/`, `osquery/dist/`, the bundler) at one ref. The agent catalog and the matcher are vendored into ml-engine instead |
-| `tools/build-collector.py` | builds `dist/collect.sh` and `dist/collect-linux.sh`, each one self-contained file |
+| `tools/build-collector.py` | builds `dist/collect.sh`, `dist/collect-linux.sh` and `dist/collect-windows.ps1`, each one self-contained file |
 | `dist/` | the built collectors. Generated, and committed so reviewers see them change |
 | `deploy/` | the macOS LaunchDaemon; the systemd units, the Compute Engine and EC2 reporters, the Compute Engine OS policy and the EC2 CloudFormation template |
 | `deploy/terraform/` | a Terraform module that deploys the OS policy across projects and zones, or through a policy orchestrator |
 | `tools/render-os-policy.sh` | pins the OS policy to one ref of this repository, for gcloud |
 | `deploy/arthur-ai-discovery.cfn.yaml` | the EC2 CloudFormation template, deployed as a stack per region or as an organization StackSet |
 | `tools/render-cfn-template.sh` | pins that template to one ref of this repository |
-| `test/` | lint, the collector run, the reporters against fake metadata servers, and the units under systemd |
+| `test/` | lint, the collector run on each platform, the reporters against fake metadata servers, and the units under systemd |
 
 ```bash
 tools/vendor-queries.sh <ref>     # vendor upstream at a ref; checks upstream's build first
-tools/build-collector.py          # rebuild both collectors
+tools/build-collector.py          # rebuild every collector
 test/lint.sh                      # static checks, ~1s
 test/run-collector.sh             # run this platform's collector and check its output, ~15s
+test\run-collector.ps1            # the same on Windows, from PowerShell, ~30s
 ```
 
 After a vendor bump, check what the new upstream version removed as well as what it added.

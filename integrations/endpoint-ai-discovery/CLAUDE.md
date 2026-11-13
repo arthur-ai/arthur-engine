@@ -58,7 +58,7 @@ renumbering them is a code change.
 |---|---|
 | `vendor/ai-detection-spec/` | the queries and the runner, at a pinned ref. **The only osquery implementation. Do not edit** — run `tools/vendor-queries.sh`. |
 | `tools/vendor-queries.sh` | vendor upstream's osquery binding — `osquery/bin/`, `osquery/dist/` and the bundler — at one ref. Not `catalog/` or `bin/classify` — those are the collector's. |
-| `tools/build-collector.py` | build `dist/collect.sh` and `dist/collect-linux.sh`, one file per platform, around one driver. Holds the `arthur1.` framing. |
+| `tools/build-collector.py` | build `dist/collect.sh`, `dist/collect-linux.sh` and `dist/collect-windows.ps1`, one file per platform. macOS and Linux share one driver, which holds the `arthur1.` framing; Windows has a PowerShell driver, `DRIVER_PS`. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
 | `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier. |
 | `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
@@ -68,6 +68,7 @@ renumbering them is a code change.
 | `tools/render-cfn-template.sh` | pin the EC2 template to one ref, as `render-os-policy.sh` pins the OS policy. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
+| `test/run-collector.ps1` | the same for `dist/collect-windows.ps1`, from PowerShell on Windows. ~30s, needs osquery and python. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
 | `test/run-ssm-inventory.sh` | runs the EC2 reporter against a fake IMDS built from AWS's documentation, and reassembles the file it writes. ~6s, no osquery. |
 | `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
@@ -81,7 +82,7 @@ vendor/ai-detection-spec/bin/discover             # raw rows, no framing, no fil
 vendor/ai-detection-spec/bin/discover --deep      # ...plus a live container scan
 
 tools/vendor-queries.sh <ref>         # vendor the public queries and runner at a ref
-tools/build-collector.py              # build both collectors around them
+tools/build-collector.py              # build every collector around them
 tools/build-collector.py --check      # ...and confirm it carries the vendored tree
 
 test/lint.sh                          # static checks, ~1s, no VM
@@ -99,7 +100,8 @@ Run both after any vendor bump or template edit. `lint.sh` **reads** the deploya
 passed for as long as the collector's extraction preamble went unexecuted by anything but a
 human. CI runs lint and the reporter test on Ubuntu, the Mac collector on a macOS runner, and
 the Linux collector plus `run-systemd.sh` and `run-ec2-install.sh` on an Ubuntu runner, where
-systemd is PID 1. It runs `cfn-lint` on the EC2 template and the Terraform module's tests too.
+systemd is PID 1. It runs the Windows collector on a Windows Server 2025 runner, in Windows
+PowerShell 5.1, and again in ConstrainedLanguage mode. It runs `cfn-lint` on the EC2 template and the Terraform module's tests too.
 It also validates a caller at the lowest Terraform and Google provider the module admits:
 anything newer passes every other check and breaks a caller pinned there.
 
@@ -187,6 +189,12 @@ against a real tenant, read-only; run it before a tenant's first scan.
   that runs the built collector. Add a guard there whenever a class of bug could recur.
 - `dist/collect.sh` is generated. Edit the `COLLECTOR` template in `tools/build-collector.py`
   and rebuild; never edit the built file.
+- **The Windows driver is PowerShell that ConstrainedLanguage mode accepts**: cmdlets and
+  core types, in ASCII with LF line endings. Where AppLocker or WDAC is enforced an unsigned
+  script runs in that mode, and the vendored runner and wrapper already keep to it.
+  `test/lint.sh` has the deny-list, and CI runs the collector in that mode. It writes no
+  `inventory.ea`, because no carrier reads a Windows machine; add the frame with the first
+  carrier that does.
 - The endpoint enumerates and redacts; the collector classifies (D17). Keep catalog matching
   off the device, and keep anything path-shaped out of the status line — `/Library/Managed
   Preferences` and the Jamf inventory record are readable by every Jamf admin. The bundle
