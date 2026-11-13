@@ -2,7 +2,7 @@
 
 The ML Engine can run as a single-container agent discovery runner: it scans the
 discovery sources named in a config file on an interval and sends every agent it finds
-to a SIEM or webhook. In this mode it talks to no Arthur Platform and no GenAI Engine.
+to a SIEM, a webhook or a CSV file. In this mode it talks to no Arthur Platform and no GenAI Engine.
 
 - [Turning it on](#turning-it-on)
 - [The config file](#the-config-file)
@@ -971,7 +971,7 @@ write route and reads no request or response bodies. The proxy writes its reques
 
 ### Destination
 
-Exactly one. Every destination has:
+Exactly one. Every HTTP destination (`splunk_hec`, `elasticsearch`, `webhook`) has:
 
 | Key | Default | |
 |---|---|---|
@@ -1065,6 +1065,30 @@ answering for the cluster, fails the batch.
 | `headers` | `{}` | Sent with every request; values are treated as secrets |
 
 Each request is a `POST` of a JSON array of events.
+
+#### `csv` — a CSV file on the engine's filesystem
+
+| Key | Default | |
+|---|---|---|
+| `path` | | The file to append to; a relative path is resolved against the config file's directory, as a `{file: ...}` reference is |
+
+Each discovered agent is appended to the file as one row (see
+[What the destination receives](#a-csv-file)). The file and its directory are created if
+missing, and the header is written only when the file is new or empty. A file that
+already starts with a different header, or one the engine cannot open for writing, stops
+the engine at startup rather than mixing two layouts in one file; move the old file aside
+or point `path` at a new one. A write that fails (a full disk) fails that batch with
+`publication_failed`.
+
+Scan outcomes are not written to the file — they are a different shape from an agent —
+so `emit_scan_outcomes` has no effect here. Every scan's outcome is still logged to
+stdout as its `discovery_scan_outcome` line.
+
+In a container, mount a directory the engine can write to and point `path` into it: the
+image runs as UID `65532`, so on a Linux host the directory has to be writable by that
+UID (`chown 65532:65532 output`). The
+[Docker Compose example](../../deployment/docker-compose/ml-engine-standalone-discovery/README.md)
+mounts `./output` at `/var/lib/arthur/discovery` for this.
 
 ## What the destination receives
 
@@ -1177,6 +1201,39 @@ credential is ever in it.
 The same agents arrive on every scan: each scan sends what the source reports now, and
 the destination dedupes on `agent.external_id` and `source.id` if it needs to.
 
+### A CSV file
+
+A `csv` destination writes each discovered-agent event as one row, UTF-8, with these
+columns in this order:
+
+| Column | From the event |
+|---|---|
+| `observed_at` | `observed_at` |
+| `source_id`, `source_name`, `source_vendor`, `source_config_name` | `source.id`, `source.name`, `source.vendor`, `source.config_name` |
+| `external_id`, `name`, `last_seen`, `runs_on`, `platform`, `task_id` | the same fields of `agent` |
+| `creation_source_type`, `creation_source_vendor` | `agent.creation_source.type` (`CLOUD`, `SIEM`, `ENDPOINT`, `NETWORK`) and `.vendor` |
+| `address_instance`, `address_scope`, `address_resource_kind`, `address_resource_id` | `agent.creation_source.address.*` |
+| `host_name`, `host_group`, `os_version`, `assigned_user`, `install_path`, `version`, `classification` | `agent.creation_source.observations.*` |
+| `llm_models`, `tools`, `sub_agents` | each item's `name` |
+| `data_sources` | each item's `url` |
+| `network_destinations` | each of `agent.creation_source.destinations`' `host` (network sources) |
+| `identity_basis` | `agent.creation_source.identity_basis` (gateway callers) |
+| `permissions`, `service_names` | `agent.creation_source.observations.*` |
+
+A list is joined into one cell with `; `. **An empty cell means the source did not report
+that field: read it as unknown, not as none.** A list the source reported as empty is an
+empty cell too, so where that difference matters, use a JSON destination. What the row
+leaves out (tool arguments, each destination's provider, `occurrences`, the address's
+`query`) is in the JSON event the other destinations receive.
+
+A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with a
+leading `'`, so a spreadsheet shows an agent's name or path as text instead of running it
+as a formula.
+
+Rows are only ever appended, and every scan writes a row for every agent it sees, so the
+same agent repeats once per scan. To get the current inventory, keep the row with the
+latest `observed_at` for each `source_id` and `external_id`.
+
 ## Running it
 
 With Docker Compose, see
@@ -1199,6 +1256,9 @@ From a checkout, after the developer setup in the [README](../README.md):
 ```bash
 ML_ENGINE_DISCOVERY_CONFIG=./discovery.yaml uv run python src/ml_engine/job_agent.py
 ```
+
+For a `csv` destination, also mount a directory the engine can write to, e.g.
+`-v "$PWD/output:/var/lib/arthur/discovery"`.
 
 The health check on port `7492` (`GET /health`) works as it does in Platform mode.
 

@@ -16,6 +16,8 @@ services:
       - ./discovery.yaml:/etc/arthur/discovery.yaml:ro
       # Files the config reads with {file: secrets/...}, resolved beside the config.
       - ./secrets:/etc/arthur/secrets:ro
+      # Writable, for a csv destination's file. Must be writable by UID 65532.
+      - ./output:/var/lib/arthur/discovery
     healthcheck:
       test: wget -qO - http://127.0.0.1:7492/health
       interval: 30s

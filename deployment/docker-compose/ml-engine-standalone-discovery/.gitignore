@@ -2,3 +2,4 @@
 .env
 discovery.yaml
 secrets/
+output/
