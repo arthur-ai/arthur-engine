@@ -1251,14 +1251,14 @@ docker run --rm \
   arthurplatform/ml-engine:latest
 ```
 
+For a `csv` destination, also mount a directory the engine can write to, e.g.
+`-v "$PWD/output:/var/lib/arthur/discovery"`.
+
 From a checkout, after the developer setup in the [README](../README.md):
 
 ```bash
 ML_ENGINE_DISCOVERY_CONFIG=./discovery.yaml uv run python src/ml_engine/job_agent.py
 ```
-
-For a `csv` destination, also mount a directory the engine can write to, e.g.
-`-v "$PWD/output:/var/lib/arthur/discovery"`.
 
 The health check on port `7492` (`GET /health`) works as it does in Platform mode.
 

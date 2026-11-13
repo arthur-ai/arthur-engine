@@ -108,6 +108,22 @@ def test_a_restarted_engine_appends_to_the_same_file(tmp_path: Path) -> None:
     assert sum(1 for line in lines(path) if tuple(line) == COLUMNS) == 1
 
 
+def test_a_row_cut_off_mid_write_does_not_swallow_the_next(tmp_path: Path) -> None:
+    path = tmp_path / "agents.csv"
+    write(path, plain("a"))
+    # As a full disk or a kill during a flush leaves it: the last row half written.
+    data = path.read_bytes()
+    path.write_bytes(data[: len(data) - 40])
+
+    write(path, plain("b"))
+
+    header, cut, last = lines(path)
+    assert cut[COLUMNS.index("external_id")] == "a"
+    assert tuple(header) == COLUMNS
+    assert dict(zip(COLUMNS, last))["external_id"] == "b"
+    assert len(last) == len(COLUMNS)
+
+
 def test_an_empty_file_gets_the_header(tmp_path: Path) -> None:
     path = tmp_path / "agents.csv"
     path.touch()

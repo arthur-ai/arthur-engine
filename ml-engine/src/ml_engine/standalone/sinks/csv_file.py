@@ -15,6 +15,7 @@ file opens as a spreadsheet; the JSON destinations carry everything a record hol
 
 import csv
 import logging
+import os
 import threading
 from pathlib import Path
 from typing import Any, Literal, Optional, Sequence
@@ -30,8 +31,9 @@ from standalone.sinks.common import (
     SinkDeliveryError,
 )
 
-# The file's header, in order. Changing it makes every existing file refuse to load,
-# so a column is only ever added at the end.
+# The file's header, in order. It must match an existing file's exactly, so any change,
+# an added column included, makes every existing file refuse to load until it is moved
+# aside.
 COLUMNS = (
     "observed_at",
     "source_id",
@@ -104,6 +106,11 @@ class CsvSink:
             path.parent.mkdir(parents=True, exist_ok=True)
             _check_header(path)
             self._file = path.open("a", newline="", encoding="utf-8")
+            # A row cut off by a full disk or a kill mid-flush is ended, so the next
+            # row starts a line of its own instead of finishing that one.
+            if _ends_mid_line(path):
+                self._file.write("\r\n")
+                self._file.flush()
         except OSError as e:
             # Raised from the engine's startup, so it stops before any scan runs.
             raise ValueError(
@@ -156,6 +163,15 @@ def _check_header(path: Path) -> None:
             f"columns; move it aside or set path to a new file, so rows of two layouts "
             f"are not mixed in one file",
         )
+
+
+def _ends_mid_line(path: Path) -> bool:
+    """Whether a non-empty file's last byte is not a line ending."""
+    if path.stat().st_size == 0:
+        return False
+    with path.open("rb") as f:
+        f.seek(-1, os.SEEK_END)
+        return f.read(1) != b"\n"
 
 
 def _row(event: Event) -> dict[str, str]:
