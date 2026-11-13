@@ -106,3 +106,26 @@ def test_an_unusable_config_stops_the_engine_with_its_reason(
 
     assert "is invalid" in str(e.value) and "schedule.interval" in str(e.value)
     assert started.engines == []
+
+
+def test_a_destination_it_cannot_open_stops_the_engine_with_its_reason(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    started: Started,
+) -> None:
+    # A file where the csv destination's directory should be: it cannot be created.
+    (tmp_path / "output").write_text("")
+    point_at(
+        monkeypatch,
+        tmp_path / "discovery.yaml",
+        ENABLED.replace(
+            '{type: webhook, url: "https://hooks.example.com/in"}',
+            "{type: csv, path: output/agents.csv}",
+        ),
+    )
+
+    with pytest.raises(SystemExit) as e:
+        job_agent.main()
+
+    assert "Cannot write the csv destination" in str(e.value)
+    assert started.engines == []

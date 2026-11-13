@@ -367,8 +367,14 @@ def main() -> None:
         except StandaloneConfigError as e:
             raise SystemExit(str(e)) from None
         if config is not None:
-            # Built once, here, and shared by every scan the agent runs.
-            sink = config.destination.build_sink(logging.getLogger("standalone.sink"))
+            # Built once, here, and shared by every scan the agent runs. A destination
+            # it cannot open -- a csv file it cannot write -- stops it the same way.
+            try:
+                sink = config.destination.build_sink(
+                    logging.getLogger("standalone.sink"),
+                )
+            except ValueError as e:
+                raise SystemExit(str(e)) from None
             StandaloneDiscoveryAgent(config, sink).run()
             return
         logger.info(f"Standalone discovery is disabled in {path}; polling the Platform")
