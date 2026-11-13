@@ -112,10 +112,20 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
             return (
               <Box key={key} component="li" {...optionProps}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="body1" color="text.primary">
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: "text.primary",
+                    }}
+                  >
                     {option.version}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {new Date(option.created_at).toLocaleString()}
                   </Typography>
                 </Box>

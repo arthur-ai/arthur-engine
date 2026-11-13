@@ -1,0 +1,552 @@
+{
+ "dns": [
+  {
+   "timestamp": "2026-10-21T00:03:55.967788085Z",
+   "jsonPayload": {
+    "queryName": "us-central1-aiplatform.googleapis.com.",
+    "queryType": "AAAA",
+    "responseCode": "NOERROR",
+    "rdata": "us-central1-aiplatform.googleapis.com.\t300\tIN\taaaa\t2001:4860:4847:400::\nus-central1-aiplatform.googleapis.com.\t300\tIN\taaaa\t2001:4860:4843:400::\nus-central1-aiplatform.googleapis.com.\t300\tIN\taaaa\t2001:4860:4841:400::\nus-central1-aiplatform.googleapis.com.\t300\tI...",
+    "sourceIP": "10.150.0.35",
+    "sourceNetwork": "default",
+    "vmInstanceIdString": "1632124550881363165",
+    "vmInstanceName": "123456789012.arthur-scn-vm",
+    "vmProjectId": "demo-project",
+    "vmZoneName": "us-east4-a"
+   }
+  },
+  {
+   "timestamp": "2026-10-21T00:03:55.963769272Z",
+   "jsonPayload": {
+    "queryName": "us-central1-aiplatform.googleapis.com.",
+    "queryType": "A",
+    "responseCode": "NOERROR",
+    "rdata": "us-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.113.4\nus-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.116.4\nus-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.115.4\nus-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.114.4\nus-central1-...",
+    "sourceIP": "10.150.0.35",
+    "sourceNetwork": "default",
+    "vmInstanceIdString": "1632124550881363165",
+    "vmInstanceName": "123456789012.arthur-scn-vm",
+    "vmProjectId": "demo-project",
+    "vmZoneName": "us-east4-a"
+   }
+  },
+  {
+   "timestamp": "2026-10-21T00:03:55.780047661Z",
+   "jsonPayload": {
+    "queryName": "api.openai.com.",
+    "queryType": "A",
+    "responseCode": "NOERROR",
+    "rdata": "api.openai.com.\t60\tIN\ta\t162.159.140.245\napi.openai.com.\t60\tIN\ta\t172.66.0.243",
+    "sourceIP": "10.150.0.35",
+    "sourceNetwork": "default",
+    "vmInstanceIdString": "1632124550881363165",
+    "vmInstanceName": "123456789012.arthur-scn-vm",
+    "vmProjectId": "demo-project",
+    "vmZoneName": "us-east4-a"
+   }
+  },
+  {
+   "timestamp": "2026-10-21T00:03:55.779830404Z",
+   "jsonPayload": {
+    "queryName": "api.openai.com.",
+    "queryType": "AAAA",
+    "responseCode": "NOERROR",
+    "rdata": "api.openai.com.\t60\tIN\taaaa\t2606:4700:7::f3\napi.openai.com.\t60\tIN\taaaa\t2a06:98c1:58::f3",
+    "sourceIP": "10.150.0.35",
+    "sourceNetwork": "default",
+    "vmInstanceIdString": "1632124550881363165",
+    "vmInstanceName": "123456789012.arthur-scn-vm",
+    "vmProjectId": "demo-project",
+    "vmZoneName": "us-east4-a"
+   }
+  },
+  {
+   "timestamp": "2026-10-21T00:03:05.142326118Z",
+   "jsonPayload": {
+    "queryName": "monitoring.googleapis.com.",
+    "queryType": "AAAA",
+    "responseCode": "NOERROR",
+    "rdata": "monitoring.googleapis.com.\t300\tIN\taaaa\t2607:f8b0:4004:c29::5f\nmonitoring.googleapis.com.\t300\tIN\taaaa\t2607:f8b0:4004:c23::5f\nmonitoring.googleapis.com.\t300\tIN\taaaa\t2607:f8b0:4004:c27::5f\nmonitoring.googleapis.com.\t300\tIN\taaaa\t2607:f8b0:4004:c07::5f",
+    "sourceIP": "10.150.0.32",
+    "sourceNetwork": "default",
+    "vmInstanceIdString": "3616980211404630193",
+    "vmInstanceName": "123456789012.gke-genai-engine-genai-large-c0934131-52iu",
+    "vmProjectId": "demo-project",
+    "vmZoneName": "us-east4-a"
+   }
+  },
+  {
+   "timestamp": "2026-10-21T00:03:05.140817877Z",
+   "jsonPayload": {
+    "queryName": "monitoring.googleapis.com.",
+    "queryType": "A",
+    "responseCode": "NOERROR",
+    "rdata": "monitoring.googleapis.com.\t300\tIN\ta\t172.253.62.95\nmonitoring.googleapis.com.\t300\tIN\ta\t172.253.115.95\nmonitoring.googleapis.com.\t300\tIN\ta\t172.253.122.95\nmonitoring.googleapis.com.\t300\tIN\ta\t192.179.18.95\nmonitoring.googleapis.com.\t300\tIN\ta\t172.253.63.95\nmonitori...",
+    "sourceIP": "10.150.0.20",
+    "sourceNetwork": "default",
+    "vmInstanceIdString": "1281504633677936381",
+    "vmInstanceName": "123456789012.gke-genai-engine-default-pool-4cd2951c-gf6b",
+    "vmProjectId": "demo-project",
+    "vmZoneName": "us-east4-a"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:24.788131918Z",
+   "jsonPayload": {
+    "queryName": "api.openai.com.",
+    "queryType": "AAAA",
+    "responseCode": "NOERROR",
+    "rdata": "api.openai.com.\t60\tIN\taaaa\t2606:4700:7::f3\napi.openai.com.\t60\tIN\taaaa\t2a06:98c1:58::f3",
+    "sourceNetwork": "default"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:24.786149361Z",
+   "jsonPayload": {
+    "queryName": "api.openai.com.",
+    "queryType": "A",
+    "responseCode": "NOERROR",
+    "rdata": "api.openai.com.\t60\tIN\ta\t172.66.0.243\napi.openai.com.\t60\tIN\ta\t162.159.140.245",
+    "sourceNetwork": "default"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:50:58.401448437Z",
+   "jsonPayload": {
+    "queryName": "example.com.",
+    "queryType": "AAAA",
+    "responseCode": "NOERROR",
+    "rdata": "example.com.\t300\tIN\taaaa\t2606:4700:10::ac42:93f3\nexample.com.\t300\tIN\taaaa\t2606:4700:10::6814:179a",
+    "sourceNetwork": "default"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:50:07.148783030Z",
+   "jsonPayload": {
+    "queryName": "us-central1-aiplatform.googleapis.com.",
+    "queryType": "A",
+    "responseCode": "NOERROR",
+    "rdata": "us-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.112.4\nus-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.117.4\nus-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.114.4\nus-central1-aiplatform.googleapis.com.\t300\tIN\ta\t172.217.113.4\nus-central1-...",
+    "sourceNetwork": "default"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:50:07.147024085Z",
+   "jsonPayload": {
+    "queryName": "us-central1-aiplatform.googleapis.com.",
+    "queryType": "AAAA",
+    "responseCode": "NOERROR",
+    "rdata": "us-central1-aiplatform.googleapis.com.\t300\tIN\taaaa\t2001:4860:4844:400::\nus-central1-aiplatform.googleapis.com.\t300\tIN\taaaa\t2001:4860:4846:400::\nus-central1-aiplatform.googleapis.com.\t300\tIN\taaaa\t2001:4860:4847:400::\nus-central1-aiplatform.googleapis.com.\t300\tI...",
+    "sourceNetwork": "default"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:49:53.393112184Z",
+   "jsonPayload": {
+    "queryName": "example.com.",
+    "queryType": "A",
+    "responseCode": "NOERROR",
+    "rdata": "example.com.\t300\tIN\ta\t172.66.147.243\nexample.com.\t300\tIN\ta\t104.20.23.154",
+    "sourceNetwork": "default"
+   }
+  }
+ ],
+ "flows": [
+  {
+   "timestamp": "2026-10-20T23:57:32.364811371Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.114.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 50096
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:54:30.283181245Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:56:27.609887291Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.113.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 52130
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:53:24.773463387Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:55:21.160526253Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.119.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 42400
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:52:18.704448357Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:30.687810947Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.66.0.243",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 44784
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "start_time": "2026-10-20T23:54:24.788735894Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:30.687810947Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "162.159.140.245",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 60162
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "start_time": "2026-10-20T23:54:27.285979586Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:20.647319184Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "104.20.23.154",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.81",
+     "src_port": 56132
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-control-ajr4wxe90v"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "start_time": "2026-10-20T23:54:15.918625454Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:20.647319184Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.66.147.243",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.81",
+     "src_port": 60412
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-control-ajr4wxe90v"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "start_time": "2026-10-20T23:54:13.418368975Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:54:15.686288418Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.117.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 60854
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:51:13.074578797Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:53:09.759512154Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.118.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 43068
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:50:08.054303199Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:52:04.396800966Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.115.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 60764
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:49:01.360606585Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:48:47.931561134Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.112.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 33174
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:45:44.582658439Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:36:45.316414406Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.217.116.4",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.80",
+     "src_port": 53320
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-run-bmtmbglzer"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "dest_google_service": {
+     "connectivity": "PUBLIC_IP",
+     "type": "GOOGLE_API"
+    },
+    "start_time": "2026-10-20T23:33:43.302892080Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:34:04.562105622Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "172.66.0.243",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.82",
+     "src_port": 57050
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-once-c01z7ypacb"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "start_time": "2026-10-20T23:33:58.180975557Z"
+   }
+  },
+  {
+   "timestamp": "2026-10-20T23:34:04.562105622Z",
+   "jsonPayload": {
+    "connection": {
+     "dest_ip": "162.159.140.245",
+     "dest_port": 443,
+     "protocol": 6,
+     "src_ip": "10.150.0.82",
+     "src_port": 50646
+    },
+    "src_serverless_details": {
+     "cloud_run_job_details": {
+      "job_name": "arthur-scn-once-c01z7ypacb"
+     },
+     "project_id": "demo-project",
+     "region": "us-east4"
+    },
+    "src_vpc": {
+     "project_id": "demo-project",
+     "subnetwork_name": "default",
+     "subnetwork_region": "us-east4",
+     "vpc_name": "default"
+    },
+    "start_time": "2026-10-20T23:34:00.675820525Z"
+   }
+  }
+ ]
+}

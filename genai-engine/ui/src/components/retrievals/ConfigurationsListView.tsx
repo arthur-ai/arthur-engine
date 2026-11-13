@@ -86,10 +86,22 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
         {!onRegisterCreate && (
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Box>
-              <Typography variant="h5" fontWeight={600} color="text.primary">
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 600,
+                  color: "text.primary",
+                }}
+              >
                 RAG Configurations
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.5,
+                }}
+              >
                 Manage your RAG provider configurations
               </Typography>
             </Box>
@@ -138,7 +150,13 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
               {searchQuery ? "No configurations found" : "No RAG configurations yet"}
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+                mb: 3,
+              }}
+            >
               {searchQuery ? "Try adjusting your search terms" : "Get started by creating your first RAG configuration"}
             </Typography>
             {!searchQuery && (

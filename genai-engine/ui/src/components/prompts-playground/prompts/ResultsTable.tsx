@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 import CloseIcon from "@mui/icons-material/Close";
@@ -29,7 +30,6 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { EvalInputsDialog } from "@/components/prompt-experiments/PromptResultDetailModal";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -430,7 +430,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             borderColor: "divider",
           }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {runningExperimentId
               ? "Experiment is running. Results will appear here..."
               : experimentIdToShow
@@ -537,11 +542,21 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                             }}
                           />
                         ) : score === null || score === undefined ? (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             -
                           </Typography>
                         ) : (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                            }}
+                          >
                             ?
                           </Typography>
                         )}

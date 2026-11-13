@@ -4,7 +4,11 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
-from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
+from arthur_common.models.llm_model_providers import (
+    ModelProvider,
+    OpenAIMessage,
+    ReasoningEffortEnum,
+)
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     ExternalInference,
@@ -12,7 +16,11 @@ from arthur_common.models.response_schemas import (
     TokenCountCostSchema,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse as CommonContinuousEvalResponse,
+)
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
+from litellm.types.llms.anthropic import AnthropicThinkingParam
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -30,6 +38,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    SpendEstimateUnavailableReason,
     TestRunStatus,
 )
 
@@ -193,6 +202,12 @@ class TraceMetadataResponse(TokenCountCostSchema):
     start_time: datetime = Field(description="Start time of the earliest span")
     end_time: datetime = Field(description="End time of the latest span")
     span_count: int = Field(description="Number of spans in this trace")
+    ingest_bytes: Optional[int] = Field(
+        None,
+        description="OTLP payload bytes received for this trace's spans on the "
+        "trace ingestion endpoints. Absent for traces ingested before it was "
+        "recorded, or that didn't arrive through those endpoints.",
+    )
     duration_ms: float = Field(description="Total trace duration in milliseconds")
     created_at: datetime = Field(description="When the trace was first created")
     updated_at: datetime = Field(description="When the trace was last updated")
@@ -384,6 +399,78 @@ class ModelProviderWhitelist(BaseModel):
     catalog: List[str] = Field(
         description="Every model the provider offers, ignoring the whitelist",
     )
+
+
+class ModelProviderEvalDefaults(BaseModel):
+    provider: ModelProvider = Field(description="Provider the defaults apply to")
+    reasoning_effort: Optional[ReasoningEffortEnum] = Field(
+        default=None,
+        description=(
+            "Reasoning effort sent on LLM eval calls whose eval config sets neither "
+            "reasoning_effort nor thinking. Null sends nothing."
+        ),
+    )
+    thinking: Optional[AnthropicThinkingParam] = Field(
+        default=None,
+        description=(
+            "Thinking setting sent on LLM eval calls whose eval config sets neither "
+            "reasoning_effort nor thinking. Null sends nothing."
+        ),
+    )
+
+
+class ModelThinkingOptions(BaseModel):
+    supported: Optional[bool] = Field(
+        description="Whether the model takes a thinking setting. Null when litellm doesn't know the model.",
+    )
+    can_disable: Optional[bool] = Field(
+        description=(
+            "Whether thinking type 'disabled' turns thinking off. False for models "
+            "that always think and for non-Claude models. Null when litellm doesn't "
+            "know the model."
+        ),
+    )
+    types: Optional[List[Literal["enabled", "adaptive", "disabled"]]] = Field(
+        title="Thinking Types",
+        description="Thinking types the model accepts. Null when litellm doesn't know the model.",
+    )
+
+
+class ModelReasoningOptions(BaseModel):
+    provider: ModelProvider = Field(description="Provider of the model")
+    model_name: str = Field(description="Model the options apply to")
+    reasoning_efforts: Optional[List[ReasoningEffortEnum]] = Field(
+        description=(
+            "reasoning_effort values the model accepts; empty when it takes none. "
+            "Null when litellm doesn't know the model, in which case any value is "
+            "sent as is."
+        ),
+    )
+    thinking: ModelThinkingOptions = Field(
+        description="Thinking settings the model accepts"
+    )
+
+
+class ContinuousEvalResponse(CommonContinuousEvalResponse):
+    """The continuous eval response, with its sample rate.
+
+    Extends the shared model only until `arthur_common` carries `sample_rate` on
+    `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
+    same so the OpenAPI component, and the generated clients built from it, keep
+    their name either way.
+    """
+
+    sample_rate: Optional[float] = Field(
+        default=None,
+        description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
+
+
+class ListContinuousEvalsResponse(BaseModel):
+    evals: List[ContinuousEvalResponse] = Field(
+        description="List of continuous evals.",
+    )
+    count: int = Field(description="Total number of evals")
 
 
 class ApiKeyRagAuthenticationConfigResponse(BaseModel):
@@ -933,8 +1020,10 @@ class SyntheticDataGenerationResponse(BaseModel):
 class SyntheticDataPromptStatus(BaseModel):
     model_config = {"use_enum_values": True}
 
+    # Distinct title for the same reason as AgenticPrompt.model_provider.
     model_provider: Union[ModelProvider, Literal["empty"]] = Field(
         ...,
+        title="Synthetic Data Prompt Model Provider",
         description="Model provider stored in the SDG system prompt. "
         "The sentinel 'empty' indicates the prompt has not yet been configured.",
     )
@@ -969,6 +1058,54 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
         description="Daily statistics ordered by date descending",
     )
     count: int = Field(description="Number of days with data")
+
+
+class ContinuousEvalDailySpendEstimate(BaseModel):
+    """Projected daily cost of a continuous eval at the task's recent traffic.
+
+    estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+    """
+
+    window_days: int = Field(
+        description="Number of trailing days the traffic and the average run cost are measured over.",
+    )
+    trace_count: int = Field(
+        description="Traces the task received in the window, not counting agent experiment traces.",
+    )
+    traces_per_day: float = Field(description="trace_count divided by window_days.")
+    sample_rate: float = Field(
+        description="Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set.",
+    )
+    run_count: int = Field(
+        description="Live runs in the window that called the LLM (passed or failed), which the average is taken over.",
+    )
+    average_run_cost: Optional[float] = Field(
+        default=None,
+        description="Mean cost of those runs. Null when there are none.",
+    )
+    estimated_daily_cost: Optional[float] = Field(
+        default=None,
+        description="Projected cost per day. Null when it cannot be estimated; unavailable_reason says why.",
+    )
+    unavailable_reason: Optional[SpendEstimateUnavailableReason] = Field(
+        default=None,
+        description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window.",
+    )
+
+
+class ContinuousEvalSpendResponse(BaseModel):
+    """Recent and projected spend of one continuous eval."""
+
+    continuous_eval_id: UUID = Field(description="ID of the continuous eval.")
+    last_24h_run_count: int = Field(
+        description="Live runs created in the last 24 hours, in any status.",
+    )
+    last_24h_cost: float = Field(
+        description="Total cost of the live runs created in the last 24 hours.",
+    )
+    estimate: ContinuousEvalDailySpendEstimate = Field(
+        description="Projected daily cost at the current sample rate.",
+    )
 
 
 class TraceTransformVersionResponse(BaseModel):
@@ -1042,6 +1179,25 @@ class TraceOverviewListResponse(BaseModel):
         description="List of trace overviews",
     )
     count: int = Field(description="Total number of trace overviews")
+
+
+class InferenceOverviewResponse(BaseModel):
+    """Inference count and latest inference time for a task"""
+
+    task_id: str = Field(description="Task ID")
+    inference_count: int = Field(description="Number of inferences")
+    last_inference_at: Optional[datetime] = Field(
+        default=None,
+        description="Creation time of the most recent inference, or null if the task has none",
+    )
+
+
+class InferenceOverviewListResponse(BaseModel):
+    """Response for list of inference overviews"""
+
+    overviews: list[InferenceOverviewResponse] = Field(
+        description="One inference overview per requested task",
+    )
 
 
 class TraceTimeSeriesPoint(BaseModel):

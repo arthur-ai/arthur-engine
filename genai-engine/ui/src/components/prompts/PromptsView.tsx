@@ -62,10 +62,10 @@ export const PromptsView = () => {
     <Stack sx={{ height: getContentHeight() }}>
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
         data-tour-id={TOUR_IDS.promptsEntry}
         sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
           px: 3,
           pt: 3,
           pb: 2,
@@ -75,10 +75,22 @@ export const PromptsView = () => {
         }}
       >
         <Stack>
-          <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+              mb: 0.5,
+            }}
+          >
             {TAB_TITLES[activeTab]}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {TAB_SUBTITLES[activeTab]}
           </Typography>
         </Stack>

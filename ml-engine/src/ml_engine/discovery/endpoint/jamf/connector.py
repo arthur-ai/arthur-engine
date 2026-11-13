@@ -97,7 +97,7 @@ class JamfConnector:
         """
         settings = _settings_from(credentials, source_fields)
         matcher = Matcher.from_source(
-            catalog_yaml=config.query or None,
+            catalog_json=config.query or None,
             logger=logger,
         )
         client = JamfClient(settings, logger=logger)
@@ -130,7 +130,10 @@ class JamfConnector:
                 continue
             read = records_for(device, matcher, VENDOR, logger)
             if read.unreadable is not None:
-                coverage.count_unreadable(read.unreadable.value)
+                coverage.count_unreadable(
+                    read.unreadable.value,
+                    device.unreadable(read.unreadable.value),
+                )
                 continue
             coverage.devices_decoded += 1
             if read.records:

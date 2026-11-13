@@ -20,7 +20,11 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    RuleResultEnum,
+    RuleType,
+)
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
@@ -556,6 +560,16 @@ PATTERN_D_CASES = [
         ),
     ),
     IsolationCase(
+        name="POST /api/v2/inferences/overview task_ids=[T1a, T2a]",
+        pattern="D",
+        expected=403,
+        invoke=lambda c, h, w: c.post(
+            "/api/v2/inferences/overview",
+            json={"task_ids": [w.t1a.id, w.t2a.id]},
+            headers=h,
+        ),
+    ),
+    IsolationCase(
         name="GET /api/v2/inferences/query?task_ids=[T1a, T2a]",
         pattern="D",
         expected=403,
@@ -744,19 +758,6 @@ ADMIN_ONLY_CASES = [
     ("GET /auth/api_keys/", "get", "/auth/api_keys/", None, _BLOCKED),
     ("GET /users", "get", "/users?search_string=x", None, _BLOCKED),
     ("GET /api/v2/configuration", "get", "/api/v2/configuration", None, _BLOCKED),
-    (
-        "POST /api/v2/default_rules",
-        "post",
-        "/api/v2/default_rules",
-        {
-            "name": "x",
-            "type": "RegexRule",
-            "apply_to_prompt": True,
-            "apply_to_response": False,
-            "config": {"regex_patterns": ["x"]},
-        },
-        _BLOCKED,
-    ),
 ]
 
 
@@ -863,6 +864,44 @@ def test_get_tasks_list_filters_to_caller_org(tenant_world: TenantWorld):
     ids = {t["id"] for t in tasks}
     assert tenant_world.t2a.id not in ids
     assert tenant_world.t2b.id not in ids
+
+
+@pytest.mark.unit_tests
+def test_rules_search_filters_to_caller_org(tenant_world: TenantWorld):
+    """POST /api/v2/rules/search shows a tenant only the rules linked to a task
+    in its org. Admin sees every org's rules."""
+    w = tenant_world
+    _, own_rule = w.client.create_rule(
+        f"own-{uuid.uuid4().hex[:8]}",
+        rule_type=RuleType.KEYWORD,
+        task_id=w.t1a.id,
+    )
+    _, foreign_rule = w.client.create_rule(
+        f"foreign-{uuid.uuid4().hex[:8]}",
+        rule_type=RuleType.KEYWORD,
+        task_id=w.t2a.id,
+    )
+    assert own_rule is not None and foreign_rule is not None
+    body = {"rule_ids": [own_rule.id, foreign_rule.id]}
+
+    response = w.client.base_client.post(
+        "/api/v2/rules/search",
+        json=body,
+        headers=w.headers_for(w.k1),
+    )
+    assert response.status_code == 200, response.text
+    assert {r["id"] for r in response.json()["rules"]} == {own_rule.id}
+
+    response = w.client.base_client.post(
+        "/api/v2/rules/search",
+        json=body,
+        headers=w.admin_headers,
+    )
+    assert response.status_code == 200, response.text
+    assert {r["id"] for r in response.json()["rules"]} == {
+        own_rule.id,
+        foreign_rule.id,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1414,8 +1453,8 @@ def test_feedback_org_id_derived_from_inference_not_caller(
          (mismatch between derived inference org and caller org).
       2) Admin (org_scope=None) writing on T2a's inference -> row gets T2a's
          org_id (= O2), not the caller's identity and not DEFAULT_ORG_ID.
-      3) Admin writing on a task-less inference (deprecated
-         /api/v2/validate_prompt path, inference.task_id IS NULL) -> the
+      3) Admin writing on a task-less inference (legacy row from the removed
+         /api/v2/validate_prompt endpoint, inference.task_id IS NULL) -> the
          JOIN through tasks returns no row, so the fallback fires. Must be
          SYSTEM_ORG_ID to match what save_prompt/save_response stamp on the
          same inference's rule_results — otherwise children of one
@@ -1458,9 +1497,9 @@ def test_feedback_org_id_derived_from_inference_not_caller(
         assert row.org_id != DEFAULT_ORG_ID
 
         # Sub-case 3: task-less inference -> SYSTEM_ORG_ID fallback. Hand-seed
-        # the inference because task_id=NULL is only producible through the
-        # deprecated validate_prompt path, which the tenant_world fixture
-        # doesn't exercise.
+        # the inference: task_id=NULL rows were only ever written by the
+        # task-less validate_prompt endpoint, which has since been removed, so
+        # the API can no longer produce one.
         now = datetime.now(timezone.utc)
         db.add(
             DatabaseInference(

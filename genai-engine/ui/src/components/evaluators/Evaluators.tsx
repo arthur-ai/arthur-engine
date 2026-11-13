@@ -1,3 +1,4 @@
+import { SearchBar } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import BalanceOutlinedIcon from "@mui/icons-material/BalanceOutlined";
 import Alert from "@mui/material/Alert";
@@ -19,7 +20,6 @@ import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useDeleteMLEvalMutation } from "./hooks/useDeleteMLEvalMutation";
 import { useEvals } from "./hooks/useEvals";
 
-import { SearchBar } from "@/components/common/SearchBar";
 import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
 import MLEvalFormModal from "@/components/ml-evaluators/MLEvalFormModal";
 import { getContentHeight } from "@/constants/layout";
@@ -277,7 +277,12 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
                   No results found
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No evaluators match &ldquo;{debouncedSearchQuery}&rdquo;
                 </Typography>
               </>
@@ -286,7 +291,13 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
                   No evals yet
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "text.secondary",
+                    mb: 3,
+                  }}
+                >
                   Get started by creating your first eval
                 </Typography>
                 <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsTypePickerOpen(true)} size="large">

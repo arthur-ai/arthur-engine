@@ -30,11 +30,17 @@ Parameters:
     Type: String
     Description: '(Optional) IAM role ARN to use for ML Engine task execution role. If not specified, one will be provisioned.'
     AllowedPattern: '(arn:aws:iam:.+)?'
+  MLEngineTaskRoleAssumableRoleArns:
+    Description: '(Optional) IAM role ARNs the provisioned ML Engine task role may assume as an AWS discovery source that uses the engine''s own credentials, such as the source''s role_arn'
+    Type: CommaDelimitedList
+    Default: ''
+    AllowedPattern: '(arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9+=.@_/-]+)?'
 
 Conditions:
   CreateMLEngineTaskRole: !Equals [ !Ref MLEngineBYOTaskRoleIAMArn, '' ]
   CreateMLEngineTaskExecutionRole: !Equals [ !Ref MLEngineBYOTaskExecutionRoleIAMArn, '' ]
   CreateMLEngineAuthSecrets: !Not [ !Equals [ !Join [ ",", !Ref MLEngineAuthSecretArns ], '' ] ]
+  GrantMLEngineAssumableRoles: !Not [ !Equals [ !Join [ ",", !Ref MLEngineTaskRoleAssumableRoleArns ], '' ] ]
 
 Resources:
   MLEngineTaskRole:
@@ -52,6 +58,25 @@ Resources:
                 - ecs-tasks.amazonaws.com
             Action:
               - 'sts:AssumeRole'
+      Policies:
+        - !If
+          - GrantMLEngineAssumableRoles
+          - PolicyName: !Sub "${ArthurResourceNamespace}-ml-engine-assumable-roles${ArthurResourceNameSuffix}"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: 'sts:AssumeRole'
+                  Resource: !Ref MLEngineTaskRoleAssumableRoleArns
+                  # Only the session names the AWS discovery connectors assume roles with, so a
+                  # connector that assumes any role_arn with the task role without an opt-in, such
+                  # as S3, cannot use this grant. Keep in step with ml-engine/src/ml_engine/discovery.
+                  Condition:
+                    StringEquals:
+                      'sts:RoleSessionName':
+                        - 'arthur-ai-discovery'
+                        - 'arthur-discovery-cloudwatch-logs'
+          - !Ref AWS::NoValue
   MLEngineTaskExecutionRole:
     Type: AWS::IAM::Role
     Condition: CreateMLEngineTaskExecutionRole

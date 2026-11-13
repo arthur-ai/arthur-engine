@@ -157,6 +157,18 @@ def _delete_state(session_id: str, turn_id: str) -> None:
     _state_path(session_id, turn_id).unlink(missing_ok=True)
 
 
+def _done_path(session_id: str, turn_id: str) -> Path:
+    directory = _private_dir(STATE_DIR / "done")
+    return directory / f"{_state_key(session_id, turn_id)}.json"
+
+
+def _finish_turn(session_id: str, turn_id: str) -> None:
+    """Delete the turn's state and mark it finished, so a late or repeated
+    hook for it can't start it again (see _turn_state)."""
+    _write_private(_done_path(session_id, turn_id), "{}")
+    _delete_state(session_id, turn_id)
+
+
 def _load_agent_context(agent_id: str) -> dict:
     path = _agent_context_path(agent_id)
     try:
@@ -398,6 +410,44 @@ def handle_session_start(
     )
 
 
+def _new_turn_state(data: dict) -> dict:
+    """A turn's state, from the first hook seen for it."""
+    session_id, turn_id = _common_ids(data)
+    agent_id, agent_type = _agent_fields(data)
+    agent_context = _load_agent_context(agent_id) if agent_id else {}
+    if agent_context:
+        agent_context["turn_id"] = turn_id
+        _save_agent_context(agent_context)
+    return {
+        "session_id": session_id,
+        "turn_id": turn_id,
+        "model": data.get("model") or "unknown",
+        "prompt": data.get("prompt") or "",
+        "trace_id_hex": agent_context.get("trace_id_hex") or _new_trace_id(),
+        "root_span_id_hex": _new_span_id(),
+        "parent_span_id_hex": agent_context.get("agent_span_id_hex"),
+        "trace_session_id": agent_context.get("parent_session_id") or session_id,
+        "agent_id": agent_id,
+        "agent_type": agent_type or agent_context.get("agent_type") or "",
+        "start_ns": time.time_ns(),
+        "pending_tools": {},
+    }
+
+
+def _turn_state(data: dict) -> dict:
+    """The turn's state, under its turn lock.  Codex doesn't always fire
+    UserPromptSubmit (a turn another tool or agent sends doesn't get one), so a
+    turn's first tool or Stop hook starts it.  A turn already finished is
+    never started again: a repeated Stop or a late tool hook finds it done."""
+    session_id, turn_id = _common_ids(data)
+    state = _load_state(session_id, turn_id)
+    if state or _done_path(session_id, turn_id).is_file():
+        return state
+    state = _new_turn_state(data)
+    _save_state(state)
+    return state
+
+
 def handle_user_prompt_submit(
     data: dict,
     config: dict,
@@ -407,30 +457,8 @@ def handle_user_prompt_submit(
     session_id, turn_id = _common_ids(data)
     if not session_id or not turn_id:
         return
-    agent_id, agent_type = _agent_fields(data)
-    agent_context = _load_agent_context(agent_id) if agent_id else {}
-    now_ns = time.time_ns()
     with _turn_lock(session_id, turn_id):
-        _save_state(
-            {
-                "session_id": session_id,
-                "turn_id": turn_id,
-                "model": data.get("model") or "unknown",
-                "prompt": data.get("prompt") or "",
-                "trace_id_hex": agent_context.get("trace_id_hex") or _new_trace_id(),
-                "root_span_id_hex": _new_span_id(),
-                "parent_span_id_hex": agent_context.get("agent_span_id_hex"),
-                "trace_session_id": agent_context.get("parent_session_id")
-                or session_id,
-                "agent_id": agent_id,
-                "agent_type": agent_type or agent_context.get("agent_type") or "",
-                "start_ns": now_ns,
-                "pending_tools": {},
-            }
-        )
-    if agent_context:
-        agent_context["turn_id"] = turn_id
-        _save_agent_context(agent_context)
+        _save_state(_new_turn_state(data))
 
 
 def handle_pre_tool(data: dict, config: dict) -> None:
@@ -440,7 +468,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     if not session_id or not turn_id or not tool_use_id:
         return
     with _turn_lock(session_id, turn_id):
-        state = _load_state(session_id, turn_id)
+        state = _turn_state(data)
         if not state:
             return
         state.setdefault("pending_tools", {})[tool_use_id] = {
@@ -527,7 +555,7 @@ def handle_post_tool(
         return
     end_ns = time.time_ns()
     with _turn_lock(session_id, turn_id):
-        state = _load_state(session_id, turn_id)
+        state = _turn_state(data)
         if not state:
             return
         pending = state.setdefault("pending_tools", {}).pop(tool_use_id, {})
@@ -718,13 +746,13 @@ def handle_subagent_stop(
     end_ns = time.time_ns()
     records = []
     with _turn_lock(session_id, turn_id):
-        state = _load_state(session_id, turn_id)
+        state = _turn_state(data)
         if state:
             root_data = dict(data)
             if data.get("agent_transcript_path"):
                 root_data["transcript_path"] = data["agent_transcript_path"]
             records.extend(_completed_records(state, root_data, end_ns))
-            _delete_state(session_id, turn_id)
+            _finish_turn(session_id, turn_id)
     context = _load_agent_context(agent_id)
     if context:
         records.append(_agent_span_record(context, data, end_ns))
@@ -925,11 +953,11 @@ def handle_stop(
         return
     end_ns = time.time_ns()
     with _turn_lock(session_id, turn_id):
-        state = _load_state(session_id, turn_id)
+        state = _turn_state(data)
         if not state:
             return
         records = _completed_records(state, data, end_ns)
-        _delete_state(session_id, turn_id)
+        _finish_turn(session_id, turn_id)
     export(config, session_id, records)
     _cleanup_stale_state()
 

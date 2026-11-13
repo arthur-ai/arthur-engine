@@ -94,10 +94,23 @@ export function SaveTransformDialog({ open, onClose, columns, onSave }: SaveTran
           />
 
           <div>
-            <Typography variant="body2" fontWeight="medium" gutterBottom>
+            <Typography
+              variant="body2"
+              gutterBottom
+              sx={{
+                fontWeight: "medium",
+              }}
+            >
               Transform Definition (Preview)
             </Typography>
-            <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+            <Typography
+              variant="caption"
+              gutterBottom
+              sx={{
+                color: "text.secondary",
+                display: "block",
+              }}
+            >
               This JSON will be saved and can be reused on future traces
             </Typography>
             <Box

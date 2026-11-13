@@ -219,7 +219,13 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
               No prompts yet
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+                mb: 3,
+              }}
+            >
               Get started by creating your first prompt
             </Typography>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreatePrompt} size="large">

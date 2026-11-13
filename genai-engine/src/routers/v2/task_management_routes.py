@@ -32,7 +32,6 @@ from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.task_provenance_repository import TaskProvenanceRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
@@ -77,8 +76,7 @@ rules_types = [rule.value for rule in RuleType]
 
 @task_management_routes.post(
     "/tasks",
-    description="Register a new task. When a new task is created, all existing default rules will be "
-    "auto-applied for this new task. Optionally specify if the task is agentic.",
+    description="Register a new task. Optionally specify if the task is agentic.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -147,7 +145,7 @@ def get_all_tasks(
 
 @task_management_routes.delete(
     "/tasks/{task_id}",
-    description="Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.",
+    description="Archive task. Also archives all task-scoped rules.",
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -221,7 +219,8 @@ def get_task(
     "/agent-tasks",
     description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
     "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
-    "`reported_since` to get the tasks one discovery source reported in a window. "
+    "`reported_since` to get the tasks one discovery source reported in a window, or "
+    "set `unreported` to get the tasks no discovery source has reported. "
     "Paged by cursor: a caller that needs every matching task passes the last task's ID "
     "as `after_task_id` until a page comes back with fewer than `page_size` tasks. A "
     "task created or archived mid-walk never repeats or skips another.",
@@ -241,6 +240,12 @@ def get_agent_tasks(
         description="Only return tasks a discovery scan reported on or after this "
         "time; UTC if no offset is given. Tasks no discovery source has reported are "
         "excluded when this filter is set.",
+    ),
+    unreported: bool = Query(
+        False,
+        description="Only return tasks no discovery source has reported, such as "
+        "agents known only from their traces. Cannot be combined with "
+        "`discovery_source_id` or `reported_since`.",
     ),
     after_task_id: UUID | None = Query(
         None,
@@ -272,6 +277,7 @@ def get_agent_tasks(
     Args:
         discovery_source_id: Only tasks this discovery source reported
         reported_since: Only tasks a discovery scan reported since this time
+        unreported: Only tasks no discovery source has reported
         after_task_id: The last task of the previous page, if any
         page_size: Tasks per page
         db_session: Database session
@@ -281,6 +287,16 @@ def get_agent_tasks(
     Returns:
         List of EnrichedTaskResponse objects (agentic tasks only)
     """
+    # The source filters select from reported tasks and `unreported` from the rest, so
+    # together they would match nothing. Say so rather than answer with an empty page
+    # a caller could mistake for "no such agents".
+    if unreported and (discovery_source_id is not None or reported_since is not None):
+        raise HTTPException(
+            status_code=400,
+            detail="unreported cannot be combined with discovery_source_id or "
+            "reported_since.",
+        )
+
     rules_repo = RuleRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     tasks_repo = TaskRepository(
@@ -304,6 +320,7 @@ def get_agent_tasks(
         org_scope=org_scope,
         reported_by_source_id=discovery_source_id,
         reported_since=reported_since,
+        unreported=unreported,
     )
 
     # Convert to Task objects and enrich with service names
@@ -313,9 +330,11 @@ def get_agent_tasks(
     # Build enriched responses, reading what each task needs in bulk rather than a
     # query or more per task.
     task_ids = [task.id for task in tasks]
-    polling_states = TaskPollingStateRepository(db_session).get_by_task_ids(task_ids)
     provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(task_ids)
     agent_metadata_by_task = tasks_repo._extract_agent_metadata_for_tasks(task_ids)
+    # last_fetched carries when each task last sent a trace. The Platform shows it as when
+    # an agent no discovery source reported was last seen.
+    last_trace_by_task = tasks_repo.get_last_trace_end_times(task_ids)
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
@@ -323,10 +342,6 @@ def get_agent_tasks(
             creation_source,
             provenance_rows.get(task.id, []),
         )
-
-        # Get last_fetched from task_polling_state
-        polling_state = polling_states.get(task.id)
-        last_fetched = polling_state.last_fetched if polling_state else None
 
         agent_metadata = agent_metadata_by_task[task.id]
 
@@ -344,7 +359,7 @@ def get_agent_tasks(
             updated_at=task.updated_at,
             is_autocreated=task.is_autocreated,
             creation_source=creation_source,
-            last_fetched=last_fetched,
+            last_fetched=last_trace_by_task.get(task.id),
             tools=agent_metadata["tools"],
             sub_agents=agent_metadata["sub_agents"],
             models=agent_metadata["models"],
@@ -533,7 +548,7 @@ def create_task_rule(
 
 @task_management_routes.patch(
     "/tasks/{task_id}/rules/{rule_id}",
-    description="Enable or disable an existing rule for this task including the default rules.",
+    description="Enable or disable an existing rule for this task.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -573,13 +588,8 @@ def archive_task_rule(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
     rule_repo = RuleRepository(db_session)
-    rule = rule_repo.get_rule_by_id(str(rule_id))
-
-    if rule.scope == RuleScope.DEFAULT:
-        raise HTTPException(
-            status_code=400,
-            detail=constants.ERROR_CANNOT_DELETE_DEFAULT_RULE,
-        )
+    # 404 for a rule that does not exist, before the 400 for one on another task.
+    rule_repo.get_rule_by_id(str(rule_id))
 
     tasks_rules_repo = TasksRulesRepository(db_session)
     task_rules = tasks_rules_repo._get_task_rules_ids(
@@ -600,11 +610,7 @@ def archive_task_rule(
     )
 
     task_repo.delete_rule_link(str(task_id), str(rule_id))
-
-    rules, _ = rule_repo.query_rules(rule_ids=[str(rule_id)])
-    rule = rules[0]
-    if rule.scope == RuleScope.TASK:
-        rule_repo.archive_rule(str(rule_id))
+    rule_repo.archive_rule(str(rule_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

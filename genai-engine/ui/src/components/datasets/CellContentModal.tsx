@@ -1,8 +1,8 @@
+import { useSnackbar } from "@arthur/shared-components";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Portal, Snackbar, Typography } from "@mui/material";
 import React from "react";
 
-import useSnackbar from "@/hooks/useSnackbar";
 import { track } from "@/services/analytics";
 import { formatFullValue } from "@/utils/datasetFormatters";
 
@@ -44,7 +44,12 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClos
               <Typography variant="h6" gutterBottom>
                 {columnName}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {charCount.toLocaleString()} characters
               </Typography>
             </Box>

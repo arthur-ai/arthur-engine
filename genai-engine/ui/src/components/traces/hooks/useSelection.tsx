@@ -1,6 +1,5 @@
+import { Level } from "@arthur/shared-components";
 import { parseAsString, useQueryState } from "nuqs";
-
-import { Level } from "../constants";
 
 export const useSelection = <T extends Level>(target: T) => {
   return useQueryState(

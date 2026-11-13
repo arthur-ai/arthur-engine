@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -20,7 +21,6 @@ import { buildApiSearchSettings, getMethodFromApiKind, mapApiSettingsToLocal } f
 
 import { useRagCollections } from "@/hooks/rag/useRagCollections";
 import { useCreateRagVersion } from "@/hooks/rag-search-settings/useCreateRagVersion";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface RagConfigEditModalProps {
@@ -111,7 +111,13 @@ export const RagConfigEditModal: React.FC<RagConfigEditModalProps> = ({
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1 }}>
             {/* Collection Selection */}
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 1,
+                }}
+              >
                 Collection
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -148,7 +154,13 @@ export const RagConfigEditModal: React.FC<RagConfigEditModalProps> = ({
 
             {/* Search Method */}
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 1,
+                }}
+              >
                 Search Method
               </Typography>
               <select
@@ -170,7 +182,13 @@ export const RagConfigEditModal: React.FC<RagConfigEditModalProps> = ({
 
             {/* Search Settings */}
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 1,
+                }}
+              >
                 Search Settings
               </Typography>
               <Box sx={{ p: 2, bgcolor: "action.hover", borderRadius: 1 }}>
@@ -199,9 +217,9 @@ export const RagConfigEditModal: React.FC<RagConfigEditModalProps> = ({
                 }
                 setTagInputValue("");
               }}
-              renderTags={(value, getTagProps) =>
+              renderValue={(value, getItemProps) =>
                 value.map((option, index) => {
-                  const { key, ...tagProps } = getTagProps({ index });
+                  const { key, ...tagProps } = getItemProps({ index });
                   return <Chip key={key} label={option} variant="outlined" size="small" {...tagProps} />;
                 })
               }

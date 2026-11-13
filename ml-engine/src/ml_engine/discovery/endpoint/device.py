@@ -8,7 +8,9 @@ downstream sees Jamf's `managementId`, Intune's `azureADDeviceId` or Kandji's
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
 
-from arthur_common.models.agent_governance_schemas import Platform
+from arthur_common.models.agent_governance_schemas import Platform, RunsOn
+
+from job_executors.discovery_scan import UnreadableDevice
 
 
 @dataclass(frozen=True)
@@ -53,5 +55,34 @@ class ManagedDevice:
     attributes: Mapping[str, Optional[str]] = field(default_factory=dict)
     """Custom attributes by display name, which is what an MDM admin sees."""
 
+    runs_on: RunsOn = RunsOn.ENDPOINT
+    """Where the machine runs, which only the carrier knows.
+
+    A laptop for an MDM; GCP for a Compute Engine VM. Nothing downstream can infer it:
+    the payload is the same osquery inventory either way, and a VM landing as a laptop
+    puts its agents under the wrong filter.
+    """
+
+    address_scope: Optional[str] = None
+    """Where in the carrier the device lives, when its id alone does not say.
+
+    None for an MDM, whose device id is unique within its tenant. A Compute Engine
+    instance id is addressed within its project and zone, so the record's address names
+    both, as `<project>/<zone>`.
+    """
+
     def attribute(self, name: str) -> Optional[str]:
         return self.attributes.get(name)
+
+    def unreadable(self, reason: str) -> UnreadableDevice:
+        """This device as the run lists it when its payload could not be read.
+
+        Identity and whereabouts only, never an attribute: the list leaves the engine.
+        """
+        return UnreadableDevice(
+            device_key=self.device_key,
+            name=self.name,
+            location=self.address_scope,
+            reason=reason,
+            last_reported=self.last_reported,
+        )

@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import BuildIcon from "@mui/icons-material/Build";
 import CodeIcon from "@mui/icons-material/Code";
@@ -26,7 +27,6 @@ import ToolsDialog from "./ToolsDialog";
 import useContainerWidth from "@/components/prompts-playground/hooks/useContainerWidth";
 import { useExtractPromptVariables } from "@/components/prompts-playground/hooks/useExtractPromptVariables";
 import useRunPrompt from "@/components/prompts-playground/hooks/useRunPrompt";
-import useSnackbar from "@/hooks/useSnackbar";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.

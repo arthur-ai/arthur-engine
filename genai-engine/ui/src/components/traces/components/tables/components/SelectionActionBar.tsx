@@ -20,8 +20,19 @@ export const SelectionActionBar = ({ selectedCount, onRunEval, onAddToDataset, o
           py: 1.5,
         }}
       >
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Typography variant="body2" fontWeight={600}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+            }}
+          >
             {selectedCount} trace{selectedCount !== 1 ? "s" : ""} selected
           </Typography>
 

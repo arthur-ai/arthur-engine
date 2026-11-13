@@ -1,6 +1,7 @@
-import { TracesEmptyState } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { TracesEmptyState } from "@arthur/shared-components/traces";
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ReplayIcon from "@mui/icons-material/Replay";
 import {
@@ -25,7 +26,6 @@ import { useCallback, useMemo, useState } from "react";
 
 import { testRunResultsQueryOptions, useCreateTestRun, useDeleteTestRun, useTestRun, useTestRunResults, useTestRunsList } from "../hooks/useTestRun";
 
-import { CopyableChip } from "@/components/common";
 import { Details } from "@/components/live-evals/components/results/components/details";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
@@ -224,9 +224,20 @@ function TestRunResultsModal({
     <>
       <Dialog open onClose={onClose} maxWidth="xl" fullWidth>
         <DialogTitle>
-          <Stack direction="row" alignItems="center" gap={2}>
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
             <Typography variant="h6">Test Run Results</Typography>
-            <Stack direction="row" gap={1}>
+            <Stack
+              direction="row"
+              sx={{
+                gap: 1,
+              }}
+            >
               {displayTestRun.passed_count > 0 && (
                 <Chip label={`${displayTestRun.passed_count} passed`} size="small" color="success" variant="outlined" />
               )}
@@ -249,8 +260,20 @@ function TestRunResultsModal({
         </DialogTitle>
         {displayTestRun.status === "running" && (
           <Box sx={{ px: 3, pb: 1 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-              <Typography variant="caption" color="text.secondary">
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 0.5,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {displayTestRun.completed_count} / {displayTestRun.total_count} completed
               </Typography>
             </Stack>

@@ -719,7 +719,7 @@ export interface AgenticPrompt {
    */
   model_name: string;
   /**
-   * Model Provider
+   * Agentic Prompt Model Provider
    * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
    */
   model_provider: ModelProvider | "empty";
@@ -931,27 +931,57 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotati
 
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
+/** AnthropicThinkingBlockBinding */
+export interface AnthropicThinkingBlockBindingInput {
+  /** Prefix Mismatch Behavior */
+  prefix_mismatch_behavior?: AnthropicThinkingBlockBindingInputPrefixMismatchBehaviorEnum;
+}
+
+/** Prefix Mismatch Behavior */
+export type AnthropicThinkingBlockBindingInputPrefixMismatchBehaviorEnum = "error" | "drop_block";
+
+/** AnthropicThinkingBlockBinding */
+export interface AnthropicThinkingBlockBindingOutput {
+  /** Prefix Mismatch Behavior */
+  prefix_mismatch_behavior?: AnthropicThinkingBlockBindingOutputPrefixMismatchBehaviorEnum;
+}
+
+/** Prefix Mismatch Behavior */
+export type AnthropicThinkingBlockBindingOutputPrefixMismatchBehaviorEnum = "error" | "drop_block";
+
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParamInput {
+  block_binding?: AnthropicThinkingBlockBindingInput;
   /** Budget Tokens */
   budget_tokens?: number;
+  /** Display */
+  display?: AnthropicThinkingParamInputDisplayEnum;
   /** Type */
   type?: AnthropicThinkingParamInputTypeEnum;
 }
 
+/** Display */
+export type AnthropicThinkingParamInputDisplayEnum = "summarized" | "omitted" | "updates";
+
 /** Type */
-export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive" | "disabled";
 
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParamOutput {
+  block_binding?: AnthropicThinkingBlockBindingOutput;
   /** Budget Tokens */
   budget_tokens?: number;
+  /** Display */
+  display?: AnthropicThinkingParamOutputDisplayEnum;
   /** Type */
   type?: AnthropicThinkingParamOutputTypeEnum;
 }
 
+/** Display */
+export type AnthropicThinkingParamOutputDisplayEnum = "summarized" | "omitted" | "updates";
+
 /** Type */
-export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive" | "disabled";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -1580,6 +1610,11 @@ export interface ContinuousEvalCreateRequest {
    */
   name: string;
   /**
+   * Sample Rate
+   * Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace.
+   */
+  sample_rate?: number | null;
+  /**
    * Transform Id
    * ID of the transform to create the continuous eval for
    * @format uuid
@@ -1604,6 +1639,52 @@ export interface ContinuousEvalCreateRequest {
  */
 export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
 
+/**
+ * ContinuousEvalDailySpendEstimate
+ * Projected daily cost of a continuous eval at the task's recent traffic.
+ *
+ * estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+ */
+export interface ContinuousEvalDailySpendEstimate {
+  /**
+   * Average Run Cost
+   * Mean cost of those runs. Null when there are none.
+   */
+  average_run_cost?: number | null;
+  /**
+   * Estimated Daily Cost
+   * Projected cost per day. Null when it cannot be estimated; unavailable_reason says why.
+   */
+  estimated_daily_cost?: number | null;
+  /**
+   * Run Count
+   * Live runs in the window that called the LLM (passed or failed), which the average is taken over.
+   */
+  run_count: number;
+  /**
+   * Sample Rate
+   * Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set.
+   */
+  sample_rate: number;
+  /**
+   * Trace Count
+   * Traces the task received in the window, not counting agent experiment traces.
+   */
+  trace_count: number;
+  /**
+   * Traces Per Day
+   * trace_count divided by window_days.
+   */
+  traces_per_day: number;
+  /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window. */
+  unavailable_reason?: SpendEstimateUnavailableReason | null;
+  /**
+   * Window Days
+   * Number of trailing days the traffic and the average run cost are measured over.
+   */
+  window_days: number;
+}
+
 /** ContinuousEvalRerunResponse */
 export interface ContinuousEvalRerunResponse {
   /**
@@ -1619,7 +1700,15 @@ export interface ContinuousEvalRerunResponse {
   trace_id: string;
 }
 
-/** ContinuousEvalResponse */
+/**
+ * ContinuousEvalResponse
+ * The continuous eval response, with its sample rate.
+ *
+ * Extends the shared model only until `arthur_common` carries `sample_rate` on
+ * `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
+ * same so the OpenAPI component, and the generated clients built from it, keep
+ * their name either way.
+ */
 export interface ContinuousEvalResponse {
   /**
    * Created At
@@ -1665,6 +1754,11 @@ export interface ContinuousEvalResponse {
    */
   name: string;
   /**
+   * Sample Rate
+   * Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.
+   */
+  sample_rate?: number | null;
+  /**
    * Task Id
    * ID of the parent task.
    */
@@ -1695,6 +1789,31 @@ export interface ContinuousEvalResponse {
 
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
+/**
+ * ContinuousEvalSpendResponse
+ * Recent and projected spend of one continuous eval.
+ */
+export interface ContinuousEvalSpendResponse {
+  /**
+   * Last 24H Cost
+   * Total cost of the live runs created in the last 24 hours.
+   */
+  last_24h_cost: number;
+  /**
+   * Last 24H Run Count
+   * Live runs created in the last 24 hours, in any status.
+   */
+  last_24h_run_count: number;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval.
+   * @format uuid
+   */
+  continuous_eval_id: string;
+  /** Projected daily cost at the current sample rate. */
+  estimate: ContinuousEvalDailySpendEstimate;
+}
 
 /** ContinuousEvalTestRunResponse */
 export interface ContinuousEvalTestRunResponse {
@@ -2592,28 +2711,6 @@ export interface DemoTaskSignupResponse {
 }
 
 /**
- * DiscoverAndPollResponse
- * Response model for the execute-all agent polling endpoint.
- */
-export interface DiscoverAndPollResponse {
-  /**
-   * Discovered
-   * Number of new agent tasks created
-   */
-  discovered: number;
-  /**
-   * Status
-   * Status of the operation
-   */
-  status: string;
-  /**
-   * Traces Fetched
-   * Total number of traces fetched across all tasks (0 in async mode)
-   */
-  traces_fetched: number;
-}
-
-/**
  * DisplaySettingsResponse
  * Public display settings (e.g. default currency for cost formatting).
  */
@@ -2700,7 +2797,7 @@ export interface EnrichedTaskResponse {
   is_autocreated?: boolean;
   /**
    * Last Fetched
-   * Last time traces were fetched for this task (from task_polling_state)
+   * End time of the newest trace GenAI Engine holds for this task; null if it has none
    */
   last_fetched?: string | null;
   /**
@@ -2739,6 +2836,28 @@ export interface EnrichedTaskResponse {
    * @format date-time
    */
   updated_at: string;
+}
+
+export type EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetData = ContinuousEvalDailySpendEstimate;
+
+export type EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetError = HTTPValidationError;
+
+export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetParams {
+  /**
+   * Llm Eval Name
+   * Name of the evaluator the continuous eval would run.
+   */
+  llm_eval_name: string;
+  /**
+   * Sample Rate
+   * Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.
+   */
+  sample_rate?: number | null;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
 }
 
 /** Eval */
@@ -3025,24 +3144,6 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
-export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData = ExecutePollingResponse;
-
-export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError = HTTPValidationError;
-
-export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData = DiscoverAndPollResponse;
-
-export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError = HTTPValidationError;
-
-export interface ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams {
-  /** Timeout */
-  timeout?: number | null;
-  /**
-   * Wait For Completion
-   * @default false
-   */
-  wait_for_completion?: boolean;
-}
-
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
@@ -3050,23 +3151,6 @@ export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
-
-/**
- * ExecutePollingResponse
- * Response model for the single-task agent polling endpoint.
- */
-export interface ExecutePollingResponse {
-  /**
-   * Status
-   * Status of the operation
-   */
-  status: string;
-  /**
-   * Task Id
-   * Task ID that was enqueued
-   */
-  task_id: string;
-}
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
@@ -3777,6 +3861,10 @@ export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousE
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError = HTTPValidationError;
 
+export type GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetData = ContinuousEvalSpendResponse;
+
+export type GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetError = HTTPValidationError;
+
 export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetData =
   ContinuousEvalVariableMappingResponse;
 
@@ -4004,6 +4092,10 @@ export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetErr
 
 export type GetMeUsersMeGetData = MeResponse;
 
+export type GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetData = ModelProviderEvalDefaults;
+
+export type GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetError = HTTPValidationError;
+
 export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetData = ModelProviderWhitelist;
 
 export type GetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistGetError = HTTPValidationError;
@@ -4013,6 +4105,19 @@ export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+
+export type GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetData = ModelReasoningOptions;
+
+export type GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetError = HTTPValidationError;
+
+export interface GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetParams {
+  /**
+   * Model Name
+   * Name of the model, as the eval stores it
+   */
+  model_name: string;
+  provider: ModelProvider;
+}
 
 export type GetNotebookApiV1NotebooksNotebookIdGetData = NotebookDetail;
 
@@ -4885,7 +4990,7 @@ export interface LLMConfigSettings {
    */
   timeout?: number | null;
   /**
-   * Tool Choice
+   * LLM Config Tool Choice
    * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
    */
   tool_choice?: ToolChoiceEnum | ToolChoice | null;
@@ -5049,7 +5154,7 @@ export interface LLMPromptRequestConfigSettings {
    */
   timeout?: number | null;
   /**
-   * Tool Choice
+   * LLM Prompt Request Tool Choice
    * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
    */
   tool_choice?: ToolChoiceEnum | ToolChoice | null;
@@ -6861,6 +6966,16 @@ export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection
 /** ModelProvider */
 export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure" | "scaledown";
 
+/** ModelProviderEvalDefaults */
+export interface ModelProviderEvalDefaults {
+  /** Provider the defaults apply to */
+  provider: ModelProvider;
+  /** Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing. */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing. */
+  thinking?: AnthropicThinkingParamOutput | null;
+}
+
 /** ModelProviderList */
 export interface ModelProviderList {
   /**
@@ -6907,6 +7022,45 @@ export interface ModelProviderWhitelist {
    */
   whitelist: string[] | null;
 }
+
+/** ModelReasoningOptions */
+export interface ModelReasoningOptions {
+  /**
+   * Model Name
+   * Model the options apply to
+   */
+  model_name: string;
+  /** Provider of the model */
+  provider: ModelProvider;
+  /**
+   * Reasoning Efforts
+   * reasoning_effort values the model accepts; empty when it takes none. Null when litellm doesn't know the model, in which case any value is sent as is.
+   */
+  reasoning_efforts: ReasoningEffortEnum[] | null;
+  /** Thinking settings the model accepts */
+  thinking: ModelThinkingOptions;
+}
+
+/** ModelThinkingOptions */
+export interface ModelThinkingOptions {
+  /**
+   * Can Disable
+   * Whether thinking type 'disabled' turns thinking off. False for models that always think and for non-Claude models. Null when litellm doesn't know the model.
+   */
+  can_disable: boolean | null;
+  /**
+   * Supported
+   * Whether the model takes a thinking setting. Null when litellm doesn't know the model.
+   */
+  supported: boolean | null;
+  /**
+   * Thinking Types
+   * Thinking types the model accepts. Null when litellm doesn't know the model.
+   */
+  types: ModelThinkingOptionsTypesEnum[] | null;
+}
+
+export type ModelThinkingOptionsTypesEnum = "enabled" | "adaptive" | "disabled";
 
 /** _MultiTargetVectorJoin */
 export interface MultiTargetVectorJoin {
@@ -8234,6 +8388,14 @@ export interface PutModelProviderCredentials {
    * The vertex AI region to use
    */
   region?: string | null;
+}
+
+/** PutModelProviderEvalDefaults */
+export interface PutModelProviderEvalDefaults {
+  /** Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Skipped for models that don't accept the value. Null sends nothing. */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking, e.g. {'type': 'disabled'} to turn Claude thinking off. Skipped for models that don't accept it. Null sends nothing. */
+  thinking?: AnthropicThinkingParamInput | null;
 }
 
 /** PutModelProviderWhitelist */
@@ -10809,6 +10971,10 @@ export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
 
+export type SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutData = any;
+
+export type SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutError = HTTPValidationError;
+
 export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutData = any;
 
 export type SetModelProviderWhitelistApiV1ModelProvidersProviderModelWhitelistPutError = HTTPValidationError;
@@ -11086,6 +11252,12 @@ export interface SpanWithMetricsResponse {
   user_id?: string | null;
 }
 
+/**
+ * SpendEstimateUnavailableReason
+ * Why a continuous eval daily spend estimate could not be computed.
+ */
+export type SpendEstimateUnavailableReason = "no_traces" | "no_runs";
+
 export type StatelessValidateApiV2ValidatePostData = BuiltinValidationResponse;
 
 export type StatelessValidateApiV2ValidatePostError = HTTPValidationError;
@@ -11268,7 +11440,7 @@ export interface SyntheticDataPromptStatus {
    */
   model_name: string;
   /**
-   * Model Provider
+   * Synthetic Data Prompt Model Provider
    * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
   model_provider: ModelProvider | "empty";
@@ -12628,6 +12800,11 @@ export interface UpdateContinuousEvalRequest {
    * Name of the continuous eval
    */
   name?: string | null;
+  /**
+   * Sample Rate
+   * Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace.
+   */
+  sample_rate?: number | null;
   /**
    * Transform Id
    * ID of the transform to create the continuous eval for
@@ -14905,39 +15082,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Manually trigger a polling job for a task. Does not require any particular state — admins can use this to force an immediate poll outside the normal loop cadence.
+     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.
      *
-     * @tags Agent Discovery
-     * @name ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePost
-     * @summary Execute Agent Polling
-     * @request POST:/api/v1/tasks/{task_id}/agent-polling/execute
+     * @tags Continuous Evals
+     * @name EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet
+     * @summary Estimate the daily spend of a new continuous eval
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/spend_estimate
      * @secure
      */
-    executeAgentPollingApiV1TasksTaskIdAgentPollingExecutePost: (taskId: string, params: RequestParams = {}) =>
-      this.request<ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData, ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError>({
-        path: `/api/v1/tasks/${taskId}/agent-polling/execute`,
-        method: "POST",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.
-     *
-     * @tags Agent Discovery
-     * @name ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPost
-     * @summary Execute All Agent Polling
-     * @request POST:/api/v1/agent-polling/execute-all
-     * @secure
-     */
-    executeAllAgentPollingApiV1AgentPollingExecuteAllPost: (
-      query: ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams,
+    estimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet: (
+      { taskId, ...query }: EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetParams,
       params: RequestParams = {}
     ) =>
-      this.request<ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData, ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError>({
-        path: `/api/v1/agent-polling/execute-all`,
-        method: "POST",
+      this.request<
+        EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetData,
+        EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/spend_estimate`,
+        method: "GET",
         query: query,
         secure: true,
         format: "json",
@@ -15453,6 +15615,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.
+     *
+     * @tags Continuous Evals
+     * @name GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet
+     * @summary Get recent and estimated daily spend for a continuous eval
+     * @request GET:/api/v1/continuous_evals/{eval_id}/spend
+     * @secure
+     */
+    getContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet: (evalId: string, params: RequestParams = {}) =>
+      this.request<GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetData, GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGetError>({
+        path: `/api/v1/continuous_evals/${evalId}/spend`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get all variables and mappings for a continuous eval
      *
      * @tags Continuous Evals
@@ -15805,6 +15985,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. Null fields send nothing.
+     *
+     * @tags Model Providers
+     * @name GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGet
+     * @summary Get a provider's default reasoning settings for LLM evals.
+     * @request GET:/api/v1/model_providers/{provider}/eval_defaults
+     * @secure
+     */
+    getModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGet: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetData,
+        GetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/eval_defaults`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Shows all model providers and if they're enabled.
      *
      * @tags Model Providers
@@ -15859,6 +16060,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/model_providers/${provider}/model_whitelist`,
         method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the reasoning_effort values and thinking types litellm accepts for a model, the same rule LLM eval saves are checked against. Null fields mean litellm doesn't know the model, and any value is sent as is.
+     *
+     * @tags Model Providers
+     * @name GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGet
+     * @summary Get the reasoning settings a model accepts.
+     * @request GET:/api/v1/model_providers/{provider}/reasoning_options
+     * @secure
+     */
+    getModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGet: (
+      { provider, ...query }: GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetData,
+        GetModelReasoningOptionsApiV1ModelProvidersProviderReasoningOptionsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/reasoning_options`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -17395,6 +17621,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Applies to LLM evals only, not to prompts. Send nulls to clear.
+     *
+     * @tags Model Providers
+     * @name SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPut
+     * @summary Set a provider's default reasoning settings for LLM evals.
+     * @request PUT:/api/v1/model_providers/{provider}/eval_defaults
+     * @secure
+     */
+    setModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPut: (
+      provider: ModelProvider,
+      data: PutModelProviderEvalDefaults,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutData,
+        SetModelProviderEvalDefaultsApiV1ModelProvidersProviderEvalDefaultsPutError
+      >({
+        path: `/api/v1/model_providers/${provider}/eval_defaults`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
 

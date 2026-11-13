@@ -71,7 +71,12 @@ export const EvalVariableMappingStep: React.FC<EvalVariableMappingStepProps> = (
         <Typography variant="h6">
           {evaluator.name} v{evaluator.version}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Evaluator {evalIndex + 1} of {totalEvaluators}
         </Typography>
       </Box>
@@ -85,12 +90,23 @@ export const EvalVariableMappingStep: React.FC<EvalVariableMappingStepProps> = (
           <CircularProgress />
         </Box>
       ) : variables.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           This evaluator has no variables to configure.
         </Typography>
       ) : (
         <>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 1,
+            }}
+          >
             For RAG evaluators, variables typically map to the experiment output (the RAG response). Use "Dataset Column" only for ground-truth or
             reference data.
           </Typography>
@@ -154,10 +170,23 @@ export const EvalVariableMappingStep: React.FC<EvalVariableMappingStepProps> = (
                               <ToggleButton value="dataset_column" sx={{ px: 2, py: 1 }}>
                                 <Box className="flex flex-col items-center text-center">
                                   <TableChartOutlinedIcon fontSize="small" />
-                                  <Typography variant="caption" fontWeight="bold" sx={{ textTransform: "none" }}>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontWeight: "bold",
+                                      textTransform: "none",
+                                    }}
+                                  >
                                     Ground Truth
                                   </Typography>
-                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.65rem", textTransform: "none" }}>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontSize: "0.65rem",
+                                      textTransform: "none",
+                                    }}
+                                  >
                                     From dataset
                                   </Typography>
                                 </Box>
@@ -165,10 +194,23 @@ export const EvalVariableMappingStep: React.FC<EvalVariableMappingStepProps> = (
                               <ToggleButton value="experiment_output" sx={{ px: 2, py: 1 }}>
                                 <Box className="flex flex-col items-center text-center">
                                   <AutoAwesomeOutlinedIcon fontSize="small" />
-                                  <Typography variant="caption" fontWeight="bold" sx={{ textTransform: "none" }}>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontWeight: "bold",
+                                      textTransform: "none",
+                                    }}
+                                  >
                                     RAG Response
                                   </Typography>
-                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.65rem", textTransform: "none" }}>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      color: "text.secondary",
+                                      fontSize: "0.65rem",
+                                      textTransform: "none",
+                                    }}
+                                  >
                                     Search results
                                   </Typography>
                                 </Box>
@@ -200,16 +242,18 @@ export const EvalVariableMappingStep: React.FC<EvalVariableMappingStepProps> = (
                                 helperText="Use dot notation for nested fields (e.g. response.objects.0.properties)"
                                 size="small"
                                 fullWidth
-                                InputProps={{
-                                  endAdornment: (
-                                    <Button
-                                      size="small"
-                                      onClick={() => setCustomPathMode((prev) => ({ ...prev, [variableName]: false }))}
-                                      sx={{ minWidth: "auto", fontSize: "0.75rem" }}
-                                    >
-                                      Presets
-                                    </Button>
-                                  ),
+                                slotProps={{
+                                  input: {
+                                    endAdornment: (
+                                      <Button
+                                        size="small"
+                                        onClick={() => setCustomPathMode((prev) => ({ ...prev, [variableName]: false }))}
+                                        sx={{ minWidth: "auto", fontSize: "0.75rem" }}
+                                      >
+                                        Presets
+                                      </Button>
+                                    ),
+                                  },
                                 }}
                               />
                             ) : (
@@ -234,7 +278,12 @@ export const EvalVariableMappingStep: React.FC<EvalVariableMappingStepProps> = (
                                     <li key={key} {...otherProps}>
                                       <Box className="flex flex-col py-1">
                                         <Typography variant="body2">{option.label}</Typography>
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            color: "text.secondary",
+                                          }}
+                                        >
                                           {option.description}
                                         </Typography>
                                       </Box>

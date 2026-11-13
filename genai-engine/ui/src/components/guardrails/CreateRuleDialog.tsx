@@ -151,7 +151,12 @@ export const CreateRuleDialog: React.FC<CreateRuleDialogProps> = ({ open, onClos
     switch (meta.configKind) {
       case "none":
         return (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No additional configuration required for this rule type.
           </Typography>
         );
@@ -189,9 +194,9 @@ export const CreateRuleDialog: React.FC<CreateRuleDialogProps> = ({ open, onClos
               options={PII_ENTITY_VALUES}
               value={disabledPiiEntities}
               onChange={(_, next) => setDisabledPiiEntities(next)}
-              renderTags={(values, getTagProps) =>
+              renderValue={(values, getItemProps) =>
                 values.map((option, index) => {
-                  const { key, ...tagProps } = getTagProps({ index });
+                  const { key, ...tagProps } = getItemProps({ index });
                   return <Chip key={key} label={option} size="small" {...tagProps} />;
                 })
               }
@@ -256,7 +261,12 @@ export const CreateRuleDialog: React.FC<CreateRuleDialogProps> = ({ open, onClos
               </Select>
             </FormControl>
 
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {meta.description}
             </Typography>
 

@@ -1,4 +1,5 @@
-import { Operators, TracesEmptyState } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { Operators, TracesEmptyState } from "@arthur/shared-components/traces";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
@@ -34,6 +35,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { Details } from "../components/results/components/details";
+import { ContinuousEvalSpendCards } from "../components/spend";
 import { TestRunDialog } from "../components/TestRunDialog";
 import { TestRunsHistory } from "../components/TestRunsHistory";
 import { useContinuousEval } from "../hooks/useContinuousEval";
@@ -41,7 +43,6 @@ import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsR
 
 import { createColumns } from "./columns";
 
-import { CopyableChip } from "@/components/common";
 import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTransform } from "@/hooks/transforms/useTransform";
@@ -155,26 +156,67 @@ export const LiveEvalDetail = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" alignItems="flex-start" gap={2}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "flex-start",
+            gap: 2,
+          }}
+        >
           <IconButton component={Link} to=".." size="small">
             <ArrowBackIcon fontSize="small" />
           </IconButton>
           <Stack>
-            <Stack direction="row" alignItems="center" gap={2}>
-              <Typography variant="h5" fontWeight="bold" color="text.primary">
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: "bold",
+                  color: "text.primary",
+                }}
+              >
                 {liveEval.name}
               </Typography>
               <Chip label={liveEval.enabled ? "Enabled" : "Disabled"} color={liveEval.enabled ? "success" : "default"} size="small" />
             </Stack>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {liveEval.description}
             </Typography>
           </Stack>
 
-          <Stack direction="row" alignItems="center" justifyContent="space-between" ml="auto">
-            <Stack direction="row" gap={2} alignItems="center">
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              justifyContent: "space-between",
+              ml: "auto",
+            }}
+          >
+            <Stack
+              direction="row"
+              sx={{
+                gap: 2,
+                alignItems: "center",
+              }}
+            >
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Created {formatDateInTimezone(liveEval.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
             </Stack>
@@ -185,27 +227,59 @@ export const LiveEvalDetail = () => {
       {/* Content */}
       <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
         <Stack spacing={3}>
+          <ContinuousEvalSpendCards evalId={liveEval.id} />
+
           {/* Configuration Section */}
           <Paper variant="outlined" sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} mb={2}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                mb: 2,
+              }}
+            >
               Configuration
             </Typography>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Stack gap={0.5}>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+              <Stack
+                sx={{
+                  gap: 0.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
                   Evaluator
                 </Typography>
-                <Stack direction="row" alignItems="center" gap={1}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
                   {liveEval.eval_type === "ml_eval" ? (
-                    <Typography variant="body1" fontWeight={500}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {liveEval.llm_eval_name}
                     </Typography>
                   ) : (
                     <MuiLink
                       variant="body1"
-                      fontWeight={500}
                       component={Link}
                       to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name ?? "")}/versions/${liveEval.llm_eval_version ?? ""}`}
+                      sx={{
+                        fontWeight: 500,
+                      }}
                     >
                       {liveEval.llm_eval_name}
                     </MuiLink>
@@ -218,13 +292,27 @@ export const LiveEvalDetail = () => {
               </Stack>
 
               <Stack spacing={0.5}>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
                   Transform
                 </Typography>
                 {transform.isLoading ? (
                   <Skeleton variant="text" width={100} height={20} />
                 ) : (
-                  <MuiLink variant="body1" fontWeight={500} component={Link} to={`/tasks/${liveEval.task_id}/transforms?id=${transform.data?.id}`}>
+                  <MuiLink
+                    variant="body1"
+                    component={Link}
+                    to={`/tasks/${liveEval.task_id}/transforms?id=${transform.data?.id}`}
+                    sx={{
+                      fontWeight: 500,
+                    }}
+                  >
                     {transform.data?.name}
                   </MuiLink>
                 )}
@@ -235,8 +323,17 @@ export const LiveEvalDetail = () => {
             {hasVariableMappings && (
               <>
                 <Divider sx={{ my: 3 }} />
-                <Stack gap={2}>
-                  <Typography variant="subtitle1" fontWeight={600}>
+                <Stack
+                  sx={{
+                    gap: 2,
+                  }}
+                >
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 600,
+                    }}
+                  >
                     Variable Mappings
                   </Typography>
                   <Table size="small">
@@ -269,7 +366,14 @@ export const LiveEvalDetail = () => {
           </Paper>
 
           {/* Tabs */}
-          <Stack direction="row" alignItems="center" sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              borderBottom: 1,
+              borderColor: "divider",
+            }}
+          >
             <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)} sx={{ flex: 1 }}>
               <Tab label="Evaluated Traces" value="traces" />
               <Tab label="Test Runs" value="test-runs" />
@@ -283,12 +387,28 @@ export const LiveEvalDetail = () => {
           {activeTab === "traces" && (
             <Paper variant="outlined" sx={{ overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack
+                  direction="row"
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <Stack>
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                      }}
+                    >
                       Evaluated Traces
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Real-time evaluation results as traces are processed
                     </Typography>
                   </Stack>

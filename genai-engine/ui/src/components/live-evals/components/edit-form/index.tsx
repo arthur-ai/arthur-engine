@@ -1,4 +1,5 @@
-import { useAppForm } from "@arthur/shared-components";
+import { CopyableChip } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import {
   Alert,
   Button,
@@ -20,9 +21,9 @@ import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
+import { percentToSampleRate, SampleRateField, samplePercentSchema, sampleRateToPercent } from "../sample-rate";
 import { VariableMappingSection } from "../variable-mapping";
 
-import { CopyableChip } from "@/components/common";
 import { useMLEval } from "@/components/evaluators/hooks/useEval";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
@@ -63,6 +64,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       name: data.name,
       description: data.description ?? "",
       enabled: data.enabled,
+      samplePercent: sampleRateToPercent(data.sample_rate),
       transform: {
         transformId: data.transform_id,
         transformVersionId: data.transform_version_id ?? null,
@@ -83,6 +85,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        // null resets the rate to every trace.
+        sample_rate: percentToSampleRate(value.samplePercent),
         transform_id: value.transform.transformId,
         transform_version_id: value.transform.transformVersionId ?? undefined,
         ...(isML
@@ -147,8 +151,14 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
 
   return (
     <>
-      <DialogTitle component={Stack} direction="row" alignItems="center" gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
+      <DialogTitle sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 2 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.primary",
+            fontWeight: "bold",
+          }}
+        >
           Edit {data.name}
         </Typography>
         <CopyableChip label={data.id} sx={{ fontFamily: "monospace" }} />
@@ -162,11 +172,23 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
             e.stopPropagation();
             form.handleSubmit();
           }}
-          gap={2}
-          sx={{ pt: 1 }}
+          sx={{
+            gap: 2,
+            pt: 1,
+          }}
         >
-          <Stack gap={2}>
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               General Information
             </Typography>
             <DetailsFieldGroup
@@ -183,6 +205,11 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
                   label="Enable continuous eval"
                   slotProps={{ typography: { color: "text.primary" } }}
                 />
+              )}
+            </form.Field>
+            <form.Field name="samplePercent" validators={{ onChange: samplePercentSchema }}>
+              {(field) => (
+                <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
               )}
             </form.Field>
           </Stack>

@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+
 from tests.clients.base_test_client import MASTER_API_KEY, GenaiEngineTestClientBase
 
 
@@ -24,7 +25,7 @@ def test_allow_admin_key_general_access_disabled(
     client.authorized_user_api_key_headers = {
         "Authorization": "Bearer %s" % MASTER_API_KEY,
     }
-    status_code, _ = client.get_default_rules()
+    status_code, _ = client.search_tasks()
     assert status_code == 403
 
 
@@ -33,5 +34,5 @@ def test_allow_admin_key_general_access_enabled(client: GenaiEngineTestClientBas
     client.authorized_user_api_key_headers = {
         "Authorization": "Bearer %s" % MASTER_API_KEY,
     }
-    status_code, _ = client.get_default_rules()
+    status_code, _ = client.search_tasks()
     assert status_code == 200

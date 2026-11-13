@@ -19,8 +19,8 @@ from typing import Any, Optional
 
 import pytest
 import requests
-import yaml
 from arthur_common.models.agent_governance_schemas import (
+    MAX_OCCURRENCES,
     AgentObservations,
     EndpointAgentCreationSource,
     Platform,
@@ -34,28 +34,24 @@ from discovery.endpoint.jamf.connector import JamfConnector, _settings_from
 from discovery.endpoint.records import records_for
 from discovery.endpoint.scope import DeviceGroupError
 from job_executors.discovery_scan import (
+    CorroboratingRecord,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
     failure_code,
 )
+from tests.fakes.catalog import agent, document
+from tests.fakes.records import agent_records
 
 SCAN_AT = 1790100381
 LOG = logging.getLogger("discovery-test")
-CATALOG = yaml.safe_dump(
-    {
-        "version": 2,
-        "classifications": ["Coding agent"],
-        "agents": [
-            {
-                "id": "codex-cli",
-                "name": "Codex CLI",
-                "classification": "Coding agent",
-                "platforms": ["darwin"],
-                "npm": ["@openai/codex"],
-                "binaries": ["~/.local/bin/codex"],
-            },
-        ],
-    },
+CATALOG = document(
+    agent(
+        "codex-cli",
+        "Codex CLI",
+        "Coding agent",
+        npm=["@openai/codex"],
+        binaries=["~/.local/bin/codex"],
+    ),
 )
 FIELDS = {"base_url": "https://acme.jamfcloud.com"}
 CREDS = {
@@ -383,7 +379,8 @@ class FakeConfig:
         self.name = "acme jamf"
 
 
-def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+def scan_all(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """Every record a scan yields, corroborations included."""
     monkeypatch.setattr(
         "discovery.endpoint.jamf.connector.JamfClient",
         lambda s, logger=None: client_for(fake),
@@ -392,7 +389,11 @@ def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     return [r for batch in connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
 
 
-def test_a_healthy_mac_yields_one_record_per_agent(
+def scan(fake: FakeJamf, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    return agent_records([scan_all(fake, monkeypatch)])
+
+
+def test_a_healthy_mac_yields_one_agent_record_and_a_corroboration_per_route(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload = frame(
@@ -402,10 +403,244 @@ def test_a_healthy_mac_yields_one_record_per_agent(
             scan_row("packages"),
         ],
     )
-    records = scan(FakeJamf([[computer("m1", payload)]]), monkeypatch)
-    assert len(records) == 1, "two routes, one agent, one record"
-    assert records[0].external_id == "m1:codex-cli"
-    assert records[0].name == "Codex CLI"
+    records = scan_all(FakeJamf([[computer("m1", payload)]]), monkeypatch)
+
+    agents = [r for r in records if not isinstance(r, CorroboratingRecord)]
+    assert [r.external_id for r in agents] == ["m1:codex-cli"], "two routes, one agent"
+    assert agents[0].name == "Codex CLI"
+    assert records[0] is agents[0], "the agent record leads, so it resolves first"
+    corroborations = [r for r in records if isinstance(r, CorroboratingRecord)]
+    assert {r.external_id for r in corroborations} == {
+        "m1:codex-cli:npm:@openai/codex",
+        "m1:codex-cli:binaries:~/.local/bin/codex",
+    }
+    assert {r.corroborates for r in corroborations} == {"m1:codex-cli"}
+
+
+CLAUDE_CODE = document(
+    agent(
+        "claude-code",
+        "Claude Code",
+        "Coding agent",
+        binaries=["~/.local/bin/claude"],
+        process_paths=["~/.local/share/claude/versions/"],
+        vscode_extensions=["anthropic.claude-code"],
+    ),
+)
+
+
+def scan_claude_code(
+    rows: list[dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[Any]:
+    fake = FakeJamf([[computer("m1", frame([*rows, scan_row("vscode")]))]])
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(fake),
+    )
+    connector = JamfConnector()
+    return [r for b in connector.scan(FakeConfig(CLAUDE_CODE), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
+
+
+def test_every_identifier_is_evidence_and_an_extension_shows_its_editor_and_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The case that asked for this: a Mac carrying Claude Code three ways, where Scope
+    showed only the binary.
+
+    The extension is an install kind, so it is the PRIMARY row, and the agent record's
+    address is its id -- which names no editor and no version. Its corroboration's
+    address is the path, which names both, and is the only place on the Platform a
+    compromised build could be told from a clean one.
+    """
+    extension = "/Users/n/.cursor/extensions/anthropic.claude-code-2.1.313-darwin-arm64"
+    records = scan_claude_code(
+        [
+            row("file", "/Users/n/.local/bin/claude", loc="/Users/n/.local/bin/claude"),
+            row("proc", "/Users/n/.local/share/claude/versions/2.1.312"),
+            row("proc", "/Users/n/.local/share/claude/versions/2.1.314"),
+            row(
+                "vscodeext",
+                "anthropic.claude-code",
+                ver="2.1.313",
+                loc=extension,
+                extra="cursor",
+            ),
+        ],
+        monkeypatch,
+    )
+
+    agent_record, *rest = records
+    assert agent_record.external_id == "m1:claude-code"
+    assert agent_record.creation_source.address.resource_id == "anthropic.claude-code"
+
+    by_route = {r.external_id.split(":")[2]: r for r in rest}
+    assert sorted(by_route) == [
+        "binaries",
+        "process_paths",
+        "vscode_extensions",
+    ], "one per identifier: the two running versions share theirs"
+    assert all(isinstance(r, CorroboratingRecord) for r in rest)
+
+    ext = by_route["vscode_extensions"].creation_source
+    assert ext.address.instance == "m1"
+    assert ext.address.resource_kind == "vscodeext"
+    assert ext.address.resource_id == extension
+    assert ext.observations.version == "2.1.313"
+
+    binary = by_route["binaries"].creation_source.address
+    assert (binary.resource_kind, binary.resource_id) == (
+        "file",
+        "/Users/n/.local/bin/claude",
+    )
+    # proc carries no path in `loc`, so the address falls back to the row's id.
+    assert by_route["process_paths"].creation_source.address.resource_id.startswith(
+        "/Users/n/.local/share/claude/versions/",
+    )
+
+
+def test_an_upgrade_moves_the_address_of_a_corroboration_and_keeps_its_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A running version's row id is its versioned path. A corroboration keyed on the
+    row would mint a mapping and a provenance entry per upgrade; keyed on the
+    identifier, its entry stays and its address moves. And none may share the agent
+    record's `external_id`, whose provenance entry it would overwrite."""
+    versions = "/Users/n/.local/share/claude/versions/"
+    before = scan_claude_code([row("proc", versions + "2.1.312")], monkeypatch)
+    after = scan_claude_code([row("proc", versions + "2.1.314")], monkeypatch)
+
+    ids = [r.external_id for r in before]
+    assert len(set(ids)) == len(ids)
+    assert ids == [r.external_id for r in after]
+    assert [r.creation_source.address.resource_id for r in after[1:]] == [
+        versions + "2.1.314",
+    ]
+
+
+def test_an_identifier_whose_row_names_no_resource_is_left_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The evidence schema lets a row's id be blank, and a process matches on its `loc`
+    as well as its id. With no id, and a kind whose `loc` is no path, its identifier has
+    no address: it is left out rather than ending the scan at this Mac."""
+    records = scan_claude_code(
+        [
+            row("file", "/Users/n/.local/bin/claude", loc="/Users/n/.local/bin/claude"),
+            row("proc", "", loc="/Users/n/.local/share/claude/versions/2.1.314"),
+        ],
+        monkeypatch,
+    )
+
+    assert [r.external_id for r in records] == [
+        "m1:claude-code",
+        "m1:claude-code:binaries:~/.local/bin/claude",
+    ]
+
+
+CLAUDE_CODE_VERSIONS = "/Users/n/.local/share/claude/versions/"
+
+
+def claude_code_process(version: str) -> dict[str, str]:
+    """A process_paths row as osquery/queries/running.sql writes it: the path twice."""
+    return row(
+        "proc",
+        CLAUDE_CODE_VERSIONS + version,
+        loc=CLAUDE_CODE_VERSIONS + version,
+    )
+
+
+def test_each_record_lists_every_place_its_rows_found_the_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The case that asked for this: three Claude Code sessions running at once, where a
+    record's address and version name one. An old session still running after an upgrade
+    is the exposure a bad release creates.
+
+    The agent record lists every row; each entry lists its identifier's. An identifier
+    that one row matched lists none, because `install_path` already names that place.
+    """
+    extension = "/Users/n/.cursor/extensions/anthropic.claude-code-2.1.314"
+    records = scan_claude_code(
+        [
+            row("file", "/Users/n/.local/bin/claude", loc="/Users/n/.local/bin/claude"),
+            *(claude_code_process(v) for v in ("2.1.306", "2.1.312", "2.1.314")),
+            row(
+                "vscodeext",
+                "anthropic.claude-code",
+                ver="2.1.314",
+                loc=extension,
+                extra="cursor",
+            ),
+        ],
+        monkeypatch,
+    )
+
+    agent_record, *rest = records
+    running = [
+        ("proc", f"~/.local/share/claude/versions/{v}", None)
+        for v in ("2.1.306", "2.1.312", "2.1.314")
+    ]
+    assert [
+        (o.kind, o.path, o.version)
+        for o in agent_record.creation_source.observations.occurrences
+    ] == [
+        ("file", "~/.local/bin/claude", None),
+        *running,
+        ("vscodeext", "~/.cursor/extensions/anthropic.claude-code-2.1.314", "2.1.314"),
+    ]
+
+    observed = {
+        r.external_id.split(":")[2]: r.creation_source.observations for r in rest
+    }
+    assert [
+        (o.kind, o.path, o.version) for o in observed["process_paths"].occurrences
+    ] == running
+    assert observed["binaries"].occurrences == []
+    assert observed["vscode_extensions"].occurrences == []
+
+
+def test_two_users_copies_of_one_path_are_one_place(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Written as `~`, they are the same place, and one place is what `install_path`
+    already says. So the list is empty, and empty keeps meaning no more than one."""
+    records = scan_claude_code(
+        [
+            row(
+                "file",
+                "/Users/alice/.local/bin/claude",
+                loc="/Users/alice/.local/bin/claude",
+            ),
+            row(
+                "file",
+                "/Users/bob/.local/bin/claude",
+                loc="/Users/bob/.local/bin/claude",
+            ),
+        ],
+        monkeypatch,
+    )
+
+    assert [r.creation_source.observations.occurrences for r in records] == [[], []]
+
+
+def test_past_the_cap_a_record_keeps_the_first_places_and_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The model refuses a list over the cap, and refusing it would drop the record.
+    The first are kept, in the order the payload listed them."""
+    found = MAX_OCCURRENCES + 5
+    with caplog.at_level(logging.WARNING):
+        records = scan_claude_code(
+            [claude_code_process(f"2.1.{i}") for i in range(found)],
+            monkeypatch,
+        )
+
+    occurrences = records[0].creation_source.observations.occurrences
+    assert len(occurrences) == MAX_OCCURRENCES
+    assert occurrences[0].path == "~/.local/share/claude/versions/2.1.0"
+    assert f"m1:claude-code: {found} places found the agent" in caplog.text
 
 
 def test_last_seen_is_the_scan_timestamp_not_the_poll(
@@ -437,6 +672,32 @@ def test_an_unreadable_mac_yields_nothing_and_is_not_reported_as_clean(
         records = scan(FakeJamf([[computer("m1", value)]]), monkeypatch)
     assert records == []
     assert "no usable payload" in caplog.text, because
+
+
+def test_an_unreadable_mac_is_listed_on_the_coverage_by_id_and_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Who it is and when Jamf last heard from it; never what its attributes hold."""
+    monkeypatch.setattr(
+        "discovery.endpoint.jamf.connector.JamfClient",
+        lambda s, logger=None: client_for(
+            FakeJamf([[computer("m1", None), computer("m2", "no-cache")]]),
+        ),
+    )
+    connector = JamfConnector()
+    records = [r for batch in connector.scan(FakeConfig(CATALOG), 24, CREDS, FIELDS, LOG) for r in batch]  # type: ignore[arg-type]
+    assert records == []
+
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert [
+        (d.device_key, d.name, d.location, d.reason, d.last_reported)
+        for d in coverage.unreadable_devices
+    ] == [
+        ("m1", "mac-m1", None, "never-reported", "2026-09-22T10:00:00Z"),
+        ("m2", "mac-m2", None, "no-cache", "2026-09-22T10:00:00Z"),
+    ]
+    assert coverage.unreadable_by_reason == {"never-reported": 1, "no-cache": 1}
 
 
 def _ea(name: str, value: Optional[str]) -> dict[str, Any]:
@@ -793,20 +1054,13 @@ def test_observations_carry_what_only_the_connector_saw(
 ) -> None:
     """install_path, version, permissions and classification come off the payload and
     the catalog; the device fields come off Jamf's own record."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Desktop assistant"],
-            "agents": [
-                {
-                    "id": "claude-desktop",
-                    "name": "Claude Desktop",
-                    "classification": "Desktop assistant",
-                    "platforms": ["darwin"],
-                    "bundle_ids": ["com.anthropic.claudefordesktop"],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "claude-desktop",
+            "Claude Desktop",
+            "Desktop assistant",
+            bundle_ids=["com.anthropic.claudefordesktop"],
+        ),
     )
     fake = FakeJamf([[computer("m1", full_payload())]])
     monkeypatch.setattr(
@@ -901,21 +1155,14 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
     """`loc` is a filesystem path for most kinds and an image or container id for the
     container ones. Found on a real Mac: aider matched through `images` and reported its
     image sha as install_path -- a path that does not exist anywhere."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Coding agent"],
-            "agents": [
-                {
-                    "id": "aider",
-                    "name": "aider",
-                    "classification": "Coding agent",
-                    "platforms": ["darwin"],
-                    "images": ["paulgauthier/aider"],
-                    "image_labels": ["https://github.com/x/y"],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "aider",
+            "aider",
+            "Coding agent",
+            images=["paulgauthier/aider"],
+            image_labels=["https://github.com/x/y"],
+        ),
     )
     payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("containers")])
     fake = FakeJamf([[computer("m1", payload)]])
@@ -931,28 +1178,22 @@ def test_an_opaque_id_is_not_reported_as_an_install_path(
     assert records[0].creation_source.address.resource_id == ident
 
 
-def test_a_container_state_is_not_reported_as_a_version(
+def test_a_container_reports_no_version_and_no_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`ver` on a container row is its state. "running" is not a version."""
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Coding agent"],
-            "agents": [
-                {
-                    "id": "aider",
-                    "name": "aider",
-                    "classification": "Coding agent",
-                    "platforms": ["darwin"],
-                    "images": ["paulgauthier/aider"],
-                },
-            ],
-        },
+    """A container row is a running container: `ver` is empty, and `loc` is the
+    container's id, which is not a path."""
+    catalog = document(
+        agent(
+            "aider",
+            "aider",
+            "Coding agent",
+            images=["paulgauthier/aider"],
+        ),
     )
     payload = frame(
         [
-            row("container", "paulgauthier/aider:latest", ver="running", loc="c0ffee"),
+            row("container", "paulgauthier/aider:latest", loc="c0ffee"),
             scan_row("containers"),
         ],
     )
@@ -963,19 +1204,22 @@ def test_a_container_state_is_not_reported_as_a_version(
     )
     records = [r for b in JamfConnector().scan(FakeConfig(catalog), 24, CREDS, FIELDS, LOG) for r in b]  # type: ignore[arg-type]
 
-    assert records[0].creation_source.observations.version is None
+    observations = records[0].creation_source.observations
+    assert observations.version is None
+    assert observations.install_path is None
 
 
 @pytest.mark.parametrize(
     "kind,ident,loc,ver,install_path,version",
     [
-        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version
+        # queries/jetbrains.sql: `loc` is the plugin's directory or jar, `ver` its version.
+        # The record writes the home directory as `~`, so no username travels in it.
         (
             "jbplugin",
             "example",
             "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
             "3.2.1",
-            "/Users/u/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
+            "~/Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins/example",
             "3.2.1",
         ),
         # queries/running.sql: `loc` is the process executable, which for an npm agent
@@ -996,21 +1240,14 @@ def test_the_newer_kinds_report_only_a_real_path_and_version(
     is an app bundle, an agent binary or the interpreter running one, depending on which
     query emitted it.
     """
-    catalog = yaml.safe_dump(
-        {
-            "version": 2,
-            "classifications": ["Coding agent"],
-            "agents": [
-                {
-                    "id": "example",
-                    "name": "Example",
-                    "classification": "Coding agent",
-                    "platforms": ["darwin"],
-                    "jetbrains_plugins": ["example"],
-                    "bundle_ids": ["com.example.agent"],
-                },
-            ],
-        },
+    catalog = document(
+        agent(
+            "example",
+            "Example",
+            "Coding agent",
+            jetbrains_plugins=["example"],
+            bundle_ids=["com.example.agent"],
+        ),
     )
     payload = frame([row(kind, ident, loc=loc, ver=ver), scan_row("apps")])
     fake = FakeJamf([[computer("m1", payload)]])
@@ -1479,8 +1716,8 @@ def test_unreadable_macs_are_counted_by_why(monkeypatch: pytest.MonkeyPatch) -> 
 # D-19's never-collected list: prompt and response contents, file contents, keystrokes
 # or screen data, personal browsing history. Enforced in three places, each with a test
 # here: the sections the connector asks Jamf for, the fields it keeps from a device
-# record, and the six columns it accepts from the collector. The record schema is the
-# fourth: it has no field that could carry any of them.
+# record, and the members of an evidence row it carries from the collector. The record
+# schema is the fourth: it has no field that could carry any of them.
 
 PERSONAL = {
     "email": "nori@example.com",
@@ -1559,21 +1796,24 @@ def test_a_device_record_keeps_nothing_the_observations_do_not_name(
     assert '"assigned_user": "nori"' in wire, "the allow-listed user is still there"
 
 
-def test_a_row_with_more_than_the_six_columns_is_refused_not_forwarded(
+def test_a_member_the_spec_does_not_name_is_ignored_not_forwarded(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A collector that starts writing what it read -- a prompt, a file -- fails the
-    device rather than shipping the extra column. The contract is the privacy boundary,
-    and the warning names the column, never its value."""
+    """A collector that starts writing what it read -- a prompt, a file -- has that member
+    ignored, as the spec has a matcher ignore it: it goes no further than the reader, and the
+    warning names the member, never its value."""
     rows = [row("npm", "@openai/codex", ver="0.5.0"), scan_row("packages")]
     rows[0]["contents"] = PERSONAL["prompt text"]
     with caplog.at_level(logging.WARNING, logger=LOG.name):
         records = scan(FakeJamf([[computer("m1", frame(rows))]]), monkeypatch)
 
-    assert records == []
-    assert "unexpected ['contents']" in caplog.text
+    assert [r.name for r in records] == ["Codex CLI"]
+    assert "ignored unread: contents" in caplog.text
     assert PERSONAL["prompt text"] not in caplog.text
+    assert PERSONAL["prompt text"] not in json.dumps(
+        [r.model_dump(mode="json") for r in records],
+    )
 
 
 def test_the_extra_column_never_reaches_a_record(
@@ -1608,7 +1848,13 @@ def test_the_record_schema_has_no_field_for_what_is_never_collected() -> None:
     }
     assert set(AgentObservations.model_fields) == {
         "install_path",
+        # each row that proved the record, as its kind, path and version: what
+        # `install_path` and `version` already carry for one row, with the home directory
+        # written as `~` the same way
+        "occurrences",
         "version",
+        # kept across reports by GenAI Engine; a connector never fills it
+        "previous_version",
         "host_name",
         "host_group",
         "os_version",

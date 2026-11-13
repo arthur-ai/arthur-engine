@@ -97,6 +97,9 @@ activate
 [ "$(head -c 8 "$store/arthur/inventory" 2>/dev/null)" = arthur1. ] || bad "arthur/inventory is not an arthur1. value"
 cmp -s <(tr -d '\n' < /var/lib/arthur/inventory.ea) "$store/arthur/inventory" \
   || bad "arthur/inventory is not the value the collector framed, byte for byte"
+# The one temp directory no cleaner reads: the run must leave nothing there.
+[ -z "$(ls -A /var/lib/arthur/tmp 2>/dev/null)" ] \
+  || bad "the unit's TMPDIR is not empty: $(ls -A /var/lib/arthur/tmp | tr '\n' ' ')"
 grep -Eq '^(ok|degraded) [0-9-]+T[0-9:]+Z rows=[0-9]+ ' "$store/arthur/status" \
   || bad "arthur/status is not a status line: $(cat "$store/arthur/status" 2>/dev/null)"
 journal_has "published arthur/inventory" || bad "the journal does not say what was published: $(tail -5 "$work/journal")"
@@ -128,10 +131,48 @@ activate
 journal_has "guest attributes are disabled on this VM" || bad "the journal does not name the 403: $(tail -3 "$work/journal")"
 ok "Result=$result; the journal names the disabled endpoint"
 
+case_ "== EC2: the drop-in runs the SSM reporter in place of this one ==========="
+install -m 755 "$ROOT/deploy/report-ssm-inventory.sh" /usr/local/arthur/report-ssm-inventory.sh
+install -m 644 "$ROOT/deploy/$UNIT.service.d/ec2.conf" "/etc/systemd/system/$UNIT.service.d/ec2.conf"
+rm -f "$work/imds-port"
+python3 "$ROOT/test/fake-imds.py" "$work/imds-port" ok &
+servers="$servers $!"
+for _ in $(seq 50); do [ -s "$work/imds-port" ] && break; sleep 0.1; done
+ssm="$work/ssm"; mkdir -p "$ssm"
+printf '[Service]\nEnvironment=ARTHUR_IMDS_URL=http://127.0.0.1:%s\nEnvironment=ARTHUR_SSM_DATA_DIR=%s\n' \
+  "$(cat "$work/imds-port")" "$ssm" > "/etc/systemd/system/$UNIT.service.d/test.conf"
+systemctl daemon-reload
+exec_start="$(systemctl show -p ExecStart --value "$UNIT.service")"
+case "$exec_start" in
+  *report-guest-attributes.sh*) bad "with the drop-in the unit still runs the guest-attribute reporter: $exec_start" ;;
+  *report-ssm-inventory.sh*) ;;
+  *) bad "with the drop-in the unit does not run the SSM reporter: $exec_start" ;;
+esac
+activate
+[ "$started" -eq 0 ] && [ "$result" = success ] || bad "the EC2 unit ended '$result' (start exited $started)"
+inv="$ssm/i-0123456789abcdef0/inventory/custom/ArthurAIDiscovery.json"
+python3 - "$inv" /var/lib/arthur/inventory.ea <<'PY' || bad "the custom inventory does not carry the collector's value"
+import json, sys
+parts = [e for e in json.load(open(sys.argv[1]))["Content"] if e["Key"] == "inventory"]
+value = "".join(e["Value"] for e in sorted(parts, key=lambda e: int(e["Part"])))
+assert value == open(sys.argv[2]).read().replace("\n", ""), "not the framed value"
+PY
+journal_has "wrote Custom:ArthurAIDiscovery" || bad "the journal does not say what was written: $(tail -3 "$work/journal")"
+# Back to the Compute Engine unit, pointed at a fake, before the timer is started below.
+rm -f "/etc/systemd/system/$UNIT.service.d/ec2.conf"
+start_fake disabled
+ok "Result=$result; the custom inventory carries the value the collector framed"
+
 case_ "== started, the timer schedules the next run ============================"
 systemctl start "$UNIT.timer" || bad "the timer would not start"
 [ "$(systemctl is-active "$UNIT.timer")" = active ] || bad "the timer is not active"
-next="$(systemctl show -p NextElapseUSecMonotonic --value "$UNIT.timer")"
+# A runner up for longer than OnBootSec plus its random delay fires the timer the moment it
+# starts, and while the run it triggered is under way systemd reports no next elapse at all.
+# Wait that run out: when it ends, OnUnitActiveSec schedules the next one from it.
+for attempt in $(seq 60); do
+  next="$(systemctl show -p NextElapseUSecMonotonic --value "$UNIT.timer")"
+  case "$next" in ""|infinity|0|n/a) [ "$attempt" -lt 60 ] && sleep 0.5 ;; *) break ;; esac
+done
 case "$next" in ""|infinity|0|n/a) bad "the timer has nothing scheduled (NextElapseUSecMonotonic=$next)" ;; esac
 ok "timer active; next run at monotonic $next"
 

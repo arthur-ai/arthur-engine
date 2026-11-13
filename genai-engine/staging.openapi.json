@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1004"
+        "version": "2.1.1109"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -779,182 +779,23 @@
                 }
             }
         },
-        "/api/v2/default_rules": {
-            "get": {
-                "tags": [
-                    "Rules"
-                ],
-                "summary": "Get Default Rules",
-                "description": "Get default rules.",
-                "operationId": "get_default_rules_api_v2_default_rules_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "items": {
-                                        "$ref": "#/components/schemas/RuleResponse"
-                                    },
-                                    "type": "array",
-                                    "title": "Response Get Default Rules Api V2 Default Rules Get"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            },
+        "/api/v2/inferences/overview": {
             "post": {
                 "tags": [
-                    "Rules"
+                    "Inferences"
                 ],
-                "summary": "Create Default Rule",
-                "description": "Create a default rule. Default rules are applied universally across existing tasks, subsequently created new tasks, and any non-task related requests. Once a rule is created, it is immutable. Available rules are 'KeywordRule', 'ModelHallucinationRuleV2', 'ModelSensitiveDataRule', 'PIIDataRule', 'PromptInjectionRule', 'RegexRule', 'ToxicityRule'. Note: The rules are cached by the validation endpoints for 60 seconds.",
-                "operationId": "create_default_rule_api_v2_default_rules_post",
+                "summary": "Get Inferences Overview",
+                "description": "Inference count and most recent inference time for each of the given tasks. Includes archived tasks.",
+                "operationId": "get_inferences_overview_api_v2_inferences_overview_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/NewRuleRequest"
-                            },
-                            "examples": {
-                                "example1": {
-                                    "summary": "Sensitive Data Example",
-                                    "description": "Sensitive Data Example with its required configuration",
-                                    "value": {
-                                        "name": "Sensitive Data Rule",
-                                        "type": "ModelSensitiveDataRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": false,
-                                        "config": {
-                                            "examples": [
-                                                {
-                                                    "example": "John has O negative blood group",
-                                                    "result": true
-                                                },
-                                                {
-                                                    "example": "Most of the people have A positive blood group",
-                                                    "result": false
-                                                }
-                                            ],
-                                            "hint": "specific individual's blood types"
-                                        }
-                                    }
-                                },
-                                "example2": {
-                                    "summary": "Regex Example",
-                                    "description": "Regex Example with its required configuration. Be sure to properly encode requests using JSON libraries. For example, the regex provided encodes to a different string when encoded to account for escape characters.",
-                                    "value": {
-                                        "name": "SSN Regex Rule",
-                                        "type": "RegexRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "regex_patterns": [
-                                                "\\d{3}-\\d{2}-\\d{4}",
-                                                "\\d{5}-\\d{6}-\\d{7}"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "example3": {
-                                    "summary": "Keywords Rule Example",
-                                    "description": "Keywords Rule Example with its required configuration",
-                                    "value": {
-                                        "name": "Blocked Keywords Rule",
-                                        "type": "KeywordRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "keywords": [
-                                                "Blocked_Keyword_1",
-                                                "Blocked_Keyword_2"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "example4": {
-                                    "summary": "Prompt Injection Rule Example",
-                                    "description": "Prompt Injection Rule Example, no configuration required",
-                                    "value": {
-                                        "name": "Prompt Injection Rule",
-                                        "type": "PromptInjectionRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": false
-                                    }
-                                },
-                                "example5": {
-                                    "summary": "Hallucination Rule V1 Example (Deprecated)",
-                                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
-                                    "value": {
-                                        "name": "Hallucination Rule",
-                                        "type": "ModelHallucinationRule",
-                                        "apply_to_prompt": false,
-                                        "apply_to_response": true
-                                    }
-                                },
-                                "example6": {
-                                    "summary": "Hallucination Rule V2 Example",
-                                    "description": "Hallucination Rule Example, no configuration required",
-                                    "value": {
-                                        "name": "Hallucination Rule",
-                                        "type": "ModelHallucinationRuleV2",
-                                        "apply_to_prompt": false,
-                                        "apply_to_response": true
-                                    }
-                                },
-                                "example7": {
-                                    "summary": "Hallucination Rule V3 Example (Beta)",
-                                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
-                                    "value": {
-                                        "name": "Hallucination Rule",
-                                        "type": "ModelHallucinationRuleV3",
-                                        "apply_to_prompt": false,
-                                        "apply_to_response": true
-                                    }
-                                },
-                                "example8": {
-                                    "summary": "PII Rule Example",
-                                    "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
-                                    "value": {
-                                        "name": "PII Rule",
-                                        "type": "PIIDataRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "disabled_pii_entities": [
-                                                "EMAIL_ADDRESS",
-                                                "PHONE_NUMBER"
-                                            ],
-                                            "confidence_threshold": "0.5",
-                                            "allow_list": [
-                                                "arthur.ai",
-                                                "Arthur"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "example9": {
-                                    "summary": "Toxicity Rule Example",
-                                    "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
-                                    "value": {
-                                        "name": "Toxicity Rule",
-                                        "type": "ToxicityRule",
-                                        "apply_to_prompt": true,
-                                        "apply_to_response": true,
-                                        "config": {
-                                            "threshold": 0.5
-                                        }
-                                    }
-                                }
+                                "$ref": "#/components/schemas/InferenceOverviewRequest"
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -962,7 +803,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/RuleResponse"
+                                    "$ref": "#/components/schemas/InferenceOverviewListResponse"
                                 }
                             }
                         }
@@ -983,53 +824,6 @@
                         "API Key": []
                     }
                 ]
-            }
-        },
-        "/api/v2/default_rules/{rule_id}": {
-            "delete": {
-                "tags": [
-                    "Rules"
-                ],
-                "summary": "Archive Default Rule",
-                "description": "Archive existing default rule.",
-                "operationId": "archive_default_rule_api_v2_default_rules__rule_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "rule_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Rule Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/api/v2/rules/search": {
@@ -1038,7 +832,7 @@
                     "Rules"
                 ],
                 "summary": "Search Rules",
-                "description": "Search default and/or task rules.",
+                "description": "Search rules.",
                 "operationId": "search_rules_api_v2_rules_search_post",
                 "security": [
                     {
@@ -1152,7 +946,7 @@
                     "Tasks"
                 ],
                 "summary": "Create Task",
-                "description": "Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Optionally specify if the task is agentic.",
+                "description": "Register a new task. Optionally specify if the task is agentic.",
                 "operationId": "create_task_api_v2_tasks_post",
                 "requestBody": {
                     "content": {
@@ -1199,7 +993,7 @@
                     "Tasks"
                 ],
                 "summary": "Archive Task",
-                "description": "Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.",
+                "description": "Archive task. Also archives all task-scoped rules.",
                 "operationId": "archive_task_api_v2_tasks__task_id__delete",
                 "security": [
                     {
@@ -1340,7 +1134,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1385,6 +1179,18 @@
                             "title": "Reported Since"
                         },
                         "description": "Only return tasks a discovery scan reported on or after this time; UTC if no offset is given. Tasks no discovery source has reported are excluded when this filter is set."
+                    },
+                    {
+                        "name": "unreported",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`.",
+                            "default": false,
+                            "title": "Unreported"
+                        },
+                        "description": "Only return tasks no discovery source has reported, such as agents known only from their traces. Cannot be combined with `discovery_source_id` or `reported_since`."
                     },
                     {
                         "name": "after_task_id",
@@ -1850,7 +1656,7 @@
                     "Tasks"
                 ],
                 "summary": "Update Task Rules",
-                "description": "Enable or disable an existing rule for this task including the default rules.",
+                "description": "Enable or disable an existing rule for this task.",
                 "operationId": "update_task_rules_api_v2_tasks__task_id__rules__rule_id__patch",
                 "security": [
                     {
@@ -2174,120 +1980,12 @@
                 }
             }
         },
-        "/api/v2/validate_prompt": {
-            "post": {
-                "tags": [
-                    "Default Validation"
-                ],
-                "summary": "Default Validate Prompt",
-                "description": "[Deprecated] Validate a non-task related prompt based on the configured default rules.",
-                "operationId": "default_validate_prompt_api_v2_validate_prompt_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PromptValidationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ValidationResult"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "deprecated": true,
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
-        "/api/v2/validate_response/{inference_id}": {
-            "post": {
-                "tags": [
-                    "Default Validation"
-                ],
-                "summary": "Default Validate Response",
-                "description": "[Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt\u2019s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.",
-                "operationId": "default_validate_response_api_v2_validate_response__inference_id__post",
-                "deprecated": true,
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "inference_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Inference Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ResponseValidationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ValidationResult"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v2/tasks/{task_id}/validate_prompt": {
             "post": {
                 "tags": [
-                    "Task Based Validation"
+                    "Validation"
                 ],
-                "summary": "Validate Prompt Endpoint",
+                "summary": "Validate a prompt against a task's rules",
                 "description": "Validate a prompt based on the configured rules for this task. Note: Rules related to specific tasks are cached for 60 seconds.",
                 "operationId": "validate_prompt_endpoint_api_v2_tasks__task_id__validate_prompt_post",
                 "security": [
@@ -2372,9 +2070,9 @@
         "/api/v2/tasks/{task_id}/validate_response/{inference_id}": {
             "post": {
                 "tags": [
-                    "Task Based Validation"
+                    "Validation"
                 ],
-                "summary": "Validate Response Endpoint",
+                "summary": "Validate a response against a task's rules",
                 "description": "Validate a response based on the configured rules for this task. Inference ID corresponds to the previously validated associated prompt\u2019s inference id. Must provide context if a Hallucination Rule is an enabled task rule. Note: Rules related to specific tasks are cached for 60 seconds.",
                 "operationId": "validate_response_endpoint_api_v2_tasks__task_id__validate_response__inference_id__post",
                 "security": [
@@ -2469,10 +2167,10 @@
         "/api/v2/validate": {
             "post": {
                 "tags": [
-                    "Stateless Validation"
+                    "Validation"
                 ],
-                "summary": "Stateless Validate",
-                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
+                "summary": "Validate text against inline rules without a task",
+                "description": "Stateless validation of arbitrary input against inline rule specs. Does NOT persist results, does NOT create an inference, and is task-less. Intended for ad-hoc checks such as validating tool-call output before passing it back to an LLM.\n\nEach entry in `checks` is a `NewRuleRequest` \u2014 the same shape accepted by the rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, `ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, `KeywordRule`, `ModelSensitiveDataRule`.\n\n`apply_to_prompt` and `apply_to_response` decide which of `prompt` and `response` a check scores; a check that applies to both fails if either one violates it.\n\nEach result's `id` is generated per request and its `scope` is always `default`, because an inline check belongs to no task.\n\nHallucination requires `response` + `context`; if `context` is missing the rule engine returns a `Skipped` result. A check may return result=`Model Not Available` if its underlying model has not finished loading; callers should treat this as transient and retry.",
                 "operationId": "stateless_validate_api_v2_validate_post",
                 "requestBody": {
                     "content": {
@@ -2547,7 +2245,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -9705,6 +9403,159 @@
                 }
             }
         },
+        "/api/v1/model_providers/{provider}/eval_defaults": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get a provider's default reasoning settings for LLM evals.",
+                "description": "Returns the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. Null fields send nothing.",
+                "operationId": "get_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderEvalDefaults"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set a provider's default reasoning settings for LLM evals.",
+                "description": "Sets the reasoning_effort and thinking settings sent on LLM eval calls to this provider when the eval's own config sets neither. An eval that sets either one gets neither default. A default is skipped for models that don't accept it, and thinking 'disabled' or reasoning_effort 'none' is skipped for models that always think (e.g. Claude Sonnet 5.5), where it would have no effect. Both defaults are skipped for models litellm doesn't know (e.g. Azure deployment names). Applies to LLM evals only, not to prompts. Send nulls to clear.",
+                "operationId": "set_model_provider_eval_defaults_api_v1_model_providers__provider__eval_defaults_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutModelProviderEvalDefaults"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Eval defaults updated."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/model_providers/{provider}/reasoning_options": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the reasoning settings a model accepts.",
+                "description": "Returns the reasoning_effort values and thinking types litellm accepts for a model, the same rule LLM eval saves are checked against. Null fields mean litellm doesn't know the model, and any value is sent as is.",
+                "operationId": "get_model_reasoning_options_api_v1_model_providers__provider__reasoning_options_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the model, as the eval stores it",
+                            "title": "Model Name"
+                        },
+                        "description": "Name of the model, as the eval stores it"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelReasoningOptions"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -16649,6 +16500,136 @@
                 }
             }
         },
+        "/api/v1/continuous_evals/{eval_id}/spend": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get recent and estimated daily spend for a continuous eval",
+                "description": "Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.",
+                "operationId": "get_continuous_eval_spend_api_v1_continuous_evals__eval_id__spend_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval."
+                        },
+                        "description": "The id of the continuous eval."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalSpendResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/continuous_evals/spend_estimate": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Estimate the daily spend of a new continuous eval",
+                "description": "Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.",
+                "operationId": "estimate_continuous_eval_spend_api_v1_tasks__task_id__continuous_evals_spend_estimate_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "llm_eval_name",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Name of the evaluator the continuous eval would run.",
+                            "title": "Llm Eval Name"
+                        },
+                        "description": "Name of the evaluator the continuous eval would run."
+                    },
+                    {
+                        "name": "sample_rate",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 1.0
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.",
+                            "title": "Sample Rate"
+                        },
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/continuous_evals/{eval_id}/test_runs": {
             "post": {
                 "tags": [
@@ -16956,120 +16937,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/tasks/{task_id}/agent-polling/execute": {
-            "post": {
-                "tags": [
-                    "Agent Discovery"
-                ],
-                "summary": "Execute Agent Polling",
-                "description": "Manually trigger a polling job for a task. Does not require any particular state \u2014 admins can use this to force an immediate poll outside the normal loop cadence.",
-                "operationId": "execute_agent_polling_api_v1_tasks__task_id__agent_polling_execute_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ExecutePollingResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/agent-polling/execute-all": {
-            "post": {
-                "tags": [
-                    "Agent Discovery"
-                ],
-                "summary": "Execute All Agent Polling",
-                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.",
-                "operationId": "execute_all_agent_polling_api_v1_agent_polling_execute_all_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "wait_for_completion",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false,
-                            "title": "Wait For Completion"
-                        }
-                    },
-                    {
-                        "name": "timeout",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "integer",
-                                    "minimum": 1
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Timeout"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DiscoverAndPollResponse"
                                 }
                             }
                         }
@@ -18135,6 +18002,9 @@
                     },
                     {
                         "$ref": "#/components/schemas/EndpointAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/NetworkAgentCreationSource"
                     }
                 ],
                 "title": "AgentCreationSource",
@@ -18145,6 +18015,7 @@
                         "ENDPOINT": "#/components/schemas/EndpointAgentCreationSource",
                         "GCP": "#/components/schemas/GCPAgentCreationSource",
                         "MANUAL": "#/components/schemas/ManualAgentCreationSource",
+                        "NETWORK": "#/components/schemas/NetworkAgentCreationSource",
                         "OTEL": "#/components/schemas/OTELAgentCreationSource",
                         "SIEM": "#/components/schemas/SIEMAgentCreationSource"
                     }
@@ -18226,7 +18097,16 @@
                             }
                         ],
                         "title": "Install Path",
-                        "description": "Install location, shaped to '~/...' rather than '/Users/<name>/...' so a username does not travel in a path."
+                        "description": "Install location, with a person's home directory written as '~' ('~/...' rather than '/Users/<name>/...') so a username does not travel in a path. Enforced here: a path under a home directory is rewritten whenever this model is validated, so also when a stored record is read back through it."
+                    },
+                    "occurrences": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgentOccurrence"
+                        },
+                        "type": "array",
+                        "maxItems": 100,
+                        "title": "Occurrences",
+                        "description": "Every place on the host the source found the agent, each with its kind, path and version: every running version of a CLI, every browser profile an extension is in. `install_path` and `version` are the one occurrence that speaks for the record. Empty where the source sees no more than that one. Each place appears once: two users' copies of one path collapse into one occurrence once their home directories are written as '~'."
                     },
                     "version": {
                         "anyOf": [
@@ -18239,6 +18119,18 @@
                         ],
                         "title": "Version",
                         "description": "Version read statically, never by executing the discovered binary."
+                    },
+                    "previous_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Previous Version",
+                        "description": "The version this record reported before its latest change, so an upgrade or a downgrade reads off the record itself. Kept across scans by GenAI Engine, which sets it when a report carries a version other than the one it holds; a source never fills it, and a discovered record carrying one is refused. Absent until the version first changes. See ENGINE_KEPT_OBSERVATIONS."
                     },
                     "host_name": {
                         "anyOf": [
@@ -18320,6 +18212,49 @@
                 "type": "object",
                 "title": "AgentObservations",
                 "description": "What a source could see about an agent. Shared across categories, all optional.\n\nAn absent field means the source cannot see it, not that collection failed. That\npromise is kept by each source declaring ``observable_fields()``, which is also\nwhat lets visibility be computed without a per-vendor branch in consumers."
+            },
+            "AgentOccurrence": {
+                "properties": {
+                    "kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Kind",
+                        "description": "What kind of row this is, in the vocabulary of `SourceAddress.resource_kind`: 'proc' for a running process, 'file', 'vscodeext', 'npm'. Free text, for the same reason."
+                    },
+                    "path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Path",
+                        "description": "Where it is: the install location, or the executable a process runs from. A person's home directory is written as '~', as in `install_path`."
+                    },
+                    "version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Version",
+                        "description": "Its version, where the row shows one. Read statically, never by executing the discovered binary."
+                    }
+                },
+                "type": "object",
+                "title": "AgentOccurrence",
+                "description": "One place a source found an agent on a host: an install, or a running process.\n\nA record names one agent on one host, but several rows can prove it at once: five\nversions of Claude Code running from ``~/.local/share/claude/versions/``, one Chrome\nextension in four profiles. ``install_path`` and ``version`` carry the one row that\nspeaks for the record; an occurrence is each of them."
             },
             "AgenticAnnotationAnalyticsResponse": {
                 "properties": {
@@ -19382,7 +19317,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Agentic Prompt Model Provider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
@@ -19796,6 +19731,35 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
+            "AnthropicThinkingBlockBinding-Input": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
+            "AnthropicThinkingBlockBinding-Output": {
+                "properties": {
+                    "prefix_mismatch_behavior": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "drop_block"
+                        ],
+                        "title": "Prefix Mismatch Behavior"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "AnthropicThinkingBlockBinding"
+            },
             "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
@@ -19815,9 +19779,13 @@
                         "type": "string",
                         "enum": [
                             "summarized",
-                            "omitted"
+                            "omitted",
+                            "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Input"
                     }
                 },
                 "type": "object",
@@ -19842,9 +19810,13 @@
                         "type": "string",
                         "enum": [
                             "summarized",
-                            "omitted"
+                            "omitted",
+                            "updates"
                         ],
                         "title": "Display"
+                    },
+                    "block_binding": {
+                        "$ref": "#/components/schemas/AnthropicThinkingBlockBinding-Output"
                     }
                 },
                 "additionalProperties": false,
@@ -20784,7 +20756,7 @@
                     "address"
                 ],
                 "title": "CloudAgentCreationSource",
-                "description": "An agent read out of a cloud provider's agent runtime.\n\nEnumerated rather than searched, so ``address.query`` is absent. Account and region\nare part of the address because scanning is multi-account and multi-region."
+                "description": "An agent a cloud provider enumerates: in its agent runtime, or on one of its VMs.\n\n- AN AGENT RUNTIME (Bedrock, Vertex AI Agent Engine) lists the agents themselves:\n  account or project in ``instance``, region in ``scope``, the agent's id in\n  ``resource_id``.\n- A VM (Compute Engine, and EC2 after it) is listed by the provider and carries its\n  own software inventory, the payload an endpoint's collector writes, decoded the\n  same way. The VM is in ``instance``, where it is (project and zone) in ``scope``,\n  and the software in ``resource_kind`` and ``resource_id``: per (software, VM),\n  as on an endpoint, so two VMs are never one agent.\n\nEnumerated rather than searched, so ``address.query`` is absent. Where the agent is\nwithin the provider is part of the address because scanning is multi-account and\nmulti-region."
             },
             "CompletionRequest": {
                 "properties": {
@@ -20959,6 +20931,19 @@
                         "title": "Enabled",
                         "description": "Whether to enable or disable a continuous eval. Defaults to True.",
                         "default": true
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Traces are picked by a hash of the trace ID, so evals with the same rate evaluate the same traces. Null evaluates every trace."
                     }
                 },
                 "type": "object",
@@ -20970,6 +20955,80 @@
                 ],
                 "title": "ContinuousEvalCreateRequest",
                 "description": "Request schema for creating a continuous eval"
+            },
+            "ContinuousEvalDailySpendEstimate": {
+                "properties": {
+                    "window_days": {
+                        "type": "integer",
+                        "title": "Window Days",
+                        "description": "Number of trailing days the traffic and the average run cost are measured over."
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Traces the task received in the window, not counting agent experiment traces."
+                    },
+                    "traces_per_day": {
+                        "type": "number",
+                        "title": "Traces Per Day",
+                        "description": "trace_count divided by window_days."
+                    },
+                    "sample_rate": {
+                        "type": "number",
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set."
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Live runs in the window that called the LLM (passed or failed), which the average is taken over."
+                    },
+                    "average_run_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Average Run Cost",
+                        "description": "Mean cost of those runs. Null when there are none."
+                    },
+                    "estimated_daily_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Estimated Daily Cost",
+                        "description": "Projected cost per day. Null when it cannot be estimated; unavailable_reason says why."
+                    },
+                    "unavailable_reason": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SpendEstimateUnavailableReason"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "window_days",
+                    "trace_count",
+                    "traces_per_day",
+                    "sample_rate",
+                    "run_count"
+                ],
+                "title": "ContinuousEvalDailySpendEstimate",
+                "description": "Projected daily cost of a continuous eval at the task's recent traffic.\n\nestimated_daily_cost = traces_per_day * sample_rate * average_run_cost"
             },
             "ContinuousEvalRerunResponse": {
                 "properties": {
@@ -21095,6 +21154,18 @@
                         "format": "date-time",
                         "title": "Updated At",
                         "description": "Timestamp representing the time the continuous eval was last updated."
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces evaluated, in (0, 1]. Null evaluates every trace."
                     }
                 },
                 "type": "object",
@@ -21106,7 +21177,8 @@
                     "created_at",
                     "updated_at"
                 ],
-                "title": "ContinuousEvalResponse"
+                "title": "ContinuousEvalResponse",
+                "description": "The continuous eval response, with its sample rate.\n\nExtends the shared model only until `arthur_common` carries `sample_rate` on\n`ContinuousEvalResponse` itself, at which point this subclass goes. Named the\nsame so the OpenAPI component, and the generated clients built from it, keep\ntheir name either way."
             },
             "ContinuousEvalRunStatus": {
                 "type": "string",
@@ -21119,6 +21191,39 @@
                     "error"
                 ],
                 "title": "ContinuousEvalRunStatus"
+            },
+            "ContinuousEvalSpendResponse": {
+                "properties": {
+                    "continuous_eval_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval."
+                    },
+                    "last_24h_run_count": {
+                        "type": "integer",
+                        "title": "Last 24H Run Count",
+                        "description": "Live runs created in the last 24 hours, in any status."
+                    },
+                    "last_24h_cost": {
+                        "type": "number",
+                        "title": "Last 24H Cost",
+                        "description": "Total cost of the live runs created in the last 24 hours."
+                    },
+                    "estimate": {
+                        "$ref": "#/components/schemas/ContinuousEvalDailySpendEstimate",
+                        "description": "Projected daily cost at the current sample rate."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "continuous_eval_id",
+                    "last_24h_run_count",
+                    "last_24h_cost",
+                    "estimate"
+                ],
+                "title": "ContinuousEvalSpendResponse",
+                "description": "Recent and projected spend of one continuous eval."
             },
             "ContinuousEvalTestRunResponse": {
                 "properties": {
@@ -22318,33 +22423,6 @@
                 ],
                 "title": "DemoTaskSignupResponse"
             },
-            "DiscoverAndPollResponse": {
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "title": "Status",
-                        "description": "Status of the operation"
-                    },
-                    "discovered": {
-                        "type": "integer",
-                        "title": "Discovered",
-                        "description": "Number of new agent tasks created"
-                    },
-                    "traces_fetched": {
-                        "type": "integer",
-                        "title": "Traces Fetched",
-                        "description": "Total number of traces fetched across all tasks (0 in async mode)"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "status",
-                    "discovered",
-                    "traces_fetched"
-                ],
-                "title": "DiscoverAndPollResponse",
-                "description": "Response model for the execute-all agent polling endpoint."
-            },
             "DiscoveredAgentRecord": {
                 "properties": {
                     "external_id": {
@@ -22453,6 +22531,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/EndpointAgentCreationSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NetworkAgentCreationSource"
                             }
                         ],
                         "title": "Creation Source",
@@ -22462,6 +22543,7 @@
                             "mapping": {
                                 "CLOUD": "#/components/schemas/CloudAgentCreationSource",
                                 "ENDPOINT": "#/components/schemas/EndpointAgentCreationSource",
+                                "NETWORK": "#/components/schemas/NetworkAgentCreationSource",
                                 "SIEM": "#/components/schemas/SIEMAgentCreationSource"
                             }
                         }
@@ -22667,7 +22749,7 @@
                     "address"
                 ],
                 "title": "EndpointAgentCreationSource",
-                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every source.\nThe listening address is the one value in it worth its own field eventually.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot scan sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
+                "description": "One agent observed on one managed endpoint.\n\nGrain is per (software, device): ``address.instance`` is the device and\n``address.resource_id`` the software, because the Discovery list shows a row per\nmachine.\n\nWhat it fills comes from three places: the collector's on-disk output, the MDM's\ndevice record, and the collector's catalog.\n\nWhere the collector's six output columns land, so none is unaccounted for:\n\n========  =============================================\ncolumn    carried as\n========  =============================================\nkind      ``address.resource_kind``\nid        ``address.resource_id``\nver       ``observations.version``\nloc       ``observations.install_path``\nperms     ``observations.permissions``\nextra     nothing -- see below\n========  =============================================\n\n``extra`` means a different thing per kind (browser type, image size, deb arch,\nunit state, listening address) and a field here means one thing for every source.\nThe listening address is the one value in it worth its own field eventually.\n\nThe table describes the row that speaks for the record. Every row that proved it --\neach running version, each profile an extension is in -- is one of\n``observations.occurrences``, as its ``kind``, ``loc`` and ``ver``.\n\n``scan`` rows must never arrive: that kind marks a branch that could not look, not\nan agent that was found.\n\nA one-shot scan sees the machine, not behaviour over time. Anything needing\npersistent event capture -- outbound destinations, connection counts -- is out of\nreach until osqueryd runs with the audit subsystem, which would put code signing,\nnotarization and PPPC on the critical path."
             },
             "EngineConfigResponse": {
                 "properties": {
@@ -22735,7 +22817,7 @@
                             }
                         ],
                         "title": "Last Fetched",
-                        "description": "Last time traces were fetched for this task (from task_polling_state)"
+                        "description": "End time of the newest trace GenAI Engine holds for this task; null if it has none"
                     },
                     "tools": {
                         "anyOf": [
@@ -23229,27 +23311,6 @@
                     ],
                     "hint": "specific individual's blood type"
                 }
-            },
-            "ExecutePollingResponse": {
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "title": "Status",
-                        "description": "Status of the operation"
-                    },
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id",
-                        "description": "Task ID that was enqueued"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "status",
-                    "task_id"
-                ],
-                "title": "ExecutePollingResponse",
-                "description": "Response model for the single-task agent polling endpoint."
             },
             "ExperimentOutputSource": {
                 "properties": {
@@ -24150,6 +24211,17 @@
                 "title": "HybridFusion",
                 "description": "Define how the query's hybrid fusion operation should be performed."
             },
+            "IdentityBasis": {
+                "type": "string",
+                "enum": [
+                    "registered_agent",
+                    "credential",
+                    "claimed_agent",
+                    "client_address"
+                ],
+                "title": "IdentityBasis",
+                "description": "What a gateway caller record's identity rests on. Strongest first.\n\nRequired on every caller record and implied by its kind, except that an agent id\nis either one the gateway's registry issued or one the caller merely sent. Also\nwhat the record's detection follows: a registry row or an issued credential is\nseen directly, the rest is inferred from traffic."
+            },
             "ImageURL": {
                 "properties": {
                     "url": {
@@ -24233,6 +24305,77 @@
                     "prompt_results"
                 ],
                 "title": "InferenceFeedbackTarget"
+            },
+            "InferenceOverviewListResponse": {
+                "properties": {
+                    "overviews": {
+                        "items": {
+                            "$ref": "#/components/schemas/InferenceOverviewResponse"
+                        },
+                        "type": "array",
+                        "title": "Overviews",
+                        "description": "One inference overview per requested task"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overviews"
+                ],
+                "title": "InferenceOverviewListResponse",
+                "description": "Response for list of inference overviews"
+            },
+            "InferenceOverviewRequest": {
+                "properties": {
+                    "task_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Task Ids",
+                        "description": "Task IDs to get the inference overview for"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_ids"
+                ],
+                "title": "InferenceOverviewRequest",
+                "description": "Request schema for getting inference counts and latest activity for a batch of tasks"
+            },
+            "InferenceOverviewResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "inference_count": {
+                        "type": "integer",
+                        "title": "Inference Count",
+                        "description": "Number of inferences"
+                    },
+                    "last_inference_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Inference At",
+                        "description": "Creation time of the most recent inference, or null if the task has none"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "inference_count"
+                ],
+                "title": "InferenceOverviewResponse",
+                "description": "Inference count and latest inference time for a task"
             },
             "InputAudio": {
                 "properties": {
@@ -24800,7 +24943,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
+                        "title": "LLM Config Tool Choice",
                         "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "response_format": {
@@ -25152,7 +25295,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
+                        "title": "LLM Prompt Request Tool Choice",
                         "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "stream_options": {
@@ -26066,6 +26209,41 @@
                 ],
                 "title": "ModelProvider"
             },
+            "ModelProviderEvalDefaults": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider the defaults apply to"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing."
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Null sends nothing."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "ModelProviderEvalDefaults"
+            },
             "ModelProviderList": {
                 "properties": {
                     "providers": {
@@ -26161,6 +26339,101 @@
                     "catalog"
                 ],
                 "title": "ModelProviderWhitelist"
+            },
+            "ModelReasoningOptions": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the model"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model the options apply to"
+                    },
+                    "reasoning_efforts": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ReasoningEffortEnum"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reasoning Efforts",
+                        "description": "reasoning_effort values the model accepts; empty when it takes none. Null when litellm doesn't know the model, in which case any value is sent as is."
+                    },
+                    "thinking": {
+                        "$ref": "#/components/schemas/ModelThinkingOptions",
+                        "description": "Thinking settings the model accepts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name",
+                    "reasoning_efforts",
+                    "thinking"
+                ],
+                "title": "ModelReasoningOptions"
+            },
+            "ModelThinkingOptions": {
+                "properties": {
+                    "supported": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Supported",
+                        "description": "Whether the model takes a thinking setting. Null when litellm doesn't know the model."
+                    },
+                    "can_disable": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Can Disable",
+                        "description": "Whether thinking type 'disabled' turns thinking off. False for models that always think and for non-Claude models. Null when litellm doesn't know the model."
+                    },
+                    "types": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "enabled",
+                                        "adaptive",
+                                        "disabled"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thinking Types",
+                        "description": "Thinking types the model accepts. Null when litellm doesn't know the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "supported",
+                    "can_disable",
+                    "types"
+                ],
+                "title": "ModelThinkingOptions"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -26401,6 +26674,79 @@
                 ],
                 "title": "NestedSpanWithMetricsResponse",
                 "description": "Nested span response with children for building span trees"
+            },
+            "NetworkAgentCreationSource": {
+                "properties": {
+                    "vendor": {
+                        "type": "string",
+                        "title": "Vendor",
+                        "description": "Upstream product this came from, e.g. 'splunk_enterprise', 'jamf_pro', 'aws_bedrock'. FREE TEXT, and deliberately not enumerated here: nothing in this package branches on the vendor -- capability and evidence ceilings are declared per source class -- so enumerating it would make every new vendor a release of this package plus a repin in three services. The registry is app_plane's discovery source type catalog, which is also where the display name lives. Values are `<platform>_<product>`, always, so a vendor shipping a second product that could be a source does not force a rename of the first."
+                    },
+                    "address": {
+                        "$ref": "#/components/schemas/SourceAddress",
+                        "description": "Where to find this agent again upstream. Required: a discovered agent that cannot be located again is not actionable."
+                    },
+                    "observations": {
+                        "$ref": "#/components/schemas/AgentObservations",
+                        "description": "What the source could see. Only fields in `observable_fields()` are ever populated by this category."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "NETWORK",
+                        "title": "Type",
+                        "default": "NETWORK"
+                    },
+                    "identity_basis": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/IdentityBasis"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What a gateway caller record's identity rests on; required on one, absent on a host record. See IdentityBasis."
+                    },
+                    "destinations": {
+                        "items": {
+                            "$ref": "#/components/schemas/NetworkDestination"
+                        },
+                        "type": "array",
+                        "maxItems": 100,
+                        "title": "Destinations",
+                        "description": "Inference destinations this host called, with who serves each. As first reported; when the host last called is provenance's last_seen."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "vendor",
+                    "address"
+                ],
+                "title": "NetworkAgentCreationSource",
+                "description": "An internal host seen sending traffic to a host that serves model inference.\n\nRead off network logs -- DNS query logs, flow logs, proxy or firewall logs -- by a\nconnector that extracts a source and a destination from each line and matches the\ndestination against known inference hosts. The record is the SOURCE HOST, not the\nagent: a network log shows that something called a provider, never which process\ndid or what it is.\n\nNOT A SIEM, though both read logs. A SIEM source runs the customer's own query and\nreports whatever columns it projects; a network source owns the matching and reads\none fixed kind of evidence, a connection or a lookup, so what it can fill is\nnarrower and fixed by the class: the host it saw and the network that host is in.\n\nTHE ADDRESS IS THE HOST, AND EVERY PART OF IT IS STABLE. The creation source is\nfrozen when a task is minted, and GenAI Engine and the ML engine match a later\nreport to it on the whole address, so a field that differs between two logs of\none host would split it in two:\n\n=============  =======================  ==================  ================\nresource_kind  instance                 scope               resource_id\n=============  =======================  ==================  ================\nworkload       the workload name        account/region, or  the workload name\n                                        the project\ninstance       the VM id                same                the VM id\neni            the interface id         same                the interface id\nip             the network (VPC) id     same                the address\n=============  =======================  ==================  ================\n\n- ``resource_kind`` is required: an instance id and an address are otherwise\n  indistinguishable strings of very different strength (see NetworkHostKind).\n- ``instance`` is the host itself (the workload, VM or interface), as on a\n  VM-hosted cloud record, never the account: records are told apart by ``instance``, so an account there would make\n  every host in it look alike. Only an address, which means nothing outside its\n  network, is placed in its network.\n- ``scope`` is required and is where the host is -- account and region, or project\n  -- which every log line of the host agrees on. Never the VPC for an instance or\n  an interface: some logs carry it and others do not, and a scope present in one\n  scan and absent in the next makes the same host two records. A line naming only\n  an address and no network cannot be placed, and the connector drops it rather\n  than guess.\n\nThe VPC a host is in is ``host_group``, an observation, so it can be shown without\nbeing identity. ``destinations`` is what the source called, which only this class\ncan see and which is the evidence itself, so it is a field of the class rather than\nof the shared AgentObservations. Empty by default, so a record without it still\nvalidates.\n\nA GATEWAY CALLER IS THE SECOND SHAPE, told apart by ``resource_kind`` (a\nNetworkCallerKind rather than a NetworkHostKind). An AI gateway learns of an agent\nfrom its traffic too, but sees the caller, not its host:\n\n=================  ===============  =====  ===============================\nresource_kind      instance         scope  resource_id\n=================  ===============  =====  ===============================\nagent_id           the gateway      --     the agent id\nvirtual_key        the gateway      --     the gateway's id or hash for it\nconsumer           the gateway      --     the consumer id\nclient_address     the gateway      --     the address\n=================  ===============  =====  ===============================\n\n- ``identity_basis`` is required and must fit the kind, so a caller record cannot\n  be mistaken for a host record or claim more than its kind allows.\n- ``scope`` is unset: a team or workspace can change between scans, and anything\n  in the address is identity. The team is observed as ``host_group``.\n- Detection is per record: a registry row or an issued credential is observed,\n  a claimed id or a bare address is inferred.\n- A caller fills only ``host_group``. No client addresses, which change on every\n  scan while the creation source does not, and no end user: one agent serves many,\n  often the gateway owner's own customers, and that is personal data no review has\n  covered.\n- Never a raw credential: a caller id that looks like a live key is refused,\n  whatever the identity basis."
+            },
+            "NetworkDestination": {
+                "properties": {
+                    "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Host",
+                        "description": "Destination as the log named it: a hostname, lowercased and without a trailing dot, or an IP address."
+                    },
+                    "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Provider",
+                        "description": "Who serves it, e.g. 'OpenAI', 'Amazon Bedrock', or the source's own host or CIDR entry it matched."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "host",
+                    "provider"
+                ],
+                "title": "NetworkDestination",
+                "description": "One inference destination a network source was seen calling.\n\nOnly what stays true of the destination between scans: the host and who serves it.\nA record's creation source is kept as first reported -- GenAI Engine never rewrites\na task's creation source from a later scan -- so a per-scan count or time here\nwould be served unchanged forever. When the source last called anything is the\nrecord's provenance ``last_seen``, which moves with every scan. The provider is\nthe connector's name for who serves the host -- its catalog's, or the source's own\nentry for a host or range it added -- and free text for the same reason ``vendor``\nis."
             },
             "NewApiKeyRequest": {
                 "properties": {
@@ -28605,6 +28951,17 @@
                         ],
                         "description": "Where upstream this came from -- the same type the creation source carries, so a record and its task address the system identically. Absent for OTEL and manual agents."
                     },
+                    "observations": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentObservations"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What the source saw of this record at its latest report, with `previous_version` kept across reports. The task's creation source holds what the first report saw and is never rewritten, so a record's current version is read here. Absent from entries recorded before it was stored."
+                    },
                     "last_seen": {
                         "anyOf": [
                             {
@@ -28801,6 +29158,34 @@
                 },
                 "type": "object",
                 "title": "PutModelProviderCredentials"
+            },
+            "PutModelProviderEvalDefaults": {
+                "properties": {
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking. Skipped for models that don't accept the value. Null sends nothing."
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Thinking setting sent on LLM eval calls whose eval config sets neither reasoning_effort nor thinking, e.g. {'type': 'disabled'} to turn Claude thinking off. Skipped for models that don't accept it. Null sends nothing."
+                    }
+                },
+                "type": "object",
+                "title": "PutModelProviderEvalDefaults"
             },
             "PutModelProviderWhitelist": {
                 "properties": {
@@ -31696,7 +32081,7 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "Instance",
-                        "description": "Instance that was scanned: an account, project, SIEM workspace or device. Part of the address, so two instances of one vendor stay distinct."
+                        "description": "Instance that was scanned: an account, project, SIEM workspace, device or cloud VM. Part of the address, so two instances of one vendor stay distinct."
                     },
                     "scope": {
                         "anyOf": [
@@ -31708,7 +32093,7 @@
                             }
                         ],
                         "title": "Scope",
-                        "description": "Subdivision queried, where the source has one: a cloud region, a Splunk index, a Sentinel table, an Elastic data stream. Optional here because endpoints have no subdivision and a SIEM query may span every index, but required for CLOUD sources, which enforce it: there the region is part of the agent's identity rather than of the query."
+                        "description": "Subdivision queried, where the source has one: a cloud region (a VM's project and zone), a Splunk index, a Sentinel table, an Elastic data stream. Optional here because endpoints have no subdivision and a SIEM query may span every index, but required for CLOUD sources, which enforce it: there it is part of the agent's identity rather than of the query."
                     },
                     "resource_kind": {
                         "anyOf": [
@@ -31720,13 +32105,13 @@
                             }
                         ],
                         "title": "Resource Kind",
-                        "description": "Namespace `resource_id` lives in: a bundle id, npm package, launchd label, listening port, browser extension id. Identity rather than observation, and needed because '8788' and 'openclaw' are otherwise indistinguishable strings from colliding namespaces. Absent for sources with one kind of resource, which is every cloud and SIEM vendor -- there the vendor implies the kind, so carrying it would duplicate `vendor`. Free text: the vocabulary belongs to the collector's route registry, not to this schema."
+                        "description": "Namespace `resource_id` lives in: a bundle id, npm package, launchd label, listening port, browser extension id. Identity rather than observation, and needed because '8788' and 'openclaw' are otherwise indistinguishable strings from colliding namespaces. Absent for sources with one kind of resource, which is every SIEM and every cloud vendor except those reading a VM's software inventory -- there the vendor implies the kind, so carrying it would duplicate `vendor`. Free text: the vocabulary belongs to the collector's route registry, not to this schema."
                     },
                     "resource_id": {
                         "type": "string",
                         "minLength": 1,
                         "title": "Resource Id",
-                        "description": "The resource within that instance, in the namespace `resource_kind` names. For endpoints this is the software, with the device in `instance` -- the grain is per (software, device)."
+                        "description": "The resource within that instance, in the namespace `resource_kind` names. For endpoints and cloud VMs this is the software, with the machine in `instance` -- the grain is per (software, machine)."
                     },
                     "query": {
                         "anyOf": [
@@ -31747,7 +32132,7 @@
                     "resource_id"
                 ],
                 "title": "SourceAddress",
-                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every source, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsource          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nJamf / osquery  device key        --                  npm, app\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly endpoints fill ``resource_kind``: they are the one source whose ids come from\nseveral namespaces at once. Every cloud and SIEM vendor addresses exactly one kind\nof resource, so the kind is implied by the vendor and stays absent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it. For a SIEM it addresses the *sighting*,\nand one agent may surface under two indexes, so it stays optional there. Code\ncomparing addresses across sources has to read `source_class` to know which it is\nlooking at.\n\nReused by Provenance rather than re-declared there, so a record and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
+                "description": "How to find a discovered agent again in the system that reported it.\n\nOne shape for every source, widest to narrowest:\n\n==============  ================  ==================  ==========  ============\nsource          instance          scope               kind        resource_id\n==============  ================  ==================  ==========  ============\nBedrock         AWS account       region              --          agent id\nVertex          GCP project       region              --          engine id\nSplunk          instance          index+sourcetype    --          record id\nSentinel        LA workspace      table               --          record id\nElastic         deployment        data stream         --          record id\nCloudWatch      host (VM, ENI,    account/region      instance,   VM, ENI or IP\n                else network)                         eni, ip\nJamf / osquery  device key        --                  npm, app\u2026   software key\nCompute Engine  VM instance id    project/zone        deb, npm\u2026   software key\n==============  ================  ==================  ==========  ============\n\nOnly sources that read a machine's software inventory fill ``resource_kind``:\nendpoints, and cloud sources that read a VM's (Compute Engine, and EC2 after it).\nTheir ids come from several namespaces at once. So do network host records, which\nname a VM, an interface or an address (see NetworkHostKind). Every other cloud\nvendor and every SIEM addresses exactly one kind of resource, so the kind is\nimplied by the vendor and stays absent.\n\nA VM-hosted cloud record is addressed per (software, VM), like an endpoint: the VM\nin ``instance``, never the project. Records are told apart by ``instance``, so a\nproject there would make every VM in it one agent.\n\n``scope`` carries two readings this one name does not separate. For a cloud source\nit addresses the *agent*: us-east-1 and us-west-2 hold different agents, so\n``CloudAgentCreationSource`` requires it -- a region, or for a VM where the machine\nis (project and zone; account and region on EC2). For a SIEM it addresses the\n*sighting*, and one agent may surface under two indexes, so it stays optional\nthere. A network host record reads it like a VM does -- where the host is, its\naccount and region or its project -- and requires it. Code comparing addresses across sources has to read `source_class` to know\nwhich it is looking at.\n\nReused by Provenance rather than re-declared there, so a record and the task it\nresolves to address the upstream system identically. A vendor needing to address a\nsub-resource -- a Bedrock alias, a Vertex version -- is one more optional field\nhere, not a new shape."
             },
             "SourceClass": {
                 "type": "string",
@@ -31755,6 +32140,7 @@
                     "cloud",
                     "siem",
                     "endpoint",
+                    "network",
                     "otel",
                     "manual"
                 ],
@@ -32262,6 +32648,15 @@
                 ],
                 "title": "SpanWithMetricsResponse"
             },
+            "SpendEstimateUnavailableReason": {
+                "type": "string",
+                "enum": [
+                    "no_traces",
+                    "no_runs"
+                ],
+                "title": "SpendEstimateUnavailableReason",
+                "description": "Why a continuous eval daily spend estimate could not be computed."
+            },
             "StatusCodeEnum": {
                 "type": "string",
                 "enum": [
@@ -32526,7 +32921,7 @@
                                 "const": "empty"
                             }
                         ],
-                        "title": "Model Provider",
+                        "title": "Synthetic Data Prompt Model Provider",
                         "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
                     },
                     "model_name": {
@@ -33441,6 +33836,18 @@
                         "type": "integer",
                         "title": "Span Count",
                         "description": "Number of spans in this trace"
+                    },
+                    "ingest_bytes": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ingest Bytes",
+                        "description": "OTLP payload bytes received for this trace's spans on the trace ingestion endpoints. Absent for traces ingested before it was recorded, or that didn't arrive through those endpoints."
                     },
                     "duration_ms": {
                         "type": "number",
@@ -34827,6 +35234,19 @@
                         ],
                         "title": "Enabled",
                         "description": "Whether to enable or disable a continuous eval."
+                    },
+                    "sample_rate": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sample Rate",
+                        "description": "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; send null to evaluate every trace."
                     }
                 },
                 "type": "object",

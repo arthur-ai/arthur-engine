@@ -133,7 +133,13 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      maxWidth: 400,
+                    }}
+                  >
                     {notebook.description || "—"}
                   </Typography>
                 </TableCell>
@@ -144,13 +150,23 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                   {notebook.latest_run_status ? (
                     <Chip label={notebook.latest_run_status} size="small" sx={getStatusChipSx(notebook.latest_run_status)} />
                   ) : (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       No runs
                     </Typography>
                   )}
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {new Date(notebook.updated_at).toLocaleString()}
                   </Typography>
                 </TableCell>

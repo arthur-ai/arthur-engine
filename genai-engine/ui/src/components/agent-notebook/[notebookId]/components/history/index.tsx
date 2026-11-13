@@ -41,8 +41,20 @@ export const History = ({ notebookId }: Props) => {
         },
       }}
     >
-      <Stack p={2} sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Stack direction="row" alignItems="center" gap={1}>
+      <Stack
+        sx={{
+          p: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           <HistoryIcon color="primary" />
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Experiment History
@@ -68,11 +80,28 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
     <>
       <div className="flex-1 overflow-y-auto">
         {data.data.length === 0 ? (
-          <Stack alignItems="center" justifyContent="center" className="h-full p-6 text-center">
-            <Typography variant="body2" color="text.secondary">
+          <Stack
+            className="h-full p-6 text-center"
+            sx={{
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No experiments yet
             </Typography>
-            <Typography variant="caption" color="text.secondary" className="mt-1">
+            <Typography
+              variant="caption"
+              className="mt-1"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Run your first experiment to see it here
             </Typography>
           </Stack>
@@ -122,7 +151,12 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
             }
             secondary={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {formatRelativeTime(item.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
@@ -130,14 +164,43 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
           />
         </Accordion.Trigger>
       </Accordion.Header>
-      <Accordion.Panel render={<Stack direction="column" gap={1} p={2} className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200" />}>
+      <Accordion.Panel
+        render={
+          <Stack
+            direction="column"
+            className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200"
+            sx={{
+              gap: 1,
+              p: 2,
+            }}
+          />
+        }
+      >
         {isRunning && (
-          <Box mb={2}>
-            <Stack mb={0.5}>
-              <Typography variant="caption" color="text.secondary">
+          <Box
+            sx={{
+              mb: 2,
+            }}
+          >
+            <Stack
+              sx={{
+                mb: 0.5,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Progress
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {item.completed_rows} / {item.total_rows} rows
               </Typography>
             </Stack>
@@ -146,7 +209,12 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
         )}
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mb: 2 }}>
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Dataset
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -154,7 +222,12 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
             </Typography>
           </Box>
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Total Rows
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -163,7 +236,12 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
           </Box>
           {item.total_cost && (
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Total Cost
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>

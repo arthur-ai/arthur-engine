@@ -1,4 +1,4 @@
-import { useAppForm, withForm } from "@arthur/shared-components";
+import { useAppForm, withForm } from "@arthur/shared-components/traces";
 import { Autocomplete, Button, DialogActions, DialogContent, DialogTitle, ListItem, Stack, TextField, Typography } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
@@ -59,8 +59,17 @@ export const ExperimentConfigSelector = withForm({
           }}
         >
           <DialogContent dividers>
-            <Stack gap={2}>
-              <Typography variant="body2" color="text.secondary">
+            <Stack
+              sx={{
+                gap: 2,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select an experiment to load the configuration from. Loading the configuration will overwrite the current notebook configuration.
               </Typography>
               <form.Field name="experimentId" validators={{ onChange: z.string().min(1, "Experiment is required") }}>
@@ -83,7 +92,12 @@ export const ExperimentConfigSelector = withForm({
                           <ListItem key={key} {...optionProps}>
                             <Stack>
                               <Typography variant="body1">{option.name}</Typography>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "text.secondary",
+                                }}
+                              >
                                 {option.http_template.endpoint_url}
                               </Typography>
                             </Stack>

@@ -21,7 +21,13 @@ export const EvalInstructions = ({ name, version, open, onClose }: Props) => {
         {name} (v{version}) - Instructions
       </DialogTitle>
       <DialogContent>
-        <Stack component={Paper} sx={{ p: 2 }} alignItems="center">
+        <Stack
+          component={Paper}
+          sx={{
+            alignItems: "center",
+            p: 2,
+          }}
+        >
           {evalQuery.isLoading ? (
             <CircularProgress sx={{ mx: "auto" }} />
           ) : (

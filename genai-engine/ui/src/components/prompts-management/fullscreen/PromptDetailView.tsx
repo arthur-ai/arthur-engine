@@ -320,7 +320,12 @@ const PromptDetailView = ({
           )}
           <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "flex-start" }}>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Model Provider
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -328,7 +333,12 @@ const PromptDetailView = ({
               </Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Model Name
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -336,7 +346,12 @@ const PromptDetailView = ({
               </Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Created At
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -345,7 +360,12 @@ const PromptDetailView = ({
             </Box>
             {promptData.deleted_at && (
               <Box>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Deleted At
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
@@ -355,7 +375,13 @@ const PromptDetailView = ({
             )}
             {promptData.config && (
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                  }}
+                >
                   Configuration
                 </Typography>
                 <Button
@@ -442,7 +468,14 @@ const PromptDetailView = ({
           <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
             Prompt Tags
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+              display: "block",
+            }}
+          >
             Production status and tags to easily identify your prompts.
           </Typography>
 

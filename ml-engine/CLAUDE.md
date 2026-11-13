@@ -2,7 +2,7 @@
 
 Job-based evaluation engine (Python 3.13). Polls the Arthur Platform for jobs, loads data through source connectors (S3, GCS, BigQuery, Snowflake, ODBC databases), and computes metrics. Flow: `job_agent.py` (polling) → `job_runner.py` (thread/process runners) → `job_executor.py` → `job_executors/*`.
 
-Second mode: with `ML_ENGINE_DISCOVERY_CONFIG` set, `job_agent.main` runs standalone agent discovery instead — no Platform, no GenAI Engine. Flow: `standalone/discovery_config.py` (file) → `standalone/agent.py` (interval scheduler) → `standalone/scan.py` → the shared `run_source_scan` → `standalone/sinks/*` (Splunk HEC, webhook). See [docs/standalone-discovery.md](docs/standalone-discovery.md).
+Second mode: with `ML_ENGINE_DISCOVERY_CONFIG` set, `job_agent.main` runs standalone agent discovery instead — no Platform, no GenAI Engine. Flow: `standalone/discovery_config.py` (file) → `standalone/agent.py` (interval scheduler) → `standalone/scan.py` → the shared `run_source_scan` → `standalone/sinks/*` (Splunk HEC, Elasticsearch, webhook). See [docs/standalone-discovery.md](docs/standalone-discovery.md).
 
 ## Commands
 
@@ -26,3 +26,5 @@ Needs `ARTHUR_API_HOST`, `ARTHUR_CLIENT_ID`, `ARTHUR_CLIENT_SECRET` to talk to t
 - Job executors should be stateless and idempotent where possible.
 - Health check endpoints must respond quickly — slow responses cause container restarts.
 - Discovery connectors are listed in `discovery.source_connectors()` and must declare `SENSITIVE_FIELDS`, or standalone mode refuses them; sink targets are listed in `standalone.sinks.Destination`, one module each.
+- A connector with no Platform vendor goes in `discovery.standalone_connectors()` instead, so Platform executors never see it. `local` is one: it reads the endpoint collector's `inventory.json` from a mounted folder, for Deckard's quickstart, and depends on the collector still publishing that file under that name.
+- `discovery/_vendor/` is ai-detection-spec, vendored verbatim; never edit or format it. To move it, run `integrations/endpoint-ai-discovery/tools/vendor-queries.sh <tag>`, then `uv run python scripts/vendor_ai_detection_spec.py` here, which reads the tag from the endpoint's VERSION stamp.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,7 +10,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db_models.base import Base, IsArchivable
 
 if TYPE_CHECKING:
-    from db_models.agent_polling_models import DatabaseTaskPollingState
     from db_models.agentic_prompt_models import DatabaseAgenticPrompt
     from db_models.llm_eval_models import DatabaseLLMEval
     from db_models.rule_models import DatabaseRule
@@ -48,11 +47,6 @@ class DatabaseTask(Base, IsArchivable):
     llm_evals: Mapped[list["DatabaseLLMEval"]] = relationship(
         back_populates="task",
         lazy="select",
-    )
-    task_polling_state: Mapped[Optional["DatabaseTaskPollingState"]] = relationship(
-        back_populates="task",
-        cascade="all, delete-orphan",
-        uselist=False,
     )
 
 

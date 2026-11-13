@@ -38,7 +38,13 @@ const CreateEvalTypeModal = ({ open, onClose, onSelectType }: CreateEvalTypeModa
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create New Evaluator</DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2,
+          }}
+        >
           Choose the type of evaluator to create.
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pb: 1 }}>
@@ -48,10 +54,20 @@ const CreateEvalTypeModal = ({ open, onClose, onSelectType }: CreateEvalTypeModa
                 <CardContent sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
                   <Icon sx={{ fontSize: 36, color: "primary.main", mt: 0.5 }} />
                   <Box>
-                    <Typography variant="subtitle1" fontWeight={600}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: 600,
+                      }}
+                    >
                       {label}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       {description}
                     </Typography>
                   </Box>

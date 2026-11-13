@@ -1,5 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 
 import { ChatPanel } from "./ChatPanel";
@@ -39,7 +39,8 @@ export function ChatbotDrawer({ taskId, open, onClose }: ChatbotDrawerProps) {
             left: SIDEBAR_CLEARANCE_PX,
             width: 380,
             height: 560,
-            zIndex: 1200,
+            // Above page content, below modal drawers and dialogs: their focus trap would pull focus out of the panel.
+            zIndex: (theme) => theme.zIndex.fab,
             display: "flex",
             flexDirection: "column",
             borderRadius: 3,
@@ -64,7 +65,12 @@ export function ChatbotDrawer({ taskId, open, onClose }: ChatbotDrawerProps) {
                   color: "primary.contrastText",
                 }}
               >
-                <Typography variant="subtitle1" fontWeight={600}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
                   Arthur AI Assistant
                 </Typography>
                 <Box>

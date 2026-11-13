@@ -1,4 +1,4 @@
-import { useAppForm } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components/traces";
 import { CircularProgress, Dialog, Stack } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useState } from "react";
@@ -100,7 +100,13 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
       >
         <Header form={form} notebook={notebook} onLoadConfig={() => setShowExperimentConfigSelector(true)} onSave={forceSave} isSaving={isSaving} />
         <div className="flex flex-1 overflow-hidden">
-          <Stack p={2} gap={2} className="flex-1 overflow-auto">
+          <Stack
+            className="flex-1 overflow-auto"
+            sx={{
+              p: 2,
+              gap: 2,
+            }}
+          >
             <EndpointSetup
               form={form}
               fields={{

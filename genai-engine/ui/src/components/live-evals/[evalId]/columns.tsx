@@ -1,9 +1,9 @@
+import { CopyableChip } from "@arthur/shared-components";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Chip, IconButton, Tooltip, Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 import { Link } from "react-router";
 
-import { CopyableChip } from "@/components/common";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
@@ -54,7 +54,12 @@ export const createColumns = ({
   columnHelper.accessor("created_at", {
     header: "Created",
     Cell: ({ cell }) => (
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         {formatDateInTimezone(cell.getValue(), timezone, { hour12: !use24Hour })}
       </Typography>
     ),

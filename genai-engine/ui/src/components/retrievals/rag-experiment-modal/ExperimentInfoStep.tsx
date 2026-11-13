@@ -219,7 +219,12 @@ export const ExperimentInfoStep: React.FC<ExperimentInfoStepProps> = ({
               /* Panel mode - show toggle chips for available configs */
               <>
                 {availableRagConfigs.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     No configured RAG panels available. Please configure at least one panel with a provider and collection.
                   </Typography>
                 ) : (

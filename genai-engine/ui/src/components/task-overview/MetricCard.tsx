@@ -35,20 +35,43 @@ export const MetricCard = ({
       }}
     >
       <Stack spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box sx={{ color, display: "flex", alignItems: "center", fontSize: 18 }}>{icon}</Box>
-          <Typography variant="body2" fontWeight={500} sx={{ color }}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 500,
+              color,
+            }}
+          >
             {label}
           </Typography>
         </Stack>
         {isLoading ? (
           <Skeleton variant="text" width={80} height={40} />
         ) : (
-          <Typography variant="h4" fontWeight={700} color="text.primary">
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              color: "text.primary",
+            }}
+          >
             {value}
           </Typography>
         )}
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {subLabel}
         </Typography>
       </Stack>

@@ -8,10 +8,19 @@ from typing import Any, Iterator, Optional, Sequence, get_args
 import pytest
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from arthur_common.models.agent_governance_schemas import (
+    AgentObservations,
+    EndpointAgentCreationSource,
+    SourceAddress,
+)
 
 from job_executors.discovery_scan import (
+    CorroboratingRecord,
+    DeviceCoverage,
     DiscoveryErrorCode,
     DiscoveryScanOutcome,
+    FailedDiscoveryRecord,
+    UnreadableDevice,
     run_source_scan,
 )
 from standalone.sinks import Destination
@@ -19,6 +28,7 @@ from standalone.sinks.common import (
     DISCOVERED_AGENT_EVENT,
     EVENT_SCHEMA_VERSION,
     SCAN_OUTCOME_EVENT,
+    RefusedEvent,
     SinkDeliveryError,
     scan_outcome_event,
 )
@@ -63,16 +73,23 @@ def outcome(**overrides: Any) -> DiscoveryScanOutcome:
 
 
 class RecordingSink:
-    """Implements `Sink`, failing the send at the given index if asked."""
+    """Implements `Sink`, failing the send at the given index, or refusing the given
+    events one by one, if asked."""
 
-    def __init__(self, fail_on_call: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        fail_on_call: Optional[int] = None,
+        refuse: Sequence[RefusedEvent] = (),
+    ) -> None:
         self.sent: list[list[dict[str, Any]]] = []
         self._fail_on_call = fail_on_call
+        self._refuse = refuse
 
-    def send(self, events: Sequence[dict[str, Any]]) -> None:
+    def send(self, events: Sequence[dict[str, Any]]) -> Sequence[RefusedEvent]:
         if self._fail_on_call == len(self.sent):
             raise SinkDeliveryError(f"refused (Splunk {TOKEN})")
         self.sent.append(list(events))
+        return self._refuse
 
     def secrets(self) -> tuple[str, ...]:
         return (TOKEN,)
@@ -117,12 +134,117 @@ def test_unset_record_columns_are_left_out_rather_than_sent_as_null() -> None:
     assert "tools" not in agent and "llm_models" not in agent
 
 
+def test_an_event_the_destination_refuses_is_a_failed_record() -> None:
+    """Reported by the agent it was, and the batch's other records still count."""
+    sink = RecordingSink(
+        refuse=[RefusedEvent(1, "document_parsing_exception", "field [agent.name]")],
+    )
+
+    result = StandaloneRecordSink(sink, "s").publish(
+        "",
+        "",
+        config(),
+        [record("a"), record("b"), record("c")],
+    )
+
+    assert result.accepted == 2
+    assert result.failed == (
+        FailedDiscoveryRecord(
+            external_id="b",
+            reason="document_parsing_exception",
+            detail="field [agent.name]",
+        ),
+    )
+
+
+def test_a_refused_record_does_not_stop_the_scan() -> None:
+    """End to end through the shared scan loop: the refusal is on the outcome, the
+    batches after it are still sent, and the scan succeeds."""
+    scanned = outcome()
+    sink = RecordingSink(refuse=[RefusedEvent(0, "document_parsing_exception", "x")])
+
+    run_source_scan(
+        config=config(),
+        lookback_hours=24,
+        workspace_id="",
+        data_plane_id="",
+        outcome=scanned,
+        connector=TwoBatchConnector(),
+        sink=StandaloneRecordSink(sink, "corp-macs"),
+        logger=LOG,
+        credentials={},
+        source_fields={},
+    )
+
+    assert len(sink.sent) == 2
+    assert scanned.error_code is None
+    assert [f.external_id for f in scanned.failed_records] == ["a", "c"]
+    assert scanned.records_published == 1
+
+
 def test_an_empty_batch_sends_nothing() -> None:
     sink = RecordingSink()
 
     result = StandaloneRecordSink(sink, "s").publish("", "", config(), [])
 
     assert result.accepted == 0 and sink.sent == []
+
+
+def test_a_corroboration_is_not_sent_as_an_agent_of_its_own() -> None:
+    """A standalone destination has no task to join it to, and an event per record
+    would report the agent once for each piece of its evidence."""
+    corroboration = CorroboratingRecord(
+        corroborates="a",
+        external_id="a:binaries:~/.local/bin/a",
+        name="agent-a",
+        last_seen=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(instance="m1", resource_id="~/.local/bin/a"),
+            observations=AgentObservations(),
+        ),
+    )
+    sink = RecordingSink()
+
+    result = StandaloneRecordSink(sink, "s").publish(
+        "",
+        "",
+        config(),
+        [record("a"), corroboration],
+    )
+
+    assert result.accepted == 1
+    assert [e["agent"]["external_id"] for e in sink.sent[0]] == ["a"]
+
+
+def test_a_refusal_names_the_agent_it_was_sent_for_around_a_corroboration() -> None:
+    """A refusal's position is into the events sent, which leave the corroboration out,
+    so the event at position 1 is agent "b" -- not the record at position 1 of the
+    batch, which is the corroboration."""
+    corroboration = CorroboratingRecord(
+        corroborates="a",
+        external_id="a:binaries:~/.local/bin/a",
+        name="agent-a",
+        last_seen=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+        creation_source=EndpointAgentCreationSource(
+            vendor="jamf_pro",
+            address=SourceAddress(instance="m1", resource_id="~/.local/bin/a"),
+            observations=AgentObservations(),
+        ),
+    )
+    sink = RecordingSink(
+        refuse=[RefusedEvent(1, "document_parsing_exception", "field [agent.name]")],
+    )
+
+    result = StandaloneRecordSink(sink, "s").publish(
+        "",
+        "",
+        config(),
+        [record("a"), corroboration, record("b")],
+    )
+
+    assert [f.external_id for f in result.failed] == ["b"]
+    assert result.accepted == 1
 
 
 def test_the_outcome_event_carries_the_logged_payload() -> None:
@@ -134,6 +256,37 @@ def test_the_outcome_event_carries_the_logged_payload() -> None:
     assert emitted["observed_at"] == OBSERVED_AT.isoformat()
     assert emitted["source"]["name"] == "corp-macs"
     assert emitted["outcome"] == finished.to_log_payload()
+
+
+def test_the_outcome_event_lists_each_unreadable_device() -> None:
+    """A machine the scan could not see reaches the destination by identity and reason,
+    so it can be alerted on there as a finding."""
+    coverage = DeviceCoverage(devices_read=2, devices_in_scope=2, devices_decoded=1)
+    coverage.count_unreadable(
+        "never-reported",
+        UnreadableDevice(
+            device_key="i-00000000000000001",
+            name="build-1",
+            location="123456789012/us-east-1",
+            reason="never-reported",
+            last_reported=None,
+        ),
+    )
+    finished = outcome(finished_at=OBSERVED_AT, device_coverage=coverage)
+
+    emitted = scan_outcome_event(finished, "corp-ec2")
+
+    assert emitted["outcome"]["device_coverage"]["unreadable_devices"] == [
+        {
+            "device_key": "i-00000000000000001",
+            "name": "build-1",
+            "location": "123456789012/us-east-1",
+            "reason": "never-reported",
+            "last_reported": None,
+        },
+    ]
+    assert emitted["outcome"]["device_coverage"]["unreadable_devices_truncated"] == 0
+    assert emitted["outcome"]["device_coverage"]["devices_unreadable"] == 1
 
 
 class TwoBatchConnector:

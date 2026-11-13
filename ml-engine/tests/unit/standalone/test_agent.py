@@ -110,8 +110,8 @@ class FakeSink:
     def __init__(self) -> None:
         self.closed = False
 
-    def send(self, events: Any) -> None:
-        pass
+    def send(self, events: Any) -> tuple[()]:
+        return ()
 
     def secrets(self) -> tuple[str, ...]:
         return (SINK_SECRET,)

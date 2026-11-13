@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from cachetools import TTLCache
+
 from repositories.tasks_rules_repository import TasksRulesRepository
 from schemas.internal_schemas import Rule, Task
 from tests.clients.base_test_client import override_get_db_session

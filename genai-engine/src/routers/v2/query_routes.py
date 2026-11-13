@@ -14,6 +14,8 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Inference, User
+from schemas.request_schemas import InferenceOverviewRequest
+from schemas.response_schemas import InferenceOverviewListResponse
 from utils import constants as constants
 from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
@@ -101,7 +103,8 @@ def query_inferences(
                 # turn into an empty result set rather than surfacing the 404
                 # (matches the existing shape of this query endpoint).
                 db_inference = inference_repo.get_inference(
-                    inference_id=inference_id, org_scope=org_scope
+                    inference_id=inference_id,
+                    org_scope=org_scope,
                 )
             except HTTPException:
                 db_inference = None
@@ -134,3 +137,22 @@ def query_inferences(
         return QueryInferencesResponse(count=count, inferences=results_formatted)
     finally:
         db_session.close()
+
+
+@query_routes.post(
+    "/inferences/overview",
+    description="Inference count and most recent inference time for each of the given tasks. Includes archived tasks.",
+    tags=["Inferences"],
+    response_model=InferenceOverviewListResponse,
+    response_model_exclude_none=True,
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
+def get_inferences_overview(
+    request: InferenceOverviewRequest,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> InferenceOverviewListResponse:
+    return InferenceRepository(db_session).get_inference_overview_for_tasks(
+        task_ids=request.task_ids,
+    )

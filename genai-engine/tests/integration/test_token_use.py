@@ -1,6 +1,7 @@
 import pytest
 from arthur_common.models.enums import RuleType
 from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -29,7 +30,7 @@ def test_get_token_usage_by_rule_type_incrementing(
     _, old_token_counts = client.get_token_usage(
         headers=client.authorized_org_admin_api_key_headers,
     )
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     prompt_text, prompt_text_tokens = (

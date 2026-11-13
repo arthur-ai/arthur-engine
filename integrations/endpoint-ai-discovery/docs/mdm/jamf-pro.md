@@ -1,75 +1,38 @@
 # AI Inventory on Jamf Pro
 
-Deploying the `osquery-ai-discovery` endpoint to a managed Mac fleet: a scheduled scan that
-writes a file, and two Extension Attributes that only read it. Nothing on the inventory path
-can block.
-
-**Two Extension Attributes and one script.** A Jamf Policy runs the script on a schedule and
-it writes three files; the attributes `cat` them. **Nothing is packaged, signed or notarized**
-— the script carries its own payload.
-
-> **There is no inline alternative any more.** This tree once carried a script that *was* the
-> Extension Attribute and ran the query inline. It has been deleted, and "Why nothing runs
-> inline" at the foot records the measurements that decided it — chiefly a Docker daemon that
-> answers `/_ping` with 200 and then never serves `/images/json`, which every probe in the
-> guard matrix admits and no Jamf timeout cuts off.
+A Jamf Policy runs `dist/collect.sh` on a schedule. The script scans the Mac and writes three
+files to `/var/lib/arthur/`. Two Extension Attributes read two of those files back with `cat`,
+and Arthur reads the attributes through the Jamf Pro API. Nothing is packaged, signed or
+notarized, because the script carries its own payload. The
+[quick start](../quickstart.md#macs-managed-by-jamf-pro) is the short version of this runbook.
 
 | | |
 |---|---|
-| Target | Jamf Pro |
-| Requires | osquery 5.18+ (5.10+ runs; below 5.11 the VS Code branch and below 5.18 the JetBrains branch report `error`). Nothing else — no interpreter, no Command Line Tools |
-| Per-Mac cost | ~8s per Policy run, off the reporting path |
-| Attribute value | ~24 KB of a 256 KB budget (Jamf itself stores ≥ 1 MB — measured) |
+| Requires | osquery 5.18 or later. No interpreter and no Command Line Tools |
+| Per-Mac cost | ~8s per Policy run, outside the inventory path |
+| Attribute size | ~24 KB, within a 256 KB budget. Jamf has stored values of at least 1 MB (measured) |
 
-**Do not put `osqueryi`, `bin/discover` or `bin/container-scan` directly in an Extension
-Attribute.** Measured against a Docker daemon that answers `/_ping` and then stops serving,
-the query never returns — and there is no documented Jamf timeout to save you. Community
-evidence runs the other way: EAs at 21 seconds, and `jamf recon` *stalling* rather than being
-cut off.
+**Never run `osqueryi`, `bin/discover` or `bin/container-scan` inside an Extension Attribute.**
+A Docker daemon that answers its health check and then stalls hangs the query, and with it
+`jamf recon`. Jamf documents no timeout for Extension Attributes. The scheduled script puts a
+time limit on every query; the attributes only read files. Upstream's
+[deployment guide](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/deployment.md)
+gives the details.
 
-## 00 · Prerequisites — fleet
+## 00 · Install osquery — Jamf Pro
 
-| Requirement | Why | Confirm with |
-|---|---|---|
-| osquery 5.10+, **5.18+ for every branch** | Every query runs through `osqueryi`. Below 5.18 a branch whose table does not exist yet reports `error`; which tables need which version is upstream's [`docs/limits.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/limits.md) | Application inventory, or `osqueryi --version` |
-| Root LaunchDaemon | Some branches read other users' home directories | Standard for a Jamf-deployed daemon |
+Install osquery 5.18 or later. Older versions run, but every branch whose table they lack
+reports `error`. Upstream's
+[`docs/limits.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/docs/limits.md)
+lists which branch needs which version.
 
-**The python3 trap is closed as of vendored ref `v0.5.0`, and it is worth knowing what it
-was.** `/usr/bin/python3` is a *stub* on a clean macOS install — Apple removed bundled Python in
-macOS 12.3 and left a shim that forwards to the active developer directory. Without Command Line
-Tools it fails, the job wrote nothing, and both attributes reported `no-cache`, which is
-indistinguishable from a Mac with no AI tools on it. **Do not deploy Command Line Tools for this
-project.** Nothing on the endpoint has needed them since v0.5.0.
+Jamf does not see osquery by default: it installs under `/opt/osquery`, which Application
+inventory does not scan. A Mac without osquery reports `no-cache` on both attributes. So report
+the version with an Extension Attribute, group the Macs that fail, and install osquery on those
+groups.
 
-Two halves closed it, and this tree's was not sufficient alone. The framing step here uses
-`gzip`/`base64`, both stock, and checks the JSON with the vendored runner's `discover --cache`; upstream then removed its own last interpreter, moving the
-JSON work into shell helpers and osquery's `json_valid`/`json_type` — a dependency the endpoint
-already has. `test/lint.sh` holds both ends: it fails if the collector reaches for an
-interpreter, and it fails if the payload's real dependencies and this table disagree in either
-direction.
-
-## 00b · Find and fix the Macs that cannot collect — Jamf Pro
-
-osquery is the only prerequisite, and it is invisible to Jamf by default: it installs under
-`/opt/osquery`, which Application inventory does not scan, and package-receipt criteria depend
-on a bundle id that has changed across releases. When it is missing the collector writes
-nothing and both attributes report `no-cache` — indistinguishable from a Mac with no AI tools
-on it. So measure it, group on the failures, and scope a Policy at the group.
-
-*(Command Line Tools were a second prerequisite until vendored ref `v0.5.0`. They are not one
-now — see section 00. Do not deploy them for this project.)*
-
-### The Extension Attribute
-
-**Settings → Computer Management → Extension Attributes → New.** Data Type `String`, Input Type
-`Script`. It reports a *reason*, because "missing" and "too old" need different fixes.
-
-| Field | Value |
-|---|---|
-| Display Name | `Arthur AI Osquery Prereq` |
-| Data Type | `String` |
-| Inventory Display | `Extension Attributes` |
-| Input Type | `Script` |
+**The attribute.** Go to *Settings → Computer Management → Extension Attributes → New*. Set
+Display Name to `Arthur AI Osquery Prereq`, Data Type to `String` and Input Type to `Script`:
 
 ```bash
 #!/bin/bash
@@ -99,212 +62,75 @@ else
 fi
 ```
 
-### Smart Groups
+**Two Smart Groups.** Create them under *Computers → Smart Computer Groups → New*:
 
-**Computers → Smart Computer Groups → New**, one per row. A criterion is three parts — the
-attribute, the operator, the value — and the member count is a deployment target list.
+| Group | Criteria | Operator | Value |
+|---|---|---|---|
+| Prereq — osquery missing | `Arthur AI Osquery Prereq` | **is** | `absent` |
+| Prereq — osquery too old | `Arthur AI Osquery Prereq` | **like** | `old:` |
 
-| Group | Criteria | Operator | Value | Fix |
-|---|---|---|---|---|
-| Prereq — osquery missing | `Arthur AI Osquery Prereq` | **is** | `absent` | Install the pkg |
-| Prereq — osquery too old | `Arthur AI Osquery Prereq` | **like** | `old:` | Upgrade; these Macs report `error` for each branch whose table their osquery lacks |
+**is** matches the whole value, and **like** matches part of it. Using **is** with `old:`
+matches nothing, and gives no error. A blank value means the Mac has not submitted inventory
+since you added the attribute; it fills in at the Mac's next recon.
 
-**`is` where the whole value is the sentinel, `like` where you are matching a fragment.** Jamf's
-`like` is a substring test, so `like` `absent` would also catch a future value that merely
-contains the word, and a false positive here installs software on a Mac that did not need it.
-`old:` always carries a version (`old:5.10.2`), so it can only be matched by fragment — using
-**is** with `old:` matches nothing, silently, and an empty Smart Group reads exactly like a
-healthy fleet.
+**The install Policy:**
 
-**A BLANK ATTRIBUTE IS NOT `absent`.** The script always prints one of four values, so it
-cannot produce a blank. A blank is a Mac that has not submitted inventory since you created
-the attribute, so the script has never run there — the inventory record carries the attribute
-with no value. Those fill in within a day of the next recon.
+1. Download the macOS `.pkg` from [osquery.io/downloads](https://osquery.io/downloads), or
+   take it from your mirror. Upload it at *Settings → Computer Management → Packages → New*.
+2. Create a Policy at *Computers → Policies → New*. Set Display Name to `Install osquery`,
+   tick *Recurring Check-in*, and set Execution Frequency to *Once per computer*.
+3. Under *Packages*, choose *Configure*, then *Add* beside the osquery package, and set Action
+   to *Install*.
+4. Under *Scope → Targets*, choose *Add → Computer Groups* and add both Prereq groups. Save.
 
-They are invisible to the criteria above, including `is not`. To find them on the attribute
-itself, use operator **is** with an empty value, or sort an Advanced Search by the column.
+Each Mac leaves the groups once it reports a new enough version, so the Policy stops targeting
+it automatically. *Once per computer* counts runs, not versions. When the version floor rises,
+attach the new package to a **new** Policy scoped to `Prereq — osquery too old`. Wait for that
+group to empty before you deploy a collector that needs the newer version. Until a Mac
+upgrades, it reads `degraded` and swamps the groups in section 06.
 
-**For the fleet question, use `Last Inventory Update` instead.** A Mac that stopped checking
-in has blank values everywhere, so no criterion on any of the three attributes separates
-"never ran here" from "stopped reporting months ago" — and the second is the population most
-likely to be mistaken for coverage. A fleet where a third of the Macs went quiet reads as a
-fleet where a third have no AI tooling. `Last Inventory Update` is also what the collector
-reads as `general.reportDate`, so scoping on it matches what the findings are judged by —
-see the group in 06.
+## 01 · Get the collector — terminal
 
-### Remediation
-
-**1 · Get the package.** Download the macOS `.pkg` from
-[osquery.io/downloads](https://osquery.io/downloads), or your internal mirror. Check the version
-against the 5.18 floor before uploading it.
-
-**2 · Upload it.** *Settings → Computer Management → Packages → **New***. Choose the file under
-**Filename**, leave the rest at defaults, **Save**. This needs a distribution point; on Jamf
-Cloud that is the Jamf Cloud Distribution Point and the upload happens in the browser.
-
-**3 · Create the Policy.** *Computers → Policies → **New***. You land on the **General** payload:
-
-| Field | Value |
-|---|---|
-| Display Name | `Install osquery` |
-| Enabled | checked |
-| Trigger | check **Recurring Check-in** |
-| Execution Frequency | **Once per computer** |
-
-**4 · Attach the package.** In the left sidebar of the same Policy, click **Packages** →
-**Configure** → **Add** beside your osquery package → set **Action** to **Install**. The
-*Configure* step is easy to miss: until you click it the payload shows nothing to add.
-
-**5 · Scope it.** The **Scope** tab at the top of the Policy → *Targets* → **Add** → *Computer
-Groups* → `Prereq — osquery missing` **and** `Prereq — osquery too old`. **Save**.
-
-**Once per computer counts runs, not versions.** A Mac that already ran this Policy with an
-older package does not run it again, and stays in `Prereq — osquery too old`. When the floor
-moves past what an earlier package installed — vendored ref `v0.12.0` moved it from 5.11 to
-5.18 — attach the new package to a **new** Policy with the same settings, scoped to
-`Prereq — osquery too old`. A new Policy has run on no Mac yet.
-
-**Upgrade before you deploy the collector that needs it.** On older osquery the new branch
-reports `error`, so every such Mac reads `degraded` and floods the groups in section 06 —
-masking the faults they exist to find. Let `Prereq — osquery too old` drain first.
-
-**6 · Watch it drain.** Update Inventory, then watch both groups empty as Macs check in and
-report a version. Scoping at the groups the attribute feeds is what makes this self-managing: a
-Mac installs or upgrades osquery, its next inventory reports a version at the floor, it leaves
-the group, and the Policy stops targeting it. Nothing to turn off afterwards.
-
-`no-cache` on the two AI attributes should drain behind it. A Mac still reporting `no-cache`
-with osquery green is a different fault — read its Policy log, and see section 08.
-
-## 01 · Build the payload — terminal
-
-**Build it here, not from the public repo.** The plist and the collector live in this tree,
-and matching must never happen on a Mac — it happens in the collector. The bundle does carry
-`dist/signatures.sql`, the catalog rendered into SQL, for upstream's `bin/discover --names`;
-this collector never passes that flag, and `test/lint.sh` fails if it does. See
-[`architecture.md`](../architecture.md).
-
-There is also nothing left to lay out side by side. `dist/collect.sh` carries `bin/` and `dist/`
-inside it as an embedded payload and extracts them to a private temp directory at run time, so
-the whole deployable is one file for both paths below.
+`dist/collect.sh` is built and committed. Take it from a release tag of this repository:
 
 ```bash
-git clone https://github.com/arthur-ai/arthur-engine
+git clone --depth 1 --branch REF https://github.com/arthur-ai/arthur-engine
 cd arthur-engine/integrations/endpoint-ai-discovery
-
-# Already vendored and built in the tree. Only if you are moving to a newer upstream ref:
-tools/vendor-queries.sh <ref>          # verifies upstream's own build gate before copying
-tools/build-collector.py               # rebuild dist/collect.sh around the new tree
-
-tools/build-collector.py --check       # expect: dist/collect.sh is up to date (vendored ref …)
-test/lint.sh                           # ~1s; gates the vendored tree and the built collector
+tools/build-collector.py --check   # expect: dist/collect.sh is up to date (vendored ref …)
 ```
 
-**Verify.** `--check` names the vendored ref, and `cat vendor/osquery-ai-discovery/VERSION`
-shows the same one. A ref pinned to a bare commit prints `PROVISIONAL`, which is legitimate and
-means no upstream tag carries it yet. Drift means `dist/collect.sh` was built before the last
-vendor — rebuild it rather than deploying it.
+`--check` prints the vendored ai-detection-spec ref, which
+`vendor/ai-detection-spec/VERSION` also records. A ref pinned to a bare commit prints
+`PROVISIONAL`; that is legitimate. If the check reports drift, run `tools/build-collector.py`
+to rebuild the script before you deploy it.
 
-## 02 · Add the collector to Jamf — Jamf Pro
+## 02 · Run the collector on a schedule — Jamf Pro
 
-**No package, no signing, no notarization.** `dist/collect.sh` is one self-contained
-file, built by `tools/build-collector.py`: `bin/` and `dist/` travel inside it as an embedded
-payload, so Jamf needs only to host a script and run it. It installs nothing — the payload is extracted to a private temp
-directory, run, and deleted.
+Go to *Settings → Computer Management → Scripts → New*. Set Display Name to
+`AI Inventory Collector` and Priority to `After`, then paste all of `dist/collect.sh`.
 
-**Settings → Computer Management → Scripts → New.** Paste the whole of
-`dist/collect.sh`.
-
-| Field | Value |
-|---|---|
-| Display Name | `AI Inventory Collector` |
-| Category | your usual |
-| Priority | `After` |
-
-Then **Computers → Policies → New**:
+Then create a Policy at *Computers → Policies → New*:
 
 | Field | Value |
 |---|---|
 | Trigger | `Recurring Check-in` |
-| Execution Frequency | `Once every day` (or `Ongoing` for check-in cadence) |
+| Execution Frequency | `Once every day`, or `Ongoing` to run at every check-in |
 | Scripts | `AI Inventory Collector` |
-| Scope | your pilot Smart Group |
+| Scope | your pilot Macs |
 
-The script ignores the three positional arguments Jamf passes, needs no parameters, and
-prints its status line to stdout — so the Policy log shows the outcome without you opening
-anything else.
+The script ignores the arguments Jamf passes and prints its status line, so the Policy log
+shows the result. Scope the Policy, not the attributes. The attributes run on every Mac and
+report `no-cache` wherever the script has not run.
 
-**Verify.** Run the Policy once against a test Mac. The Policy log should read:
+**To deploy a package instead,** install `dist/collect.sh` with
+`deploy/com.arthur.ai-discovery.plist`; the plist's header has the install commands. A
+LaunchDaemon then runs the scan on its own schedule, separate from Jamf check-in, and it keeps
+running if the Policy is unscoped. A package needs a build step and a signing identity. Both
+ways write the same files, so the rest of this runbook is the same.
 
-```
-ok 2026-10-11T22:57:49Z rows=929 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok jetbrains=ok native-messaging=ok packages=ok ports=ok running=ok running-darwin=ok runtime=ok vscode=ok
-```
+## 03 · The inventory attribute — Jamf Pro
 
-One `branch=outcome` token per query branch: thirteen on macOS at vendored ref `v0.12.1`. The
-branches are upstream's, so the count moves with a vendor bump.
-
-Measured cold at `v0.12.1`, unprivileged, from a directory containing nothing but the script,
-under a stripped environment: **~8s**, three files written, no temp directory left behind.
-
-### If you would rather deploy a package
-
-A package is a legitimate alternative — it puts `bin/` and `dist/` at a fixed path and runs
-them from a LaunchDaemon, which decouples the schedule from Jamf's check-in and keeps the
-scan running even if the Policy is later unscoped. It costs a build step and a signing
-identity. `deploy/com.arthur.ai-discovery.plist` carries the install and uninstall commands
-in its header. Everything from step 04 onward is identical either way — both write the same
-three files.
-
-## 03 · Prove it on one Mac — terminal
-
-```bash
-# the Policy will have written these; to run it by hand:
-sudo /bin/bash dist/collect.sh
-ls -l /var/lib/arthur/
-```
-
-**Verify — three files.**
-
-```
-inventory.json   ~155 KB   the readable payload
-inventory.ea      ~24 KB    the framed attribute value, one line
-status.txt        ~155 B    one line, for Smart Groups
-```
-
-```console
-$ cat /var/lib/arthur/status.txt
-degraded 2026-09-04T23:50:36Z rows=775 apps=ok browser=ok containers=unhealthy:000 filesystem=ok homebrew=ok native-messaging=ok packages=ok ports=ok runtime=ok vscode=ok
-```
-
-A first token of `degraded` is not necessarily a failure — on a Mac with no Docker,
-`containers=absent` is the correct answer.
-
-**Docker Desktop is per-user.** Its socket belongs to the installing user and its engine runs
-only while that user is logged in, so a root scan at 03:00 legitimately records
-`containers=absent` on a Mac that has Docker. Expect container coverage to reflect working
-hours.
-
-**`unhealthy:000` is a different thing, and it is not benign.** This ran for a while reporting
-`unhealthy:000` on a Mac whose Docker was up for four days and holding 13 images. The cause was
-not permissions — root reaches a user's socket fine, verified — but a ping too short to outlast
-a cold daemon. A scheduled scan is always the cold case, and an operator checking by hand always
-sees it working, because checking warms the daemon. `dist/collect.sh` sets
-`DOCKER_PING_TIMEOUT=15`, above upstream's default of 8, because 15 also clears the ~10s a
-wedged engine takes to answer 500 — without which the `unhealthy:500` row below never appears.
-`test/lint.sh` fails if it drops below 10, or below the vendored default. Upstream's
-`docs/containers.md` has the per-state costs.
-
-**If you see `unhealthy:000` on a fleet Mac that has Docker running, treat it as a fault to
-investigate, not as the night shift.**
-
-## 04 · The inventory attribute — Jamf Pro
-
-**Settings → Computer Management → Extension Attributes → New.**
-
-**The display name is yours to choose.** The collector finds this attribute by the
-`arthur1.` prefix on its value, not by name, so renaming it — or prefixing it to sit
-beside your other attributes — changes nothing. The names below are what the reference
-deployment uses.
+Go to *Settings → Computer Management → Extension Attributes → New*:
 
 | Field | Value |
 |---|---|
@@ -315,7 +141,7 @@ deployment uses.
 
 ```bash
 #!/bin/bash
-# Reads only. The scan runs from a LaunchDaemon, so recon cannot block on it.
+# Reads only. The scan runs on its own schedule, so recon cannot block on it.
 VALUE="/var/lib/arthur/inventory.ea"
 if [ -r "$VALUE" ]; then
   echo "<result>$(cat "$VALUE")</result>"
@@ -324,23 +150,13 @@ else
 fi
 ```
 
-The value is `arthur1.<base64(gzip(json))>` on a single line. Report the framed file, not
-`inventory.json`: raw JSON is roughly **6x the framed value**. The scheduled job is the only
-thing that frames, since the inline script that carried a second copy of the format is gone.
+The value is `arthur1.<base64(gzip(json))>` on one line. Arthur finds this attribute by the
+`arthur1.` prefix on its value, not by its name, so you can name it anything.
 
-**Verify.** One line beginning `<result>arthur1.H4sIA`, about 21,000 bytes, no newlines
-inside. To confirm it round-trips:
+## 04 · The status attribute — Jamf Pro
 
-```bash
-python3 -c 'import base64,gzip,json,re,sys
-v=re.search(r"<result>(.*)</result>",sys.stdin.read(),re.S).group(1)
-print(len(json.loads(gzip.decompress(base64.b64decode(v[8:])))),"rows")'
-```
-
-## 05 · The status attribute — Jamf Pro
-
-Not optional. The inventory value is base64 of gzip, so **a Smart Group cannot see inside
-it** — you could collect the data and still have no way to ask which Macs are failing.
+The inventory value is compressed, so a Smart Group cannot match anything inside it. This
+attribute carries the status line as plain text, which a Smart Group can match.
 
 | Field | Value |
 |---|---|
@@ -366,142 +182,162 @@ fi
 echo "<result>$line</result>"
 ```
 
-**Why this one does arithmetic when the inventory EA does not.** A failed scan no longer
-erases the last good one — the collector keeps serving it and fails the Policy instead — so
-`ok` on its own stopped being evidence of a recent scan. The timestamp was always in the
-value; `stale=NNh` is what makes it matchable by a Smart Group, which cannot compare dates
-inside a string.
+When a run fails, the collector keeps serving the last good scan, so `ok` alone does not mean
+the scan is recent. A Smart Group cannot compare dates inside a string, so this script appends
+`stale=NNh` once the scan is more than a day old.
 
-**Verify.**
+## 05 · Prove it on one Mac — the Mac
 
-```
-<result>degraded 2026-09-04T23:50:36Z rows=775 apps=ok browser=ok containers=unhealthy:000 filesystem=ok homebrew=ok native-messaging=ok packages=ok ports=ok runtime=ok vscode=ok</result>
-```
-
-First token is `ok` or `degraded`, then a UTC timestamp, a row count, and one
-`branch=outcome` token per query.
-
-## 06 · Smart Groups — Jamf Pro
-
-All six read **Arthur AI Inventory Status**. The operator differs by row, and it is not cosmetic: `is`
-is an exact match on the whole stored value, `like` is a substring test. `no-cache` is the only
-one whose stored value is the entire string; the rest are tokens inside a status line that also
-carries a timestamp, a row count and one token per branch, so **is** on any of those matches nothing.
-
-| Group | Operator | Value | Meaning |
-|---|---|---|---|
-| AI inventory — not reporting | **is** | `no-cache` | The daemon has never written. osquery missing, package failed, or daemon not loaded. **Fix first** |
-| AI inventory — degraded | **like** | `degraded` | At least one branch could not look. A Mac with no container runtime does **not** land here, so this group is worth acting on rather than triaging |
-| Container scan blocked | **like** | `containers=timeout` | Answered `/_ping` then stalled. A wedged Docker engine — real and fixable |
-| A runtime nothing reads | **like** | `=unreadable:` | A container runtime is installed that this scan does not read, Podman typically. Whatever it holds is uncounted |
-| A branch errored | **like** | `=error` | A query failed outright, typically an osquery build without a table it needs |
-| Serving a stale scan | **like** | `stale=` | The last scan is over a day old. The Mac is reporting real evidence, but the collector has not succeeded since — check the Policy log |
-
-One more, and it does **not** read an Extension Attribute:
-
-| Group | Criteria | Operator | Value | Meaning |
-|---|---|---|---|---|
-| Not reporting to Jamf | `Last Inventory Update` | **more than x days ago** | `30` | Jamf has not heard from this Mac. Nothing above can see it, whatever its attributes last said |
-
-**This is the denominator, and it is the group to build first.** Every other group here reads
-a value the Mac submitted; this one is the only one that can find a Mac that submitted
-nothing. Retired hardware lives here, and so does a Mac whose collector broke the same week it
-stopped checking in — which is why the two must not be counted together. Scope the discovery
-source to exclude it, or its coverage number is permanently wrong in a way no fix improves.
-
-Thirty days is a starting point, not a measurement: it wants to sit above your recon interval
-by enough that an ordinary laptop on holiday does not land in it.
-
-**The first token does not carry age.** It says whether the last scan succeeded, not when it
-ran, so a daemon that stopped a month ago keeps reporting `ok`. That is what the `stale=NNh`
-suffix is for: the status attribute computes it from the timestamp inside the value, because
-Jamf cannot do date arithmetic on a string — hence the `like stale=` group above. The payload
-also carries a per-branch timestamp, and `bin/classify` prints `STALE:` past a day.
-
-## 07 · Scope and roll out — Jamf Pro
-
-The Extension Attributes collect from every Mac in inventory whether or not the package is
-installed — which is why the `no-cache` group exists. Scope the **package**, not the
-attributes.
-
-1. **A pilot Smart Group first** — a dozen Macs spanning your osquery versions, including at
-   least one heavy Docker user.
-2. **Update Inventory**, then read the status attribute across the pilot. Anything reporting
-   `no-cache` did not deploy.
-3. **Check the value length** on your most loaded pilot Mac. ~24 KB is typical; the budget binds
-   near 10,300 rows.
-4. **Widen in stages.** The payload rides in every inventory submission: roughly 180 MB per
-   full sync at 10,000 Macs.
-
-**Watch the value size, not the row count.** An attribute that overruns the 256 KB budget used
-to report *nothing*, which is indistinguishable from a Mac with nothing on it. It now reports
-`ERROR:oversize:<bytes>` instead — unframed, matchable by a Smart Group, and it replaces the
-previous value rather than leaving a stale one looking current. The framed value is
-dominated by how loaded the Mac is — applications and Homebrew packages — not by how many AI
-agents it has. Container image rows are the most expensive in the payload at ~84 bytes each.
-
-## 08 · Reading the results — Jamf Pro
-
-Every `branch=outcome` token, and what to do. This is the entire vocabulary.
-
-| Outcome | Meaning | Action |
-|---|---|---|
-| `ok` | The branch ran; its rows are in the payload | None |
-| `absent` | No Docker socket, and no other runtime the scan probes for | None. Correct for a Mac that runs no containers |
-| `unhealthy:000` | Socket exists, nothing answered within the ping timeout. Docker installed and not running, or no user logged in | Expected with no user logged in. **On a Mac with Docker running it is a fault** — too short a ping cannot outlast a cold daemon, which is why the collector sets 15s |
-| `unhealthy:500` | Daemon up, engine not serving | Restart Docker |
-| `timeout:6` | Answered `/_ping`, then stalled and was killed at 6s | Restart Docker. This is the state the wall-clock bound exists for |
-| `error` | Query failed outright — usually a table this osquery build lacks | Check the version against the floor in section 00. Below it, `error` on a branch whose table does not exist yet is expected — upstream's [`docs/limits.md`](https://github.com/arthur-ai/osquery-ai-discovery/blob/main/docs/limits.md) says which |
-| `no-cache` | The daemon has **never** written here | Deployment problem. Check osquery is installed (section 00b), then the daemon and `/var/log/arthur-ai-discovery.log` |
-| `stale=NNh` | The value is a real scan, NNh old, kept because a later run could not collect | The evidence is still good; the collector is not. Read the Policy log — the Mac has been failing since that timestamp |
-
-Two values are not `branch=outcome` tokens at all. `ERROR:oversize:<bytes>` on `Arthur AI Inventory`
-means the payload framed larger than the 256 KB budget and the reason was reported in place of
-the evidence; `Arthur AI Inventory Status` is unaffected and still says which branches ran. `stale=NNh`
-is appended by the status attribute itself, not written by the collector.
-
-**A failed Policy beside a healthy attribute is expected, not a contradiction.** The two carry
-different things. When a scan cannot run the collector keeps the last successful payload and
-exits non-zero, so Jamf shows the Policy as failed while the attributes keep serving real
-evidence — deliberately, because discarding a good payload would report a well-equipped Mac as
-empty. Read the Policy log for *why this run failed*, and `stale=NNh` for *how old what you are
-looking at is*. A Mac failing for weeks shows both.
-
-### Decoding one Mac's value by hand
+On a pilot Mac:
 
 ```bash
+sudo jamf policy     # runs the collector; the log ends with its status line
+sudo jamf recon      # submits inventory, which runs both attributes
+ls -l /var/lib/arthur/
+```
+
+You should see three files:
+
+```
+inventory.json   ~155 KB   what the scan found, readable
+inventory.ea      ~24 KB   the inventory attribute's value, one line
+status.txt        ~200 B   the status attribute's value
+```
+
+The status line has one `branch=outcome` token per query branch. At the vendored ref there are
+thirteen on macOS:
+
+```
+ok 2026-10-11T22:57:49Z rows=929 apps=ok browser=ok containers=ok filesystem=ok homebrew=ok jetbrains=ok native-messaging=ok packages=ok ports=ok running=ok running-darwin=ok runtime=ok vscode=ok
+```
+
+In Jamf, the Mac's record should show *Arthur AI Inventory* starting with `arthur1.H4sI`, and
+*Arthur AI Inventory Status* holding a line like the one above. To see the findings in a value
+you copied from Jamf, run this from this directory:
+
+```bash
+v=../../ml-engine/src/ml_engine/discovery/_vendor; t="$(mktemp -d)"
+mkdir "$t/bin" "$t/schema" && cp "$v/classify.py" "$t/bin/classify" && cp "$v/catalog.schema.json" "$t/schema/"
 pbpaste | python3 -c 'import base64,gzip,json,sys
 v=sys.stdin.read().strip()
 json.dump(json.loads(gzip.decompress(base64.b64decode(v[8:]))),sys.stdout,indent=1)' \
-  | AI_DISCOVERY_TELEMETRY=0 vendor/osquery-ai-discovery/bin/classify /dev/stdin \
-      --catalog ../../ml-engine/src/ml_engine/discovery/_vendor/agents.yaml \
-      --routes  ../../ml-engine/src/ml_engine/discovery/_vendor/routes.yaml
+  | AI_DETECTION_SPEC_TELEMETRY=0 python3 "$t/bin/classify" --catalog "$v/catalog.json" /dev/stdin
 ```
 
-The catalog is the collector's, so it is read from ml-engine's vendored copy, which
-`ml-engine/tests/unit/discovery/test_vendor_parity.py` holds to the same upstream ref.
-`AI_DISCOVERY_TELEMETRY=0` because `classify` otherwise sends a usage event about the payload
-it read, and this one is a customer's Mac (upstream's `docs/telemetry.md`).
+The output lists the agents it found, which branches ran and when, and `COULD NOT LOOK` for
+any branch that did not. The matcher and the catalog are ml-engine's vendored copies, because
+the collector is what matches. `classify` reads the schema from `schema/` beside its own
+`bin/`, as a release lays them out, and needs jsonschema. `AI_DETECTION_SPEC_TELEMETRY=0`
+matters: without it, `classify` sends a usage event about the payload it read, and this
+payload comes from a customer's Mac.
 
-Prints the findings, which branches ran and when, and `COULD NOT LOOK` for any that did not.
+## 06 · Smart Groups — Jamf Pro
 
-**An image name is weak evidence.** Container image rows resolve by exact repository match
-through the catalog's `images` route, but an image name is chosen by whoever ran `docker tag` —
-no other identifier in the catalog is. `docker tag alpine paulgauthier/aider` produces an aider
-finding indistinguishable from the real image. That is the catalog's one remaining `images`
-entry: the model-runner images went with the model runners when upstream narrowed the scope
-to agents.
+Every group below reads *Arthur AI Inventory Status*. `no-cache` is the only value that makes
+up the whole status, so it is the only one that takes **is**. The others are fragments of the
+status line, so they need **like**.
 
-## 09 · Rollback — terminal
+| Group | Operator | Value | Means |
+|---|---|---|---|
+| AI inventory — not reporting | **is** | `no-cache` | The collector has never written on this Mac: osquery is missing, or the Policy has not run. Fix these first |
+| AI inventory — degraded | **like** | `degraded` | At least one branch could not look. A Mac without Docker does not land here |
+| Container scan blocked | **like** | `containers=timeout` | Docker answered, then stalled |
+| A runtime nothing reads | **like** | `=unreadable:` | A container runtime this scan does not read, typically Podman. Its containers are not counted |
+| A branch errored | **like** | `=error` | A query failed, usually because osquery is older than 5.18 |
+| Serving a stale scan | **like** | `stale=` | No scan has succeeded for over a day. Read the Policy log |
 
-Unscope the Policy, then on the Macs:
+**Build this group first.** It reads Jamf's own record, not an attribute:
+
+| Group | Criteria | Operator | Value |
+|---|---|---|---|
+| Not reporting to Jamf | `Last Inventory Update` | **more than x days ago** | `30` |
+
+Every other group reads a value the Mac submitted, so none of them can find a Mac that stopped
+submitting. Exclude this group from Arthur's source with `exclude_groups`. Otherwise retired
+Macs count against coverage forever. Thirty days is a starting point; set it far enough above
+your recon interval that a laptop on holiday does not land in it.
+
+## 07 · Roll out — Jamf Pro
+
+1. **Start with a pilot.** Pick a dozen Macs across your osquery versions, including at least
+   one heavy Docker user.
+2. **Run Update Inventory,** then read the status attribute across the pilot. `no-cache` means
+   the collector did not run.
+3. **Expand in stages.** Every inventory submission carries the ~24 KB value. That is about
+   250 MB per full sync at 10,000 Macs.
+
+If a Mac's payload is over the 256 KB budget, the Mac reports `ERROR:oversize:<bytes>` in place
+of its inventory. That happens at about 10,000 rows, roughly ten times a heavily loaded Mac.
+Size depends on how much software is installed, chiefly applications and Homebrew packages,
+not on how many agents there are.
+
+## 08 · Reading the status — Jamf Pro
+
+The status line holds:
+
+1. a first token: `ok`, `degraded` or `no-cache`
+2. the scan time
+3. the row count
+4. one `branch=outcome` token per query branch
+
+The outcome vocabulary is upstream's
+([`deployment.md`](https://github.com/arthur-ai/ai-detection-spec/blob/main/osquery/docs/deployment.md#statustxt));
+this table says what to do about each:
+
+| Outcome | Means | Do |
+|---|---|---|
+| `ok` | The branch ran | Nothing |
+| `absent` | There is no container runtime to read | Nothing |
+| `unhealthy:000` | Docker's socket exists, but nothing answered within 15s | Nothing, if no user is logged in. If Docker is running on the Mac, investigate |
+| `unhealthy:500` | Docker's daemon is up, but its engine is not serving | Restart Docker |
+| `timeout:<n>` | Docker answered, then stalled and was stopped after `<n>`s | Restart Docker |
+| `unreadable:<runtime>` | A runtime this scan does not read is installed | Nothing to fix; its containers are not counted |
+| `error` | The query failed, usually on a table this osquery version lacks | Upgrade osquery (section 00) |
+| `no-cache` | No scan has ever been written | Check osquery (section 00), then the Policy log |
+| `stale=NNh` | The scan shown is NNh old, because later runs failed | The data is still valid; read the Policy log to see why the collector is failing |
+
+`ERROR:oversize:<bytes>` replaces the inventory value when the payload is over budget. The
+status attribute still shows which branches ran.
+
+**Docker Desktop runs per user.** When no user is logged in, a root scan records
+`containers=absent` or `unhealthy:000` even on a Mac that has Docker. Expect container coverage
+to follow working hours.
+
+**A failed Policy next to healthy attributes is expected.** When a run fails, the collector
+keeps the last good scan and exits non-zero. Read the Policy log to see why this run failed,
+and `stale=NNh` to see how old the data is.
+
+## 09 · Access for the Arthur collector — Jamf Pro
+
+Arthur polls the Jamf Pro API. Nothing connects to Arthur, and no Mac talks to it.
+
+1. Go to *Settings → System → API roles and clients → API Roles → New* and grant the privilege
+   *Read Computers*. If the source will be limited to certain groups, also grant
+   *Read Smart Computer Groups* and *Read Static Computer Groups*.
+2. Under *API Clients → New*, give the client that role, enable it, and generate a client
+   secret.
+3. In Arthur, add a **Jamf Pro** discovery source with these fields:
+   - `base_url`: your Jamf URL, which must use `https://`
+   - `client_id` and `client_secret`
+   - optionally, `include_groups` and `exclude_groups`: comma-separated computer group names
+
+If a group is in both lists, it is excluded. A group name that matches no group fails the scan.
+Without that check, a mistyped exclude would scan exactly the Macs it was meant to leave out.
+
+Each scan reads the Macs whose inventory changed since the previous scan, found by
+`general.reportDate`. So a Mac's findings arrive within a day of its recon. Before a tenant's
+first scan, run `ml-engine/scripts/jamf_smoke.py`, which tries the shipped client against the
+tenant without changing anything.
+
+## 10 · Rollback — terminal
+
+Unscope the Policy, then on each Mac:
 
 ```bash
 rm -rf /var/lib/arthur
 ```
 
-That is the whole footprint of the script path — it installs nothing else. If you deployed
-the package instead:
+That is everything the script leaves behind. If you deployed the package instead:
 
 ```bash
 launchctl bootout system/com.arthur.ai-discovery
@@ -509,55 +345,9 @@ rm -f /Library/LaunchDaemons/com.arthur.ai-discovery.plist
 rm -rf /usr/local/arthur /var/lib/arthur /var/log/arthur-ai-discovery.log
 ```
 
-Then delete or disable both Extension Attributes. Disabling keeps historical values on the
+Then disable or delete both Extension Attributes. Disabling keeps their past values on the
 computer records; deleting discards them.
 
-**If you used the package: `bootout` before `bootstrap`, always.** `launchctl` will not reload a changed plist for an
-already-loaded label, so an upgrade that skips the bootout leaves the old definition running
-and the new files unused — with no error anywhere.
-
-## Why nothing runs inline
-
-The obvious design is an Extension Attribute that runs the query itself, behind a round-trip
-guard that demands HTTP 200. This tree built that, shipped it, and then deleted it. The guard
-is necessary and it is **not sufficient**. Measured, per Docker state, on whether each guard
-admits the branch:
-
-```
-                    absent  refuse  hang   error  wedge   healthy
-connect() only      skip    skip    RUN    RUN    RUN     RUN      <- stalls forever
-curl -s             skip    skip    skip   RUN    RUN     RUN      <- silent zero rows
-HTTP 200 required   skip    skip    skip   skip   RUN     RUN      <- still stalls
-200 + wall clock    skip    skip    skip   skip   KILLED  RUN      <- correct
-```
-
-`wedge` — 200 on `/_ping`, silence on `/images/json` — is Docker Desktop with a live API and an
-engine that is not serving, which is the ordinary condition of a Mac starting Docker. The
-window between probe and query is small and not zero.
-
-Two further measurements bear on it:
-
-- **An interrupted `osqueryi` exits 0 and prints `[\n\n]`** — valid, parseable, empty JSON. Any
-  wrapper that bounds it must discard output because *it* fired the kill, never on the child's
-  exit code.
-- **One unavailable table zeroes a composed query.** Add a branch whose table this osquery build
-  lacks and the whole statement returns 0 rows and exit 1, with five bytes of valid empty JSON
-  on stdout. Run the branches in separate processes and it costs one branch: 6 of 6 reported,
-  757 rows, the bad one contributing 0. Every query declares `min-osquery: 5.10.0`, so this is
-  a real deployment state.
-
-Both are why the scheduled writer runs each branch in its own bounded process and reports a
-per-branch outcome.
-
----
-
-**What this tree reports.** Names, paths, versions and declared permissions. No file contents, no
-secrets, no browser history or cookies, and nothing it discovers is executed. It also does
-nothing to the machine — no blocking, no remediation, no network calls of its own.
-
-**What it cannot see.** Anything inside a VM guest. What a running container is *doing*, as
-opposed to which images exist. Containers outside Docker Desktop — Colima, Rancher, Podman.
-Which filesystem roots an MCP server exposes. Outbound destinations by hostname.
-
-Measurements here come from an Apple Silicon Mac on macOS 26, osquery 5.23.1 and Docker 28.4.0,
-with 765 inventory rows. Re-measure on your own image before trusting the value-size headroom.
+When upgrading the package, always run `bootout` before `bootstrap`. `launchctl` does not
+reload a changed plist for a label that is already loaded. If you skip it, the old definition
+keeps running and the new files go unused, with no error.

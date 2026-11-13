@@ -1,41 +1,29 @@
 # Tests
 
 ```bash
-test/lint.sh            # static checks. ~1s, no VM, no network, no osquery.
-test/run-collector.sh   # run dist/collect.sh and assert on it. ~15s, needs osquery.
+test/lint.sh                   # static checks, ~1s; no VM, no network, no osquery
+test/run-collector.sh          # run this platform's collector and assert on it, ~15s; needs osquery
+test/run-guest-attributes.sh   # the Compute Engine reporter against a fake metadata server, ~3s
+test/run-ssm-inventory.sh      # the EC2 reporter against a fake IMDS, ~6s
 ```
 
-Two gates, and they check different kinds of thing. `lint.sh` **reads** the deployable;
-`run-collector.sh` **runs** it. Until the second existed, the only executable code this tree
-owns — the extraction preamble inside `dist/collect.sh` — was exercised only when somebody
-ran the collector by hand on their own Mac, which is the shape of the `set -u` empty-array
-defect in [CLAUDE.md](../CLAUDE.md): bash 3.2 only, fine locally, dead on every Mac.
+`lint.sh` **reads** the deployable and `run-collector.sh` **runs** it. Both are needed, because
+no static check exercises the extraction code inside `dist/collect.sh`.
 
-## What is tested here, and what is not
-
-This tree owns the **deployable**: `tools/vendor-queries.sh` brings the queries and the
-runner across at a pinned ref, `tools/build-collector.py` wraps them in `dist/collect.sh`,
-and this tree adds the `arthur1.` framing and the size budget — Arthur's wire format and
-Arthur's reporting channel, neither of them a fact about osquery.
-
-It does **not** own the queries, the runner, `bin/container-scan`, the Docker health guard
-or the wall-clock bound. Those live in
-[`osquery-ai-discovery`](https://github.com/arthur-ai/osquery-ai-discovery) and are
-vendored here at the ref in `vendor/osquery-ai-discovery/VERSION`. Their tests live there
-too, and at the vendored ref that is `test/lint.sh`, `test/docker_states.sh` and thirteen
-VM scenarios, run by upstream CI.
-
-**Do not re-create that suite here.** A local copy would test a local query rather than the
-artifact a fleet receives, and it would pass while doing so.
+These tests cover what this tree owns: the build, the `arthur1.` framing, the size budget and
+the carriers. The queries, the runner, the Docker health guard and the wall-clock bound belong
+to [`ai-detection-spec`](https://github.com/arthur-ai/ai-detection-spec)'s osquery binding, and so do their
+tests. **Do not re-create that suite here.** A local copy would test a local query rather than
+what a fleet receives.
 
 ## `test/lint.sh`
 
 | Guard | What it catches |
 |---|---|
-| No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing. This is the regression guard for the cleanup described above |
+| No `.sql`, no `osqueryi` call, no plaintext query outside `vendor/` | A second discovery implementation reappearing |
 | `build-collector.py --check` | `dist/collect.sh` built before the last `tools/vendor-queries.sh` |
 | Payload files admitted by name (`ENDPOINT_FILES` in `tools/build-collector.py`, run through `--check`) | A file upstream adds to its bundle reaching endpoints unvetted, catalog-derived ones above all |
-| No `agents.yaml`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
+| No `agents.yaml`, no `catalog.json`, no `catalog/` in the built collector | The catalog reaching a Mac. The endpoint enumerates and matches nothing |
 | No `--names` in the driver | Matching on the endpoint. The bundle carries `dist/signatures.sql` for it, unread |
 | One `ARTHUR_PAYLOAD_EOF` pair | The collector embedding a previous copy of itself |
 | Every flag either collector passes to `bin/discover`, in every call, is still accepted | A vendor bump removing a flag. This has happened: upstream deleted `--framed`, correctly, and the collector called it |
@@ -44,6 +32,16 @@ artifact a fleet receives, and it would pass while doing so.
 | The units: a oneshot running the reporter as root; a timer with `OnBootSec` and `OnUnitActiveSec`, wanted by `timers.target` | A VM that never runs the scan, or reports nothing for its first hour |
 | The unit, the reporter and the collector agree on one install directory | Every VM failing its first run on a missing path |
 | No interpreter in the reporter; upstream still prints `no osqueryi found` | The reporter needing more than the collector does; `osquery=absent` silently never firing after a vendor bump |
+| The OS policy installs each of the four files where the unit, the reporter or systemd runs it, from its URL in this tree | A VM whose policy reads compliant and whose first run fails on a missing path; a file with no copy here to pin a checksum to |
+| `tools/render-os-policy.sh HEAD` leaves no placeholder and pins each file to its own sha256 | A rendered policy every VM refuses. Skipped, and says so, until the policy is committed: the renderer reads git |
+| The EC2 drop-in clears `ExecStart` before setting it, and runs `report-ssm-inventory.sh` from the reporter's directory; that reporter runs the same collector and calls no interpreter | An instance that also runs the guest-attribute reporter, and fails every run |
+| The EC2 reporter's `PART` is at most 4,096 and equals the reader's part size, and its type name, attribute names and budget match ml-engine's `cloud/ec2/client.py` | A part the SSM Agent skips without saying so; values the reader refuses; every instance reading as never reported after a rename on one side |
+| The EC2 template's install script is POSIX `sh`: no bashism, and `dash -n` accepts it where dash is installed | Every Ubuntu instance failing its install with `Illegal option -o pipefail`, while Amazon Linux, where `sh` is bash, passes. Measured |
+| The template's script fetches each of the five files, one line per file, to where the drop-in, the reporter or systemd runs it, at its mode, into a directory it creates | An instance whose association reads Success and whose first run fails on a missing path; a fetch the renderer cannot pin |
+| The script reads `BASE` from the document's `baseUrl`, and the document's default and the association's value are both this tree's URL at `COMMIT` | A pin bump that changes the document but never the association, or files fetched from somewhere the renderer did not pin |
+| The `baseUrl` pattern admits this tree's URL and a mirror, and refuses a quote, `;`, `$(`, a backtick, a space, a newline, a trailing `/` and `http://`; `FileBaseUrl`'s pattern is the same one, made optional | A mirror URL that runs as shell on every instance; a stack parameter that passes CloudFormation and then fails the association |
+| The member role grants exactly the EC2 and SSM calls ml-engine's `cloud/ec2/client.py` makes, under the role name `connector.py` defaults to | Every account reading as a denied scope after the collector starts calling something new; access nobody uses; a role the source never asks for |
+| `tools/render-cfn-template.sh HEAD` leaves no placeholder, names HEAD in both URLs, and pins each file to its own sha256 | A rendered template every instance refuses. Skipped, and says so, until the template is committed: the renderer reads git |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
 | `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
@@ -73,11 +71,11 @@ depends on that.
 | A failed scan: non-zero exit, **both attribute values untouched** | Either half of the trade this tree made — republishing a stale value as fresh, or deleting a good one to signal a problem |
 | A failed first-ever scan: non-zero exit, **no files at all** | A partial file left behind claiming to be a result, when `no-cache` is the true answer |
 | A scan that fails its JSON check — the shipped driver against a stub `discover` whose `--cache` cannot run — leaves both previous files untouched, passes discover's reason through, and leaves no staging directory | A failure after the scan erasing the last good inventory. Every step of a run, not only the scan, keeps the last good one |
-| No `arthur-collect.*` directory left behind | The extraction directory leaking once per run, which on an Ongoing schedule fills a volume months later |
+| Nothing left in a private `TMPDIR`, failed runs included | The extraction directory, the runner's working directory or osqueryi's own `osquery-<n>` directories leaking once per run, which on an Ongoing schedule fills a volume months later |
 
 The container branch: the macOS runner has no Docker and reports `absent`; the Ubuntu runner
 has one and reports `ok`. The 15s cold-ping bound is reached by neither. The daemon states are
-upstream's `test/docker_states.sh`, against the vendored runner.
+upstream's `osquery/test/docker_states.sh`, against the vendored runner.
 
 ## `test/run-guest-attributes.sh`
 
@@ -104,26 +102,88 @@ cap with its 400, and the 403 when guest attributes are disabled.
 `flaky` (one 503) and `drop-status` (no answer on the `status` key) are the fake's own
 behaviours, labelled as such; every other answer it gives was measured on a real VM.
 
+## `test/run-ssm-inventory.sh`
+
+Runs `deploy/report-ssm-inventory.sh` against `test/fake-imds.py`, with a stub for the
+collector, and asserts on the values the custom inventory file's parts make again, not on the
+file's shape alone: a part dropped, cut short or hashed before cleaning still leaves valid
+JSON.
+
+| Case | What it catches |
+|---|---|
+| A clean scan is written as the instance's custom inventory, under the directory IMDS names | A value that is not this scan, or a file the agent never finds |
+| A value at the budget is cut into 64 parts that make it again | A last part cut short, or more parts than the reader accepts |
+| The file is replaced, and nothing half-written is left beside it | The agent reading half a file |
+| A failed run keeps the last good scan, with `failed=<UTC>` | A failure that looks like a fresh scan |
+| Never collected, osquery absent: both values name the state | An empty value, which reads as a clean instance |
+| A status without its inventory: both `no-cache` | A status claiming a scan the inventory does not carry |
+| A quote, a backslash or a control character in a value | A file the agent cannot parse, or parts that hash to something else |
+| No IMDS, a refused token, no instance id, no SSM Agent: each named, nothing written | An instance that cannot report and says nothing |
+| A fleet-wide proxy | The link-local IMDS request going through the proxy |
+| `TERM` during collection; the working directory afterwards | A stopped run carrying on; temporary files left behind |
+
 ## `test/run-systemd.sh`
 
 Installs the Linux collector, the reporter and the units at their real paths, runs one
 activation under systemd against the fake, one with `/tmp` and `/var/tmp` remounted `noexec`
 (where the collector run by hand with no `TMPDIR` must fail and the unit must succeed), one with
 guest attributes disabled, then starts the timer and checks it has a next run, and removes
-everything. It writes to the machine, so it runs only with
+everything. The first activation must leave the unit's `TMPDIR` empty: no temp cleaner reads
+it. It writes to the machine, so it runs only with
 `ARTHUR_TEST_INSTALLS_UNITS=1`, as root, where systemd is PID 1 — in CI, the Ubuntu runner.
 
-## Running the real thing
+## `test/run-ec2-install.sh`
 
-There is no test-only path — `run-collector.sh` runs `dist/collect.sh`, and so should you:
+Takes a template rendered by `tools/render-cfn-template.sh`, cuts out the document's
+`runCommand` as the document hands it to `sh`, sets `{{ baseUrl }}` to the checkout over
+`file://` as SSM would set it, and runs the script as root under `sh`. That is dash on the
+Ubuntu runner, as on every Ubuntu instance. While it runs, a runtime drop-in keeps the unit
+from running anything when the timer fires; what the unit runs is `run-systemd.sh`'s question.
+It writes to the machine, so like `run-systemd.sh` it runs only with
+`ARTHUR_TEST_INSTALLS_UNITS=1`. In CI it renders HEAD as the runner first: git refuses root a
+checkout it does not own.
 
-```bash
-sudo ARTHUR_OUT_DIR=/tmp/arthur dist/collect.sh
-cat /tmp/arthur/status.txt
-python3 -m json.tool /tmp/arthur/inventory.json | less
-```
+| Case | What it catches |
+|---|---|
+| With `AWS_SSM_INSTANCE_ID=mi-…`, the run exits 0, says why, and writes nothing | osquery and a unit that fails every hour on an on-premises server Arthur's source never reads |
+| One run installs each fetched file at its destination, with its pinned sha256 and mode; the timer is enabled and active; systemd loads `ec2.conf` | A script that passes lint and fails on an instance: a path, a mode, a pin that is not the file's, a drop-in systemd never reads |
+| A second run, against a base that serves nothing, succeeds, keeps every file's inode, and does not restart the timer | State Manager's daily run downloading the whole install again on every instance, or disturbing a fleet that is already installed |
+| With the first and last files from another pin and the last served wrong, the run fails, names the refused file, and replaces neither, the first verified included | A pin change failing part-way and leaving an instance on half of one pin and half of another |
+| The same run served right replaces just those two files, each by a rename to a new inode at its mode, leaves the rest untouched, and leaves no `.new` behind | A pin change rewriting files that already held their bytes, writing one in place where it can be read half-written, or leaving staged copies |
 
-With Docker down the run says so (`containers=unhealthy:000`) rather than reporting zero
-images. Needs osquery and nothing else; it writes three files and installs nothing. For what a
-reference Mac reports, see the [README](../README.md#try-it). The numbers live in one place
-so they cannot disagree.
+Without osquery on the machine, the script installs it from `pkg.osquery.io` as on an
+instance. In CI, osquery is already installed, so that branch is not run.
+
+## `deploy/terraform/tests/`
+
+`terraform test` from `deploy/terraform/`, against mocked providers: no credentials, nothing
+created. It asserts on what the module decides, in the plan.
+
+**Each rendering is compared whole with the policy file.** The suite reads the file, puts each
+file's URL at the test ref and the sha256 of the copy beside the module into it, and compares
+each rendered resource with that, mapped back to the file's shape. That covers every
+assignment, the folder orchestrator and the organization orchestrator. A field cannot drift in
+one rendering without a run failing: a repository, a package, a script, an inventory filter,
+the label, the rollout, a file mode or a URL. Replaying eight such mutations, one per field and
+rendering, fails the suite eight times.
+
+| Case | What it catches |
+|---|---|
+| An assignment per project and zone, each rendering the whole policy without file modes, and none waiting for the rollout | A zone with no assignment, which leaves its VMs unmanaged with nothing saying so; any field of the policy lost or changed on the way to a VM |
+| `pinned_files`, and the URLs a VM downloads under `file_base_url` | A VM refusing every file, or a mirror serving the wrong path |
+| `label` and `reader` reach every assignment, `arthur_source` and IAM | An Arthur source whose labels match no VM the policy reached |
+| `project_metadata` limited to one key, and empty | A project that already holds `enable-osconfig` failing the apply with no way around it |
+| Folder and organization orchestrators, each rendering the whole policy with its file modes; projects by number and zones as separate selectors; a named resource, and no payload under `DELETE`; folders alone, with no project selector and a null `arthur_source.project_ids` | An orchestrator scoped wider than asked, one whose `DELETE` cannot find its assignments, or an empty project list the source refuses |
+| Downloaded files matching the module's copy pass; one that does not fails the plan | A `?ref=` bumped without `arthur_engine_ref` reaching every VM as a checksum mismatch |
+| No ref and no mirror; no projects and no folders; folder and organization both; prefixed or empty numbers; project numbers for IDs; a project or zone twice; a label value no VM can hold; a metadata key this module does not set | A plan that would reach no VM, or the wrong scope, without saying so; Terraform's own error in place of one that names the input |
+
+Beside the module tests, `terraform_data.policy` rebuilds the policy from the keys the module
+renders and compares it whole with the file, and the renderings read only that rebuild. So a
+key added, removed or reshaped in the file fails every plan with that precondition's message,
+never with an attribute error from a rendering. Add `allowNoResourceGroupMatch` or a yum
+repository, or swap the percentage disruption budget for a fixed one, and the first plan fails
+naming the file.
+
+CI also validates a caller at the lowest Terraform and Google provider `versions.tf` admits, in
+all three modes. Every other check runs a recent Terraform and the latest provider, where
+anything added since a floor passes.

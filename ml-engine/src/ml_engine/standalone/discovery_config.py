@@ -10,7 +10,9 @@ name, vendor, and its fields as key/value pairs -- and each query that scans it 
 what a Jamf or Vertex source needs: a field the Platform adds is a field this file
 accepts, and the connector that reads it is still the only code that checks it. The
 one thing the file cannot say that the Platform's type schema does is which fields are
-secret, so each connector declares that itself (`SENSITIVE_FIELDS`).
+secret, so each connector declares that itself (`SENSITIVE_FIELDS`). The one place the
+file is wider than the Platform is `vendor`: a source only a standalone engine can scan,
+such as `local`, has no Platform vendor, so a source's vendor is either.
 
 WHERE RESULTS GO IS THE SINK TARGET'S TO SAY. `destination` is validated against the
 list of targets in `standalone.sinks`, each of which owns its own config model; nothing
@@ -42,6 +44,7 @@ import yaml
 from arthur_client.api_bindings import (
     DiscoveryQueryLanguage,
     DiscoverySourceConfigSpec,
+    DiscoverySourceVendor,
     PostDiscoverySource,
 )
 from pydantic import (
@@ -52,7 +55,7 @@ from pydantic import (
     model_validator,
 )
 
-from discovery import source_connectors
+from discovery import standalone_connectors
 from standalone.config_values import (
     BASE_DIR_CONTEXT,
     StrictModel,
@@ -117,7 +120,7 @@ def sensitive_fields(vendor: str) -> Optional[frozenset[str]]:
     run from a file, because guessing would either hand a credential to the logs as an
     ordinary field or scrub a host name out of the logs as if it were one.
     """
-    connector = source_connectors().get(vendor)
+    connector = standalone_connectors().get(vendor)
     declared = getattr(connector, "SENSITIVE_FIELDS", None)
     return frozenset(declared) if declared is not None else None
 
@@ -134,7 +137,21 @@ class StandaloneSource(PostDiscoverySource):  # type: ignore[misc]
     says one thing and scans another.
     """
 
+    # The Platform's vendors, or one only a standalone engine has a connector for.
+    vendor: str
     configs: list[DiscoverySourceConfigSpec] = Field(min_length=1)
+
+    @field_validator("vendor", mode="before")
+    @classmethod
+    def _a_known_vendor(cls, value: Any) -> Any:
+        if isinstance(value, DiscoverySourceVendor):
+            return value.value
+        known = {
+            v.value for v in DiscoverySourceVendor
+        } | standalone_connectors().keys()
+        if isinstance(value, str) and value not in known:
+            raise ValueError(f"'{value}' is not a discovery vendor")
+        return value
 
     @model_validator(mode="before")
     @classmethod
@@ -168,8 +185,8 @@ class StandaloneSource(PostDiscoverySource):  # type: ignore[misc]
 
     @model_validator(mode="after")
     def _scannable(self) -> "StandaloneSource":
-        vendor = self.vendor.value
-        if vendor not in source_connectors():
+        vendor = self.vendor
+        if vendor not in standalone_connectors():
             raise ValueError(f"this engine has no connector for vendor '{vendor}'")
         if sensitive_fields(vendor) is None:
             raise ValueError(
@@ -269,7 +286,7 @@ class StandaloneDiscoveryConfig(StrictModel):
         """Every (source, config) pair, split into what the connector reads."""
         resolved = []
         for source in self.sources:
-            secret_keys = sensitive_fields(source.vendor.value) or frozenset()
+            secret_keys = sensitive_fields(source.vendor) or frozenset()
             source_fields = {
                 f.key: f.value for f in source.fields if f.key not in secret_keys
             }

@@ -63,3 +63,5 @@ genai-engine/tests/test_audit_logs
 
 # arthur-blazity-ai-workflow bot session memory — must not be committed to this public repo
 blazebot/
+**/.claude/hooks/claude_code_circuit_breaker.py
+**/.claude/arthur_circuit_breaker.json

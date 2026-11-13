@@ -456,7 +456,12 @@ export default function ExperimentConfigDrawer({
               )}
             </Stack>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No configuration data available
             </Typography>
           )}

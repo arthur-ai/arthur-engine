@@ -16,12 +16,32 @@ type AttributePickerTreeProps = {
 export const AttributePickerTree = ({ rawData, variableName, selectedPath, onSelectPath, onCancel }: AttributePickerTreeProps) => {
   return (
     <Stack sx={{ height: "100%" }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider" }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
         <Stack>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              fontWeight: 600,
+            }}
+          >
             Select an attribute for: <b>{variableName}</b>
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Click any key to select it as the attribute path
           </Typography>
         </Stack>
@@ -94,10 +114,11 @@ const JsonNode = ({ data, path, selectedPath, onSelectPath, level, label, isLast
       <Fragment>
         <Stack
           direction="row"
-          alignItems="center"
           sx={{
+            alignItems: "center",
             pl: `${indent}px`,
             minHeight: 24,
+
             ...(isSelected && {
               backgroundColor: "primary.50",
               borderLeft: 2,
@@ -179,10 +200,11 @@ const JsonNode = ({ data, path, selectedPath, onSelectPath, level, label, isLast
       <Fragment>
         <Stack
           direction="row"
-          alignItems="center"
           sx={{
+            alignItems: "center",
             pl: `${indent}px`,
             minHeight: 24,
+
             ...(isSelected && {
               backgroundColor: "primary.50",
               borderLeft: 2,
@@ -212,7 +234,13 @@ const JsonNode = ({ data, path, selectedPath, onSelectPath, level, label, isLast
                 </Box>
                 <span>
                   : [{" "}
-                  <Typography component="span" variant="caption" color="text.secondary">
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {data.length} items
                   </Typography>
                 </span>
@@ -277,10 +305,11 @@ const ClickableKey = ({ label, path, isSelected, onSelect, indent, valuePreview,
   return (
     <Stack
       direction="row"
-      alignItems="baseline"
       sx={{
+        alignItems: "baseline",
         pl: `${indent + 24}px`,
         minHeight: 24,
+
         ...(isSelected && {
           backgroundColor: "primary.50",
           borderLeft: 2,

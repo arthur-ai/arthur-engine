@@ -31,10 +31,22 @@ export const AgentExperiments = ({ embedded = false }: AgentExperimentsProps) =>
             }}
           >
             <div>
-              <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+              <Typography
+                variant="h5"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: "bold",
+                  mb: 0.5,
+                }}
+              >
                 Agent Experiments
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Agent experiments are used to test and optimize agent-based task execution strategies.
               </Typography>
             </div>

@@ -205,7 +205,12 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
           ) : rows.length === 0 ? (
             <TableRow>
               <TableCell colSpan={columns.length + 2} align="center" sx={{ py: 4 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {searchQuery ? "No matching rows" : emptyMessage || "No data yet. Click 'Add Row' to get started."}
                 </Typography>
               </TableCell>

@@ -125,7 +125,7 @@ jobs:
         id: mypy
         continue-on-error: true
         run: |
-          uv run --no-sync --directory ml-engine mypy src/ml_engine
+          uv run --no-sync --directory ml-engine mypy src/ml_engine scripts/jamf_smoke.py scripts/vendor_ai_detection_spec.py
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -245,8 +245,12 @@ jobs:
     outputs:
       backend: ${{ steps.decide.outputs.backend }}
       ui: ${{ steps.decide.outputs.ui }}
+      image: ${{ steps.decide.outputs.image }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The merge-queue branch below diffs the queue commit against its parent.
+          fetch-depth: 2
       - uses: dorny/paths-filter@v2
         id: changes
         if: github.event_name != 'merge_group'
@@ -270,6 +274,10 @@ jobs:
               - 'genai-engine/changelog*'
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
+              # Loaded by load_dotenv() when the app is imported, so it reaches the tests.
+              - 'genai-engine/.env'
+              # changelog-cop diffs the generated spec against this file.
+              - 'genai-engine/staging.openapi.json'
               - 'arthur-observability-sdk/**'
               # Changes to the CI plumbing itself must exercise the jobs they
               # affect, otherwise a broken workflow edit passes as an all-skipped
@@ -277,19 +285,47 @@ jobs:
               # everyone.
               - '.github/workflows/arthur-engine-workflow.yml'
               - '.github/workflows/composite-actions/**'
-      # In the merge queue there is no PR base to diff against, and paths-filter's
-      # base detection is unreliable on merge_group. Run the full required suite as
-      # the final pre-merge gate instead of trying to narrow it by path.
+            # What the genai-engine image's CA trust depends on (SOC-222). PR-only:
+            # see check-genai-engine-image-ca-trust.
+            image:
+              - 'genai-engine/dockerfile'
+              - 'genai-engine/pyproject.toml'
+              - 'genai-engine/uv.lock'
+              - 'genai-engine/requirements-gpu.txt'
+              - '.github/scripts/check_no_emsign_g3.sh'
+              - '.github/workflows/arthur-engine-workflow.yml'
+      # paths-filter@v2's base detection is unreliable on merge_group, so the queue
+      # classifies its commit itself. Each queue entry is one squashed commit on top
+      # of dev or of the entry ahead of it, so its diff against its first parent is
+      # exactly the PR being merged. The pattern below mirrors the `backend` filter
+      # above; keep the two in sync. If the parent cannot be read, run everything.
+      # --no-renames lists a moved file under both its old and new path, as
+      # paths-filter does for PRs, so moving a file out of a backend folder still
+      # counts as a backend change.
       - name: Decide affected areas
         id: decide
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "ui=true" >> "$GITHUB_OUTPUT"
+            echo "image=false" >> "$GITHUB_OUTPUT"
+            if ! changed=$(git diff --no-renames --name-only HEAD^ HEAD); then
+              echo "::warning::Could not diff the queue commit against its parent; running the full suite"
+              echo "backend=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Files changed by this queue entry:"
+            echo "$changed"
+            backend_pattern='^(genai-engine/(src|tests|alembic|scripts|models)/|genai-engine/[^/]+\.(toml|cfg|ini|lock|txt)$|genai-engine/version$|genai-engine/routes_security_check\.py$|genai-engine/changelog[^/]*$|genai-engine/Dockerfile[^/]*$|genai-engine/docker-compose\.yml$|genai-engine/\.env$|genai-engine/staging\.openapi\.json$|arthur-observability-sdk/|\.github/workflows/arthur-engine-workflow\.yml$|\.github/workflows/composite-actions/)'
+            if grep -qE "$backend_pattern" <<< "$changed"; then
+              echo "backend=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "backend=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "backend=${{ steps.changes.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "ui=${{ steps.changes.outputs.ui }}" >> "$GITHUB_OUTPUT"
+            echo "image=${{ steps.changes.outputs.image }}" >> "$GITHUB_OUTPUT"
           fi
 
   check-ml-engine-changes:
@@ -315,7 +351,7 @@ jobs:
               - 'ml-engine/**'
               - 'arthur-observability-sdk/**'
               - 'genai-engine/staging.openapi.json'
-              # ml-engine's tests assert that its vendored copy of osquery-ai-discovery
+              # ml-engine's tests assert that its vendored copy of ai-detection-spec
               # names the same upstream ref as the endpoint's. tools/vendor-queries.sh
               # writes only the endpoint copy, so a re-vendor produces a changeset
               # confined to integrations/ -- and without this the parity test, the only
@@ -424,9 +460,20 @@ jobs:
         shell: bash
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          # Trace with sys.monitoring (Python 3.12+) instead of the default tracer:
+          # same line coverage, a fraction of the overhead.
+          COVERAGE_CORE: sysmon
         run: |
           set -o pipefail
+          # Two workers, sized by memory rather than CPU: each worker starts at
+          # about 1.3 GB on Linux (every worker imports the test modules that
+          # load models), and constructing the PII v1 classifier alone takes
+          # over 3 GB more. With 4 workers the 16 GB runner ran out of memory.
+          # loadgroup keeps the modules marked xdist_group("ml_models") on one
+          # worker, so only that worker loads the PII models. pytest-cov
+          # combines the workers' coverage into the one report below.
           uv run --no-sync --directory genai-engine pytest --cov --cov=src \
+            -n 2 --dist loadgroup \
             --cov-report term \
             --junitxml=report.xml \
             -m "unit_tests" | tee pytest-coverage.txt
@@ -525,6 +572,47 @@ jobs:
         run: |
           uv run --no-sync --directory ml-engine pytest tests/unit
 
+  # SOC-222: release images are only built on dev/main, so build the CPU image here
+  # whenever something its CA trust depends on changes, and fail if it still trusts
+  # the compromised emSign ECC Root CA - G3 (system bundle, certifi, grpcio, ...).
+  # The UI stage is swapped for a stub through a named build context: the trust
+  # stores are all in the Python side, and this keeps the private-registry token
+  # out of PR builds. Not run in the merge queue; the release build re-checks.
+  check-genai-engine-image-ca-trust:
+    needs: check-genai-engine-changes
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.check-genai-engine-changes.outputs.image == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
+      - name: Stub the UI build
+        run: |
+          mkdir -p "${RUNNER_TEMP}/ui-stub/app/ui-dist"
+          echo '<!doctype html><title>ui stub</title>' > "${RUNNER_TEMP}/ui-stub/app/ui-dist/index.html"
+      - name: Build CPU image (linux/amd64)
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: genai-engine
+          file: genai-engine/dockerfile
+          build-args: |
+            TORCH_DEVICE=cpu
+          build-contexts: |
+            ui-build=${{ runner.temp }}/ui-stub
+          tags: genai-engine-cpu:ca-trust-check
+          platforms: linux/amd64
+          load: true
+          push: false
+      - name: Check the image does not trust emSign ECC Root CA - G3
+        run: .github/scripts/check_no_emsign_g3.sh genai-engine-cpu:ca-trust-check
+
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets
     if: |
@@ -589,6 +677,19 @@ jobs:
           # secrets (Meticulous/GitLab/Amplitude/reCAPTCHA tokens) and mode=max records
           # build-arg values into the provenance attestation on this public image.
           sbom: true
+      # SOC-222: the dockerfile already fails the build if a copy of the compromised
+      # emSign ECC Root CA - G3 survives; this re-checks every platform of the image
+      # that was pushed, by certificate fingerprint, and fails the release if it does.
+      - name: Check image does not trust emSign ECC Root CA - G3
+        env:
+          IMAGE: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+          PLATFORMS: ${{ matrix.torch_device == 'cpu' && 'linux/amd64 linux/arm64' || 'linux/amd64' }}
+        run: |
+          for platform in $PLATFORMS; do
+            echo "== ${IMAGE} (${platform})"
+            docker pull --platform "$platform" "$IMAGE"
+            .github/scripts/check_no_emsign_g3.sh "$IMAGE"
+          done
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true
@@ -625,6 +726,8 @@ jobs:
           pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.1.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.1.0
       - name: Log in to Docker Hub
@@ -645,8 +748,16 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && 'arthurplatform/ml-engine:latest' || '' }}
             ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/ml-engine:latest-dev' || '' }}
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           sbom: true
+      # SOC-222: re-check the pushed image for the compromised emSign ECC Root CA - G3
+      # (the Dockerfile already fails its own build if a copy survives).
+      - name: Check image does not trust emSign ECC Root CA - G3
+        env:
+          IMAGE: arthurplatform/ml-engine:${{ env.VERSION }}
+        run: |
+          docker pull --platform linux/amd64 "$IMAGE"
+          .github/scripts/check_no_emsign_g3.sh "$IMAGE"
       # Advisory vulnerability scan + justification docs (must never fail the release build).
       - name: Scan image & generate justification docs
         continue-on-error: true

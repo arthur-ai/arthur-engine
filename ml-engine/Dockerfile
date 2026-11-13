@@ -2,15 +2,18 @@
 # dpkg metadata it ships (see the status.d sync at the end of that stage), and again
 # as the final image below. The same tag resolves to the same digest within one
 # build, so this adds a metadata read, not a second base image.
-FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS distroless_meta
+#
+# Built for linux/amd64 and linux/arm64 from the same steps: every package below is
+# published for both, so the two images ship the same components.
+FROM gcr.io/distroless/python3-debian12:nonroot AS distroless_meta
 
-FROM --platform=linux/amd64 python:3.13-slim-bookworm AS install
+FROM python:3.13-slim-bookworm AS install
 
 # install uv and wget; upgrade OS packages for Debian security fixes
 # (libssl3, libc6, libexpat1, ...). These libraries live in /usr/lib and are
 # copied into the distroless final image below, so upgrading here patches the
 # shared objects that actually ship.
-RUN pip install uv==0.12.0 && \
+RUN pip install uv==0.13.6 && \
     apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y wget curl gnupg apt-transport-https && \
@@ -26,48 +29,26 @@ RUN apt-get update && apt-get install -y \
     libmariadb-dev-compat \
     build-essential \
     python3-dev \
-    libaio-dev \
     wget \
-    unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# install Microsoft ODBC Drivers 17 and 18
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/msprod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
-      > /etc/apt/sources.list.d/msprod.list && \
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/msprod.gpg && \
-    apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y msodbcsql18 msodbcsql17 mssql-tools18 && \
-    rm -rf /var/lib/apt/lists/*
-
-# configure ODBC drivers
+# install Microsoft ODBC Driver 18 for SQL Server
+#
+# Driver 18 only: Microsoft publishes msodbcsql17 for amd64 alone. A connector still
+# configured for Driver 17 runs on Driver 18 with 17's encryption defaults (see
+# connectors/odbc_connector.py). The package's postinst registers the driver in
+# /etc/odbcinst.ini, which the final stage copies.
+#
+# No Oracle client: Oracle connections go through python-oracledb in thin mode, which
+# needs none, and the image has no Oracle ODBC driver for one to serve.
 RUN set -eux; \
-    DRV18="$(basename /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-*.so* | head -n1)"; \
-    DRV17="$(basename /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-*.so* | head -n1)"; \
-    printf '%s\n' \
-      "[ODBC Driver 18 for SQL Server]" \
-      "Description=Microsoft ODBC Driver 18 for SQL Server" \
-      "Driver=/opt/microsoft/msodbcsql18/lib64/${DRV18}" \
-      "UsageCount=1" \
-      "" \
-      "[ODBC Driver 17 for SQL Server]" \
-      "Description=Microsoft ODBC Driver 17 for SQL Server" \
-      "Driver=/opt/microsoft/msodbcsql17/lib64/${DRV17}" \
-      "UsageCount=1" \
-      > /etc/odbcinst.ini
-
-# install Oracle Instant Client
-RUN mkdir -p /opt/oracle && \
-    wget -O /tmp/oracle-basic.zip https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basic-linux.x64-21.12.0.0.0dbru.zip && \
-    wget -O /tmp/oracle-sdk.zip https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-sdk-linux.x64-21.12.0.0.0dbru.zip && \
-    unzip -q /tmp/oracle-basic.zip -d /opt/oracle && \
-    unzip -q /tmp/oracle-sdk.zip -d /opt/oracle && \
-    ln -sf /opt/oracle/instantclient_21_12 /opt/oracle/instantclient && \
-    rm -f /tmp/oracle-basic.zip /tmp/oracle-sdk.zip
-
-# Set Oracle environment variables
-ENV ORACLE_HOME=/opt/oracle/instantclient
-ENV LD_LIBRARY_PATH=/opt/oracle/instantclient:$LD_LIBRARY_PATH
-ENV PATH=/opt/oracle/instantclient:$PATH
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/msprod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
+      > /etc/apt/sources.list.d/msprod.list; \
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/msprod.gpg; \
+    apt-get update; \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18; \
+    rm -rf /var/lib/apt/lists/*; \
+    grep -q '^\[ODBC Driver 18 for SQL Server\]' /etc/odbcinst.ini
 
 # install dependencies
 COPY pyproject.toml /app/
@@ -118,6 +99,41 @@ RUN set -eu; \
       left = [n for n in ('pip','setuptools','pkg_resources','uv') if u.find_spec(n)]; \
       sys.exit('build tooling survived the cleanup: %s' % left) if left else \
       print('build tooling removed; interpreter ok:', sys.version.split()[0])"
+
+# SOC-222: stop trusting the compromised eMudhra "emSign ECC Root CA - G3" root.
+# The distroless base's own system bundle (/etc/ssl/certs/ca-certificates.crt)
+# still trusts it, so:
+#   - The system bundle (Python's ssl default, which the SIEM/sink TLS contexts
+#     build on, and the ODBC drivers) is replaced in the final stage by this
+#     stage's, which comes from bookworm's current ca-certificates package and does
+#     not include G3.
+#   - Python packages that carry their own bundle are filtered in place: grpcio's
+#     grpc/_cython/_credentials/roots.pem (BigQuery, GCS) still trusts G3 in every
+#     release, as does any certifi older than the 2026.10.19 floor in pyproject.toml.
+# Matched by content: every PEM copy of G3 starts with the base64 line below. Each
+# file holding it loses that certificate block (and its comment header), and the
+# build fails if any copy survives. A no-op once upstream drops the cert.
+ARG EMSIGN_G3_PEM_LINE=MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBrMQswCQYDVQQG
+RUN set -eu; \
+    cp /etc/ssl/certs/ca-certificates.crt /tmp/ca-certificates.crt; \
+    hits="$(grep -rlF -- "$EMSIGN_G3_PEM_LINE" /tmp/ca-certificates.crt /usr/local /opt /app)" || [ $? -eq 1 ]; \
+    for f in $hits; do \
+      awk -v g3="$EMSIGN_G3_PEM_LINE" ' \
+        /-----BEGIN CERTIFICATE-----/ { inblk = 1; blk = ""; skip = 0 }; \
+        inblk { blk = blk $0 "\n"; if (index($0, g3) == 1) skip = 1; \
+                if (/-----END CERTIFICATE-----/) { if (!skip) printf "%s%s", pre, blk; pre = ""; inblk = 0 }; \
+                next }; \
+        { pre = pre $0 "\n" }; \
+        END { printf "%s", pre } \
+      ' "$f" > /tmp/g3-filtered; \
+      cat /tmp/g3-filtered > "$f"; \
+      echo "  SOC-222: removed emSign ECC Root CA - G3 from ${f}"; \
+    done; \
+    rm -f /tmp/g3-filtered; \
+    grep -q "BEGIN CERTIFICATE" /tmp/ca-certificates.crt; \
+    if grep -rlF -- "$EMSIGN_G3_PEM_LINE" /tmp/ca-certificates.crt /usr/local /opt /app; then \
+      echo "ERROR: emSign ECC Root CA - G3 is still trusted by the files above (SOC-222)" >&2; exit 1; \
+    fi
 
 # Patch the libraries the distroless base keeps in /lib. Unlike bookworm, the base
 # is NOT merged-/usr: /lib is a real directory holding glibc (libc.so.6, libm,
@@ -187,7 +203,7 @@ RUN set -eu; \
     done
 
 # Final Stage(s): Create ml-engine image
-FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
+FROM gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
 
 COPY --from=install /bin/sh /bin/sh
 COPY --from=install /bin/bash /bin/bash
@@ -204,12 +220,12 @@ COPY --from=install /tmp/patched-lib /lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
+# System CA bundle without emSign ECC Root CA - G3 (SOC-222, see install stage).
+COPY --from=install /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 # dpkg metadata corrected to match the shared objects copied above (see install stage).
 # Must precede the python3.11 cleanup below, which deletes three of these stanzas.
 COPY --from=install /tmp/dpkg-status.d /var/lib/dpkg/status.d
-COPY --from=install /opt/oracle/ /opt/oracle/
 COPY --from=install /opt/microsoft/msodbcsql18 /opt/microsoft/msodbcsql18
-COPY --from=install /opt/microsoft/msodbcsql17 /opt/microsoft/msodbcsql17
 COPY --from=install /etc/odbcinst.ini /etc/odbcinst.ini
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 
@@ -233,7 +249,9 @@ USER nonroot
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
-ENV LD_LIBRARY_PATH="/opt/microsoft/msodbcsql18/lib64:/opt/microsoft/msodbcsql17/lib64:/opt/oracle/instantclient:${LD_LIBRARY_PATH}"
+# No trailing ${LD_LIBRARY_PATH}: it is unset in this stage, and the empty entry it left
+# made the loader search the working directory, which the app user can write.
+ENV LD_LIBRARY_PATH="/opt/microsoft/msodbcsql18/lib64"
 ENV ODBCSYSINI="/etc"
 
 # Set working directory (this is where the entrypoint will be run)

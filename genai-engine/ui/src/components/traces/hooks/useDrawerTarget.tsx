@@ -1,6 +1,5 @@
+import { LEVELS } from "@arthur/shared-components";
 import { createSerializer, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-
-import { LEVELS } from "../constants";
 
 const searchParams = {
   target: parseAsStringLiteral(LEVELS).withDefault("trace"),

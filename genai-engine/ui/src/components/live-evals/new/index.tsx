@@ -1,5 +1,5 @@
 import { MustacheHighlightedTextField } from "@arthur/shared-components";
-import { useAppForm, withFieldGroup } from "@arthur/shared-components";
+import { useAppForm, withFieldGroup } from "@arthur/shared-components/traces";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {
@@ -21,6 +21,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import z from "zod";
 
+import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../components/sample-rate";
+import { SpendEstimateLine } from "../components/spend";
 import { VariableMappingSection } from "../components/variable-mapping";
 import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
@@ -95,6 +97,7 @@ const LiveEvalsNewForm = () => {
       name: "",
       description: "",
       enabled: true,
+      samplePercent: "",
       evaluator: initialEvaluator,
       transform: {
         transformId: null,
@@ -107,6 +110,7 @@ const LiveEvalsNewForm = () => {
         name: z.string().min(1, "Name is required"),
         description: z.string(),
         enabled: z.boolean(),
+        samplePercent: samplePercentSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -127,6 +131,7 @@ const LiveEvalsNewForm = () => {
         name: z.string().min(1, "Name is required"),
         description: z.string(),
         enabled: z.boolean(),
+        samplePercent: samplePercentSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -150,6 +155,7 @@ const LiveEvalsNewForm = () => {
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        sample_rate: percentToSampleRate(value.samplePercent),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -164,6 +170,7 @@ const LiveEvalsNewForm = () => {
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
+  const samplePercent = useStore(form.store, (state) => state.values.samplePercent);
 
   const isMLEval = evaluator.eval_type === "ml";
 
@@ -221,9 +228,15 @@ const LiveEvalsNewForm = () => {
     >
       <Stack
         direction="row"
-        alignItems="center"
-        gap={1}
-        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          gap: 1,
+          px: 2,
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
         <Tooltip title="Go back">
           <IconButton onClick={() => navigate(-1)} size="small">
@@ -231,16 +244,41 @@ const LiveEvalsNewForm = () => {
           </IconButton>
         </Tooltip>
         <Box>
-          <Typography variant="h5" color="text.primary" fontWeight="bold">
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: "bold",
+            }}
+          >
             New Continuous Eval
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Create a new continuous eval to monitor and analyze your model's performance in real-time.
           </Typography>
         </Box>
       </Stack>
-      <Stack sx={{ p: 3, width: "100%", flex: 1, overflow: "auto" }} gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
+      <Stack
+        sx={{
+          gap: 2,
+          p: 3,
+          width: "100%",
+          flex: 1,
+          overflow: "auto",
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.primary",
+            fontWeight: "bold",
+          }}
+        >
           General Information
         </Typography>
 
@@ -262,13 +300,28 @@ const LiveEvalsNewForm = () => {
           )}
         </form.Field>
 
+        <form.Field name="samplePercent">
+          {(field) => (
+            <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
+          )}
+        </form.Field>
+
         <Divider sx={{ my: 2 }} />
 
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
+        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} samplePercent={samplePercent} />
+
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="body1" color="text.primary" fontWeight="bold" mb={2}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+                mb: 2,
+              }}
+            >
               Evaluator Instructions
             </Typography>
             <MustacheHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
@@ -331,7 +384,11 @@ export const DetailsFieldGroup = withFieldGroup({
     }, []);
 
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <group.AppField name="name">
           {(field) => (
             <TextField
@@ -400,9 +457,26 @@ export const TransformSelector = withFieldGroup({
 
     return (
       <>
-        <Stack gap={2}>
-          <Stack direction="row" gap={2} width="100%" alignItems="center">
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+        <Stack
+          sx={{
+            gap: 2,
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              width: "100%",
+              alignItems: "center",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               Transform
             </Typography>
             <Button
@@ -421,7 +495,13 @@ export const TransformSelector = withFieldGroup({
               Create New
             </Button>
           </Stack>
-          <Stack direction="row" gap={2} alignItems="flex-start">
+          <Stack
+            direction="row"
+            sx={{
+              gap: 2,
+              alignItems: "flex-start",
+            }}
+          >
             <group.AppField
               name="transformId"
               listeners={{

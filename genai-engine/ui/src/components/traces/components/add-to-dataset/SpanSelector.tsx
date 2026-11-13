@@ -1,4 +1,6 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { TypeChip } from "@arthur/shared-components";
+import { getSpanInput, getSpanModel, getSpanOutput, getSpanType, withForm } from "@arthur/shared-components/traces";
 import { Popover } from "@base-ui/react/popover";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
@@ -8,13 +10,9 @@ import { Breadcrumbs, Button, Chip, Divider, IconButton, List, ListItemButton, P
 import { useField, useStore } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 
-import { getSpanInput, getSpanModel, getSpanOutput, getSpanType } from "../../utils/spans";
-import { withForm } from "../filtering/hooks/form";
-
 import { addToDatasetFormOptions } from "./form/shared";
 import { useSpanSelector } from "./hooks/useSpanSelector";
 
-import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { truncateText } from "@/utils/formatters";
 
@@ -106,10 +104,10 @@ const NavigationHeader = ({ selectedSpan, navigationPath, onGoBack }: Navigation
   return (
     <Stack
       direction="row"
-      alignItems="center"
-      justifyContent="flex-start"
-      gap={1}
       sx={{
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: 1,
         borderBottom: "1px solid",
         borderColor: "divider",
         p: 1,
@@ -202,18 +200,46 @@ const SpanList = ({ spans, onSelectSpan }: SpanListProps) => {
 
           return (
             <ListItemButton key={span.id} onClick={() => onSelectSpan(span.span_id)} sx={{ ...listButtonSx, py: 1 }}>
-              <Stack direction="row" alignItems="flex-start" gap={1} width="100%">
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "flex-start",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
                 <TypeChip type={kind} />
-                <Stack flex={1} minWidth={0}>
-                  <Typography variant="body2" fontWeight={500}>
+                <Stack
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                    }}
+                  >
                     {span.span_name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {kind}
                     {model ? ` · ${model}` : ""}
                   </Typography>
                   {contentPreview && (
-                    <Typography variant="caption" color="text.disabled" noWrap>
+                    <Typography
+                      variant="caption"
+                      noWrap
+                      sx={{
+                        color: "text.disabled",
+                      }}
+                    >
                       {contentPreview}
                     </Typography>
                   )}
@@ -252,8 +278,23 @@ const AttributeList = ({ attributes, getAttributeValue, onSelectValue, onNavigat
               "&:hover": { backgroundColor: "action.hover" },
             }}
           >
-            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} width="100%" px={1}>
-              <Stack direction="row" alignItems="center" gap={1}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+                width: "100%",
+                px: 1,
+              }}
+            >
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
                 <SelectAllIcon sx={{ fontSize: 18, color: "primary.main" }} />
                 <Chip label="All items (*)" size="small" color="primary" variant="outlined" />
               </Stack>
@@ -286,12 +327,31 @@ const AttributeList = ({ attributes, getAttributeValue, onSelectValue, onNavigat
                 },
               }}
             >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} width="100%" px={1}>
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  width: "100%",
+                  px: 1,
+                }}
+              >
                 <Stack>
-                  <Typography variant="body2" color="text.primary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.primary",
+                    }}
+                  >
                     {attribute}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {typeof value}
                   </Typography>
                 </Stack>

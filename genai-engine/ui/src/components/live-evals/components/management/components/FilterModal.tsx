@@ -1,5 +1,5 @@
-import type { IncomingFilter } from "@arthur/shared-components";
-import { EnumOperators, Operators, TextOperators } from "@arthur/shared-components";
+import type { IncomingFilter } from "@arthur/shared-components/traces";
+import { EnumOperators, Operators, TextOperators } from "@arthur/shared-components/traces";
 import { Add, Close, FilterList } from "@mui/icons-material";
 import { Autocomplete, Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
@@ -211,7 +211,13 @@ export const FilterModal = () => {
                     <Add />
                   </IconButton>
                 </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    flexWrap: "wrap",
+                    gap: 1,
+                  }}
+                >
                   {filterState.continuousEvalIds.map((id) => (
                     <Chip key={id} label={id} size="small" onDelete={() => handleRemoveContinuousEvalId(id)} deleteIcon={<Close />} />
                   ))}
@@ -274,7 +280,13 @@ export const FilterModal = () => {
               backgroundColor: "background.paper",
             }}
           >
-            <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                justifyContent: "flex-end",
+              }}
+            >
               <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
                 Clear
               </Button>

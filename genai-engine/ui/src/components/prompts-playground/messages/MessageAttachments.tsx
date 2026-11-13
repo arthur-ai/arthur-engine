@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import AudioFileIcon from "@mui/icons-material/AudioFile";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
@@ -14,8 +15,6 @@ import React, { useCallback } from "react";
 import { fileToImageItem } from "../utils/messageUtils";
 
 import type { AttachmentDraft } from "./MessageComponent";
-
-import useSnackbar from "@/hooks/useSnackbar";
 
 // Cap the size of an inlined attachment; large base64 blobs bloat state and requests.
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB

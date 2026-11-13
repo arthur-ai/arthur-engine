@@ -56,10 +56,8 @@ from arthur_common.models.response_schemas import (
     ValidationResult,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
     Eval,
-    ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
     TraceTransformResponse,
 )
@@ -115,17 +113,23 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     BulkAddTracesToDatasetResponse,
     ConnectionCheckResult,
+    ContinuousEvalDailySpendEstimate,
     ContinuousEvalRerunResponse,
+    ContinuousEvalResponse,
+    ContinuousEvalSpendResponse,
     ContinuousEvalTestRunResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
     DemoTaskSignupResponse,
+    InferenceOverviewListResponse,
+    ListContinuousEvalsResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
     ListTraceTransformVersionsResponse,
+    ModelProviderEvalDefaults,
     ModelProviderModelList,
     ModelProviderWhitelist,
     RagProviderConfigurationResponse,
@@ -220,7 +224,9 @@ TEST_AUDIT_LOG_DIR = os.path.join(
     os.path.dirname(__file__),
     "..",
     "..",
-    "test_audit_logs",
+    # One directory per pytest-xdist worker (gw0, gw1, ...): each worker's
+    # session teardown deletes its directory, which must not be another's.
+    "test_audit_logs" + os.environ.get("PYTEST_XDIST_WORKER", ""),
 )
 os.environ["AUDIT_LOG_OVERRIDE_PATH"] = TEST_AUDIT_LOG_DIR
 
@@ -386,6 +392,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         discovery_source_id: uuid.UUID | None = None,
         reported_since: datetime | None = None,
+        unreported: bool | None = None,
         after_task_id: str | None = None,
         page_size: int | None = None,
     ) -> tuple[int, list[EnrichedTaskResponse]]:
@@ -396,6 +403,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         Args:
             discovery_source_id: Only tasks this discovery source reported
             reported_since: Only tasks a discovery scan reported since this time
+            unreported: Only tasks no discovery source has reported
             after_task_id: The last task of the previous page, if any
             page_size: Tasks per page
 
@@ -408,6 +416,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["discovery_source_id"] = str(discovery_source_id)
         if reported_since is not None:
             params["reported_since"] = reported_since.isoformat()
+        if unreported is not None:
+            params["unreported"] = str(unreported).lower()
         if after_task_id is not None:
             params["after_task_id"] = after_task_id
         if page_size is not None:
@@ -568,7 +578,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         name: str = None,
         is_agentic: bool = False,
-        empty_rules: bool = False,
         user_id: str = None,
         agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
@@ -586,14 +595,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         log_response(resp)
-
-        if resp.status_code == 200 and empty_rules:
-            task = TaskResponse.model_validate(resp.json())
-            _, task = self.get_task(task.id)
-            rule_ids = [r.id for r in task.rules]
-            for id in rule_ids:
-                s, _ = self.patch_rule(task.id, id, False)
-                assert s == 200
 
         return (
             resp.status_code,
@@ -795,13 +796,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         headers_with_authorization = (self.authorized_user_api_key_headers,)
         if use_org_admin:
             headers_with_authorization = self.authorized_org_admin_api_key_headers
-        if not task_id:
-            url = "/api/v2/default_rules"
-        else:
-            url = f"/api/v2/tasks/{task_id}/rules"
-
         resp = self.base_client.post(
-            url,
+            f"/api/v2/tasks/{task_id}/rules",
             json=rule,
             headers=headers_with_authorization,
         )
@@ -901,6 +897,25 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_inferences_overview(
+        self,
+        task_ids: list[str],
+    ) -> tuple[int, InferenceOverviewListResponse | str]:
+        resp = self.base_client.post(
+            "/api/v2/inferences/overview",
+            json={"task_ids": task_ids},
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                InferenceOverviewListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
     def query_all_inferences(self, sort=None) -> QueryInferencesResponse:
         page_size, page = 250, 0
         total_query_resp = QueryInferencesResponse(count=0, inferences=[])
@@ -932,9 +947,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         conversation_id: str = None,
         user_id: str = None,
     ) -> tuple[int, ValidationResult]:
-        uri = "/api/v2/validate_prompt"
-        if task_id != None:
-            uri = f"/api/v2/tasks/{task_id}/validate_prompt"
+        uri = f"/api/v2/tasks/{task_id}/validate_prompt"
         if prompt is None:
             prompt = random.choice(EXAMPLE_PROMPTS)
 
@@ -990,9 +1003,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         context: str = None,
         model_name: str = None,
     ) -> tuple[int, ValidationResult]:
-        uri = "/api/v2/validate_response/"
-        if task_id != None:
-            uri = f"/api/v2/tasks/{task_id}/validate_response/"
+        uri = f"/api/v2/tasks/{task_id}/validate_response/"
 
         body = {"response": response if response else random.choice(EXAMPLE_RESPONSES)}
         if context:
@@ -1027,17 +1038,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"/api/chat/feedback/{inference_id}",
             json=request.model_dump(),
             headers=self.authorized_chat_headers,
-        )
-
-        log_response(resp)
-
-        return resp.status_code
-
-    def delete_default_rule(self, rule_id: str) -> int:
-        path = f"api/v2/default_rules/{rule_id}"
-        resp = self.base_client.delete(
-            path,
-            headers=self.authorized_org_admin_api_key_headers,
         )
 
         log_response(resp)
@@ -1724,21 +1724,6 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code, resp.json()
 
-    def get_default_rules(self) -> tuple[int, list[RuleResponse]]:
-        uri = "/api/v2/default_rules"
-        resp = self.base_client.get(
-            url=uri,
-            headers=self.authorized_user_api_key_headers,
-        )
-        log_response(resp)
-        data = resp.json()
-        if isinstance(data, list):
-            loaded_data = [RuleResponse(**x) for x in data]
-        else:
-            loaded_data = []
-
-        return (resp.status_code, loaded_data)
-
     def get_chat_default_task(
         self,
         headers: dict | None = None,
@@ -2304,6 +2289,10 @@ class GenaiEngineTestClientBase(httpx.Client):
         sort: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
+        span_name: str | None = None,
+        span_name_contains: str | None = None,
+        span_ids: list[str] | None = None,
+        status_code: list[str] | None = None,
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
         annotation_type: str | None = None,
@@ -2354,6 +2343,14 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if span_name is not None:
+            params["span_name"] = span_name
+        if span_name_contains is not None:
+            params["span_name_contains"] = span_name_contains
+        if span_ids is not None:
+            params["span_ids"] = span_ids
+        if status_code is not None:
+            params["status_code"] = status_code
         if annotation_score is not None:
             params["annotation_score"] = annotation_score
         if annotation_type is not None:
@@ -3366,6 +3363,48 @@ class GenaiEngineTestClientBase(httpx.Client):
         resp = self.base_client.put(
             f"/api/v1/model_providers/{provider}/model_whitelist",
             json={"models": models},
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code != 204 else {},
+        )
+
+    def get_model_provider_eval_defaults(
+        self,
+        provider: str,
+        headers: dict | None = None,
+    ) -> tuple[int, ModelProviderEvalDefaults | None]:
+        """Read the provider's default reasoning settings for LLM evals."""
+        resp = self.base_client.get(
+            f"/api/v1/model_providers/{provider}/eval_defaults",
+            headers=headers or self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ModelProviderEvalDefaults.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def set_model_provider_eval_defaults(
+        self,
+        provider: str,
+        defaults: dict[str, Any],
+        headers: dict | None = None,
+    ) -> tuple[int, dict]:
+        """Set the provider's default reasoning settings for LLM evals."""
+        resp = self.base_client.put(
+            f"/api/v1/model_providers/{provider}/eval_defaults",
+            json=defaults,
             headers=headers or self.authorized_user_api_key_headers,
         )
 
@@ -4429,6 +4468,54 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_continuous_eval_spend(
+        self,
+        eval_id: str,
+    ) -> tuple[int, ContinuousEvalSpendResponse]:
+        """Get recent and estimated daily spend for a continuous eval."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{eval_id}/spend",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalSpendResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def estimate_continuous_eval_spend(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        sample_rate: float | None = None,
+    ) -> tuple[int, ContinuousEvalDailySpendEstimate]:
+        """Estimate the daily spend of a new continuous eval."""
+        params: dict[str, str | float] = {"llm_eval_name": llm_eval_name}
+        if sample_rate is not None:
+            params["sample_rate"] = sample_rate
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals/spend_estimate",
+            params=params,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalDailySpendEstimate.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
     def rerun_continuous_eval(
         self,
         run_id: str,
@@ -5243,49 +5330,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             resp.json() if resp.status_code == 200 else None,
-        )
-
-    def execute_agent_polling(
-        self,
-        task_id: str,
-    ) -> tuple[int, dict]:
-        """Manually trigger a polling job for a task."""
-        url = f"/api/v1/tasks/{task_id}/agent-polling/execute"
-
-        resp = self.base_client.post(
-            url,
-            headers=self.authorized_user_api_key_headers,
-        )
-
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            resp.json(),
-        )
-
-    def execute_all_agent_polling(
-        self,
-        wait_for_completion: bool = False,
-        timeout: int | None = None,
-    ) -> tuple[int, dict]:
-        """Manually trigger a full discovery + polling cycle."""
-        params: dict = {}
-        if wait_for_completion:
-            params["wait_for_completion"] = wait_for_completion
-        if timeout is not None:
-            params["timeout"] = timeout
-        resp = self.base_client.post(
-            "/api/v1/agent-polling/execute-all",
-            headers=self.authorized_user_api_key_headers,
-            params=params,
-        )
-
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            resp.json(),
         )
 
 

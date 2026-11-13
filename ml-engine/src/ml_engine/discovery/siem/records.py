@@ -32,6 +32,29 @@ from job_executors.discovery_output_contract import (
 # so a column added to it is picked up without an edit here.
 _CONTRACT_COLUMNS = frozenset(DiscoveryOutputRecord.model_fields)
 
+# A QUERY LANGUAGE CANNOT RETURN AN OBJECT. The contract's list columns hold objects
+# (`llm_models: [{"name": ...}]`), but ES|QL and SPL return a string for one value and a
+# list of strings for several (`VALUES(model)`, `values(model)`). Without this, a query
+# that projects `llm_models` -- the column that says which models an agent called --
+# loses every row as invalid. Each list column maps to the one field its object is
+# keyed by; anything already an object is left for the contract to judge.
+_NAMED_LIST_COLUMNS = {
+    "llm_models": "name",
+    "tools": "name",
+    "sub_agents": "name",
+    "data_sources": "url",
+}
+
+
+def _as_named_objects(column: str, value: Any) -> Any:
+    key = _NAMED_LIST_COLUMNS.get(column)
+    if key is None or value is None:
+        return value
+    items = [value] if isinstance(value, str) else value
+    if not isinstance(items, list):
+        return value
+    return [{key: item} if isinstance(item, str) else item for item in items]
+
 
 def require_contract_columns(columns: Iterable[str], subject: str) -> None:
     """Fail a result whose columns are not the contract's, naming both sides.
@@ -70,7 +93,9 @@ def records_from_rows(
     # every row has the same bad column would otherwise log once per row.
     problems: Counter[str] = Counter()
     for row in rows:
-        fields = {k: v for k, v in row.items() if k in _CONTRACT_COLUMNS}
+        fields = {
+            k: _as_named_objects(k, v) for k, v in row.items() if k in _CONTRACT_COLUMNS
+        }
         try:
             # The row on its own first, so a bad value is reported under the column
             # the customer's query named rather than under the address built from it.
@@ -97,7 +122,7 @@ def records_from_rows(
                 {
                     f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}"
                     for e in exc.errors()
-                }
+                },
             )
     for problem, count in problems.most_common():
         logger.warning(

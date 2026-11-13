@@ -1,10 +1,9 @@
+import { type IncomingFilter, Operators } from "@arthur/shared-components/traces";
 import { FilterList } from "@mui/icons-material";
 import { Box, Button, Paper, Popover, Stack } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";
-import type { IncomingFilter } from "../../filtering/mapper";
-import { Operators } from "../../filtering/types";
 
 import { ChipListField } from "./ChipListField";
 
@@ -169,7 +168,13 @@ export const SessionsFilterModal = () => {
               backgroundColor: "background.paper",
             }}
           >
-            <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                justifyContent: "flex-end",
+              }}
+            >
               <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
                 Clear
               </Button>

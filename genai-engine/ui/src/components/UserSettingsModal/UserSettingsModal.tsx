@@ -188,7 +188,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         {!isTenant && traceRetentionEnabled && (
           <>
             <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+                mb: 1,
+              }}
+            >
               Application
             </Typography>
             <FormControl fullWidth size="small" disabled={isLoading || isLoadingTraceRetention}>
@@ -215,7 +221,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         {!isTenant && chatbotEnabled && (
           <>
             <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+                mb: 1,
+              }}
+            >
               AI Assistant
             </Typography>
             <FormControlLabel
@@ -253,7 +265,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             )}
             {availableEndpoints.length > 0 && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "text.secondary",
+                    mb: 1,
+                  }}
+                >
                   Blocked Endpoints
                 </Typography>
                 <Autocomplete
@@ -290,7 +308,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   }}
                   size="small"
                 />
-                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 1 }}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    flexWrap: "wrap",
+                    gap: 1,
+                    mt: 1,
+                  }}
+                >
                   {blacklistEndpoints.map((ep) => {
                     const method = ep.split(" ")[0];
                     const path = ep.split(" - ")[0].substring(method.length + 1);

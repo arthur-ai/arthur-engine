@@ -99,6 +99,8 @@ const PromptVersionDrawer = ({
           width: 400,
           boxSizing: "border-box",
           position: "relative",
+          // An in-page column: MUI's drawer z-index would lift it over the floating Assistant panel.
+          zIndex: "auto",
           height: "100%",
           borderRight: "1px solid",
           borderColor: "divider",
@@ -139,7 +141,12 @@ const PromptVersionDrawer = ({
 
         {isLoading && (
           <Box sx={{ p: 2, textAlign: "center" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Loading versions...
             </Typography>
           </Box>
@@ -155,7 +162,12 @@ const PromptVersionDrawer = ({
 
         {!isLoading && !error && versions.length === 0 && (
           <Box sx={{ p: 2, textAlign: "center" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               No versions found
             </Typography>
           </Box>
@@ -248,15 +260,15 @@ const PromptVersionDrawer = ({
                         <Box component="span" sx={{ mt: 0.5, display: "block" }}>
                           <Typography
                             variant="caption"
-                            color="text.secondary"
                             component="span"
-                            sx={{ color: isDeleted ? "text.disabled" : "text.secondary" }}
+                            sx={{
+                              color: isDeleted ? "text.disabled" : "text.secondary",
+                            }}
                           >
                             {version.model_provider} / {version.model_name}
                           </Typography>
                           <Typography
                             variant="caption"
-                            color="text.secondary"
                             component="span"
                             sx={{
                               display: "block",

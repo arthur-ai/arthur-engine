@@ -60,6 +60,118 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
 - **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
 - **CHANGE**info [request-property-enum-value-added] at /Users/thomaslisankie/.herdr/worktrees/arthur-engine/worktree-scaledown-model-support/genai-engine/new.openapi.json
+# 11/03/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules/{rule_id}  api path removed without deprecation
+- **CHANGE** on upgrade: every default rule linked to a task is copied into a task rule on that task, keeping the task's enabled setting, so existing tasks run the same checks. Each copy has a new rule ID; the original default rules are archived, and rule results recorded before the upgrade keep their IDs. New tasks no longer receive any rules.
+- **CHANGE** for **URL**: /api/v2/validate_prompt  api path removed with deprecation
+- **CHANGE** for **URL**: /api/v2/validate_response/{inference_id}  api path removed with deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  api tag 'Task Based Validation' removed
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  api tag 'Task Based Validation' removed
+- **CHANGE** for **URL**: /api/v2/validate  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/validate  api tag 'Stateless Validation' removed
+
+# 11/03/2026
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/reasoning_options  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #4: CloudAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #5: SIEMAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #6: EndpointAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #7: NetworkAgentCreationSource]/observations/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/observations/anyOf[subschema #1: AgentObservations]/occurrences' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #1: CloudAgentCreationSource]/observations/occurrences'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #2: SIEMAgentCreationSource]/observations/occurrences'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #3: EndpointAgentCreationSource]/observations/occurrences'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #4: NetworkAgentCreationSource]/observations/occurrences'
+
+# 11/02/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'sample_rate'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/eval_defaults  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/eval_defaults  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/sample_rate' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'sample_rate'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'sample_rate' to the response with the '200' status
+
+# 10/31/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #1: GCPAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #2: OTELAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #3: ManualAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #4: CloudAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #5: SIEMAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #6: EndpointAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #1: AgentCreationSource]/oneOf[subschema #7: NetworkAgentCreationSource]/observations/previous_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/observations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #1: CloudAgentCreationSource]/observations/previous_version'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #2: SIEMAgentCreationSource]/observations/previous_version'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #3: EndpointAgentCreationSource]/observations/previous_version'
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added the new optional request property 'records/items/creation_source/oneOf[subschema #4: NetworkAgentCreationSource]/observations/previous_version'
+
+# 10/28/2026
+- **CHANGE** for **URL**: /api/v2/inferences/overview  endpoint added
+
+# 10/28/2026
+- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new optional request property 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new optional request property 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  added the optional property 'config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added the optional property 'config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added the new optional request property 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new optional request property 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  added the optional property 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/block_binding' to the response with the '200' status
+
+# 10/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property `traces/items/ingest_bytes` to the response with the `200` status
+
+# 10/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new `updates` enum value to the `config/anyOf[subschema #1: LLMConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display` response property for the response status `200`
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  added the new `network` enum value to the `items/provenance/anyOf[subschema #1: Provenance]/source_classes/items/` response property for the response status `200`
+- **CHANGE** in API GET /api/v2/agent-tasks
+- **CHANGE**error [response-property-one-of-added] at genai-engine/new.openapi.json
+- **CHANGE**error [response-property-enum-value-added] at genai-engine/new.openapi.json
+- **CHANGE**  The server may now return a value the previous contract excluded, so a client written against it may not handle the response. If the value set is meant to grow, declare it with x-extensible-enum.
+- **CHANGE**  a breaking change was detected but the version is still `2.1.1028`
+- **CHANGE** for **URL**: /api/v1/completions  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added `NETWORK` discriminator mapping keys to the `items/creation_source/anyOf[subschema #1: AgentCreationSource]/` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added `NETWORK` discriminator mapping keys to the `records/items/creation_source` request property
+- **CHANGE** for **URL**: /api/v2/agent-tasks/resolve  added `#/components/schemas/NetworkAgentCreationSource` to the `records/items/creation_source` request property `oneOf` list
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new `updates` enum value to the request property `config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking/anyOf[subschema #1: AnthropicThinkingParam]/display`
+
+# 10/15/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  api path removed without deprecation
+
+# 10/12/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `unreported`
 
 # 09/30/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/provenance/anyOf[subschema #1: Provenance]/sources/items/external_id' to the response with the '200' status

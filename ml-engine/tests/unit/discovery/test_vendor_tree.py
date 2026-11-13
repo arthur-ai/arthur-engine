@@ -10,6 +10,7 @@ arriving without an exclusion still fails.
 """
 
 import hashlib
+import json
 import pathlib
 
 import pytest
@@ -48,7 +49,7 @@ def test_vendored_file_is_unmodified(name: str) -> None:
     actual = hashlib.sha256((VENDOR / name).read_bytes()).hexdigest()
     assert actual == _manifest()[name], (
         f"{name} differs from the vendored upstream release. If a formatter rewrote it, "
-        f"restore it and add an exclusion; if you meant to re-vendor, regenerate SHA256SUMS."
+        f"restore it and add an exclusion; to re-vendor, run scripts/vendor_ai_detection_spec.py."
     )
 
 
@@ -58,6 +59,19 @@ def test_vendor_stamp_names_a_real_ref() -> None:
         for line in (VENDOR / "VERSION").read_text().splitlines()
         if line.strip()
     )
-    assert stamp["repo"].strip().endswith("osquery-ai-discovery.git")
+    assert stamp["repo"].strip().endswith("ai-detection-spec.git")
     assert stamp["ref"].strip()
     assert len(stamp["sha"].strip()) == 40
+
+
+def test_the_catalog_document_was_exported_from_the_vendored_ref() -> None:
+    """catalog.json is a release asset, built when the release was published rather than
+    kept in the repository, so its bytes alone do not say which commit made it. Its `source`
+    does, and it must name the commit the rest of this tree came from."""
+    stamp = dict(
+        line.split(maxsplit=1)  # type: ignore[misc]
+        for line in (VENDOR / "VERSION").read_text().splitlines()
+        if line.strip()
+    )
+    source = json.loads((VENDOR / "catalog.json").read_text())["source"]
+    assert source["commit"] == stamp["sha"].strip()

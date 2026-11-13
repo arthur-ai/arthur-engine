@@ -1,0 +1,77 @@
+[
+ {
+  "logName": "projects/demo-project/logs/cloudaudit.googleapis.com%2Fdata_access",
+  "timestamp": "2026-10-20T19:36:02.808207961Z",
+  "protoPayload": {
+   "serviceName": "aiplatform.googleapis.com",
+   "methodName": "google.cloud.aiplatform.v1.PredictionService.GenerateContent",
+   "resourceName": "projects/demo-project/locations/us-central1/publishers/google/models/gemini-2.5-flash",
+   "authenticationInfo": {
+    "principalEmail": "123456789012-compute@developer.gserviceaccount.com"
+   },
+   "requestMetadata": {
+    "callerSuppliedUserAgent": "arthur-matrix/cloud-run,gzip(gfe)"
+   }
+  }
+ },
+ {
+  "logName": "projects/demo-project/logs/cloudaudit.googleapis.com%2Fdata_access",
+  "timestamp": "2026-10-20T19:35:38.614881127Z",
+  "protoPayload": {
+   "serviceName": "aiplatform.googleapis.com",
+   "methodName": "google.cloud.aiplatform.v1.PredictionService.GenerateContent",
+   "resourceName": "projects/demo-project/locations/us-central1/publishers/google/models/gemini-2.5-flash",
+   "authenticationInfo": {
+    "principalEmail": "123456789012-compute@developer.gserviceaccount.com"
+   },
+   "requestMetadata": {
+    "callerSuppliedUserAgent": "arthur-matrix/vm,gzip(gfe)"
+   }
+  }
+ },
+ {
+  "logName": "projects/demo-project/logs/cloudaudit.googleapis.com%2Fdata_access",
+  "timestamp": "2026-10-20T19:08:23.182925570Z",
+  "protoPayload": {
+   "serviceName": "aiplatform.googleapis.com",
+   "methodName": "google.cloud.aiplatform.v1.PredictionService.GenerateContent",
+   "resourceName": "projects/demo-project/locations/us-central1/publishers/google/models/gemini-2.5-flash",
+   "authenticationInfo": {
+    "principalEmail": "123456789012-compute@developer.gserviceaccount.com"
+   },
+   "requestMetadata": {
+    "callerSuppliedUserAgent": "curl/8.10.1,gzip(gfe)"
+   }
+  }
+ },
+ {
+  "logName": "projects/demo-project/logs/cloudaudit.googleapis.com%2Fdata_access",
+  "timestamp": "2026-10-14T03:34:59.950291988Z",
+  "protoPayload": {
+   "serviceName": "aiplatform.googleapis.com",
+   "methodName": "google.cloud.aiplatform.v1beta1.PredictionService.GenerateContent",
+   "resourceName": "projects/demo-project/locations/us-central1/publishers/google/models/gemini-2.5-flash",
+   "authenticationInfo": {
+    "principalEmail": "service-123456789012@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
+   },
+   "requestMetadata": {
+    "callerSuppliedUserAgent": "google-genai-sdk/2.30.1+vertex-genai-modules/2.5.0 gl-python/3.12.14 google-adk/2.12.0+remote_reasoning_engine gl-python/3.12.14,gzip(gfe)"
+   }
+  }
+ },
+ {
+  "logName": "projects/demo-project/logs/cloudaudit.googleapis.com%2Fdata_access",
+  "timestamp": "2026-10-14T03:34:59.209123238Z",
+  "protoPayload": {
+   "serviceName": "aiplatform.googleapis.com",
+   "methodName": "google.cloud.aiplatform.v1beta1.ReasoningEngineExecutionService.StreamQueryReasoningEngine",
+   "resourceName": "projects/demo-project/locations/us-central1/reasoningEngines/1347253862624395264",
+   "authenticationInfo": {
+    "principalEmail": "someone@example.com"
+   },
+   "requestMetadata": {
+    "callerSuppliedUserAgent": "google-genai-sdk/2.30.1+vertex-genai-modules/2.5.0 gl-python/3.12.12,gzip(gfe)"
+   }
+  }
+ }
+]

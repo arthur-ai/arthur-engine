@@ -14,7 +14,12 @@ export const RagProvidersLoadingState: React.FC = () => {
       }}
     >
       <CircularProgress />
-      <Typography variant="body1" color="text.secondary">
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Loading RAG providers...
       </Typography>
     </Box>

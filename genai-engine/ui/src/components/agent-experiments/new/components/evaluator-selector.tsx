@@ -1,5 +1,5 @@
 import { EvaluatorsSelectorUI } from "@arthur/shared-components";
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
@@ -37,7 +37,13 @@ export const EvaluatorsSelector = withFieldGroup({
         if (!data) return;
 
         const mapping =
-          data.variables?.map((v) => ({ source: { type: "experiment_output" }, variable_name: v }) as AgenticEvalVariableMappingInput) ?? [];
+          data.variables?.map(
+            (v) =>
+              ({
+                source: { type: "experiment_output" },
+                variable_name: v,
+              }) as AgenticEvalVariableMappingInput
+          ) ?? [];
 
         group.pushFieldValue("evals", { name: data.name, version: data.version ?? 1, variable_mapping: mapping, transform_id: "" });
         setCurrentEvaluator({ name: null, version: null });

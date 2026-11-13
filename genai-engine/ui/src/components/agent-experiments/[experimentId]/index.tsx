@@ -39,7 +39,13 @@ export const AgentExperimentDetail = () => {
   if (!agentExperiment) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: getContentHeight() }}>
-        <Typography color="text.secondary">Experiment not found</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          Experiment not found
+        </Typography>
       </Box>
     );
   }
@@ -56,8 +62,18 @@ export const AgentExperimentDetail = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Stack alignItems="flex-start">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Stack
+            sx={{
+              alignItems: "flex-start",
+            }}
+          >
             <Button
               component={Link}
               to={`/tasks/${task?.id}/test?section=agent-experiments`}
@@ -69,31 +85,77 @@ export const AgentExperimentDetail = () => {
             >
               Back to Experiments
             </Button>
-            <Stack mb={1}>
-              <Stack direction="row" gap={2} alignItems="center">
-                <Typography variant="h5" color="text.primary" fontWeight="bold">
+            <Stack
+              sx={{
+                mb: 1,
+              }}
+            >
+              <Stack
+                direction="row"
+                sx={{
+                  gap: 2,
+                  alignItems: "center",
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: "text.primary",
+                    fontWeight: "bold",
+                  }}
+                >
                   {agentExperiment.name}
                 </Typography>
                 <StatusBadge status={agentExperiment.status} />
                 <EvalStatusChip experiment={agentExperiment} />
               </Stack>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {agentExperiment.description}
               </Typography>
             </Stack>
-            <Stack direction="row" gap={2}>
-              <Typography variant="body2" color="text.secondary">
+            <Stack
+              direction="row"
+              sx={{
+                gap: 2,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 <span className="font-bold">Created:</span> {formatDateInTimezone(agentExperiment.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 <span className="font-bold">Finished:</span> {formatDateInTimezone(agentExperiment.finished_at, timezone, { hour12: !use24Hour })}
               </Typography>
               {agentExperiment.finished_at && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   <span className="font-bold">Duration:</span> {formatTimestampDuration(agentExperiment.created_at, agentExperiment.finished_at)}
                 </Typography>
               )}
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 <span className="font-bold">Dataset:</span>{" "}
                 <MuiLink
                   component={Link}
@@ -127,8 +189,17 @@ export const AgentExperimentDetail = () => {
           </ButtonGroup>
         </Stack>
       </Box>
-      <Box overflow="auto">
-        <Stack gap={2} p={2}>
+      <Box
+        sx={{
+          overflow: "auto",
+        }}
+      >
+        <Stack
+          sx={{
+            gap: 2,
+            p: 2,
+          }}
+        >
           <div className="grid grid-cols-2 gap-4 items-start">
             <ExperimentHttpTemplate experimentId={experimentId!} />
             <ExperimentProgressSummary experiment={agentExperiment} />
@@ -136,8 +207,18 @@ export const AgentExperimentDetail = () => {
 
           <ExperimentEvalSummary experiment={agentExperiment} />
 
-          <Stack gap={1}>
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
+          <Stack
+            sx={{
+              gap: 1,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                color: "text.primary",
+                fontWeight: "bold",
+              }}
+            >
               Test Case Results
             </Typography>
 

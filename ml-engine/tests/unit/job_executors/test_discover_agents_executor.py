@@ -29,12 +29,14 @@ from job_executors.discover_agents_executor import (
     DiscoverAgentsExecutor,
 )
 from job_executors.discovery_scan import (
+    DeniedScope,
     DiscoveryConfigurationError,
     DiscoveryPublishResult,
     DiscoveryScanOutcome,
     FailedDiscoveryRecord,
     UnsupportedDiscoveryVendorError,
 )
+from job_executors.fetch_discovered_agents_executor import publish_enriched_tasks
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from log_redaction import redact_secrets, secret_values
 
@@ -291,7 +293,8 @@ def test_mid_scan_failure_keeps_already_published_records() -> None:
 
 def test_failing_source_reports_its_contribution_and_its_failure() -> None:
     connector = FakeConnector(
-        [[_record("a"), _record("b")]], raises=RuntimeError("boom")
+        [[_record("a"), _record("b")]],
+        raises=RuntimeError("boom"),
     )
     logger = logging.getLogger("test-discovery-outcome")
     records = _capture(logger)
@@ -557,7 +560,7 @@ def test_failed_records_accumulate_across_batches() -> None:
     records = _capture(logger)
     sink = PartlyFailingSink({"a", "d"})
     connector = FakeConnector(
-        [[_record("a"), _record("b")], [_record("c"), _record("d")]]
+        [[_record("a"), _record("b")], [_record("c"), _record("d")]],
     )
 
     _executor(connector, sink, logger=logger).execute(_job(), _spec(_config()))
@@ -607,7 +610,8 @@ def test_a_killed_scan_is_not_reported_as_a_success() -> None:
     logger = logging.getLogger("test-discovery-outcome-killed")
     records = _capture(logger)
     connector = FakeConnector(
-        [[_record("a"), _record("b")]], raises=KeyboardInterrupt()
+        [[_record("a"), _record("b")]],
+        raises=KeyboardInterrupt(),
     )
 
     with pytest.raises(KeyboardInterrupt):
@@ -842,7 +846,7 @@ def test_a_job_dispatched_before_the_snapshot_reads_the_source() -> None:
 
     assert connector.source_fields == [{"base_url": "https://splunk.example"}]
     client.get_discovery_source.assert_called_once_with(  # type: ignore[attr-defined]
-        SOURCE_ID
+        SOURCE_ID,
     )
 
 
@@ -1023,20 +1027,21 @@ def _enriched_task(
             "creation_source": creation_source,
             "provenance": provenance,
             "rules": rules or [],
-        }
+        },
     )
 
 
 def _published_agents(tasks: list[EnrichedTaskResponse]) -> list[dict[str, object]]:
-    """The agents the sweep PUTs, as the request body carries them."""
+    """The agents a fetch with no source evidence PUTs, as the request body carries them."""
     agents_client = MagicMock()
     agents_client.put_agents.return_value.agents = []
-    DiscoverAgentsExecutor(
-        agents_client=agents_client,
-        logger=logging.getLogger("test-agents-sync"),
-        genai_engine_url="http://genai",
-        genai_engine_api_key="key",
-    )._publish_to_agents_api(WORKSPACE_ID, DATA_PLANE_ID, tasks)
+    publish_enriched_tasks(
+        agents_client,
+        logging.getLogger("test-agents-sync"),
+        WORKSPACE_ID,
+        DATA_PLANE_ID,
+        tasks,
+    )
     if not agents_client.put_agents.called:
         return []
     body = agents_client.put_agents.call_args.kwargs["put_agents"].to_dict()
@@ -1057,8 +1062,8 @@ def test_the_agents_sync_sends_each_rule_config_as_its_rule_type() -> None:
                     _rule("RegexRule", {"regex_patterns": ["\\d{3}-\\d{4}"]}),
                     _rule("PromptInjectionRule", None),
                 ],
-            )
-        ]
+            ),
+        ],
     )
 
     configs = {rule["type"]: rule.get("config") for rule in agent["rules"]}
@@ -1081,7 +1086,7 @@ def test_a_task_without_a_creation_source_is_sent_as_manual_only_if_made_by_hand
             _enriched_task("hand-made", is_autocreated=False, creation_source=None),
             _enriched_task("unattributed", is_autocreated=True, creation_source=None),
             _enriched_task("discovered"),
-        ]
+        ],
     )
 
     by_task = {agent["task_id"]: agent for agent in agents}
@@ -1105,7 +1110,7 @@ def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
                     "resource_kind": "app",
                     "resource_id": "claude-code",
                 },
-            }
+            },
         ],
         "runs_on": "endpoint",
         "platform": "darwin",
@@ -1115,7 +1120,7 @@ def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
         [
             _enriched_task("jamf", provenance=jamf_provenance),
             _enriched_task("otel"),
-        ]
+        ],
     )
 
     by_task = {agent["task_id"]: agent for agent in agents}
@@ -1126,20 +1131,21 @@ def test_the_agents_sync_forwards_each_tasks_provenance() -> None:
     assert by_task["otel"].get("provenance") is None
 
 
-def test_job_without_a_source_config_runs_the_gcp_sweep() -> None:
+def test_job_without_a_source_config_is_refused() -> None:
+    """The source-less sweep is gone, so a job naming no source config fails loudly
+    rather than doing nothing."""
     reporter = RecordingReporter()
     executor = _executor(run_reporter=reporter)
-    executor._execute_gcp_sweep = MagicMock()  # type: ignore[method-assign]
 
-    executor.execute(
-        _job(),
-        DiscoverAgentsJobSpec(
-            workspace_id=WORKSPACE_ID,
-            data_plane_id=DATA_PLANE_ID,
-        ),
-    )
+    with pytest.raises(ValueError, match="no discovery source config"):
+        executor.execute(
+            _job(),
+            DiscoverAgentsJobSpec(
+                workspace_id=WORKSPACE_ID,
+                data_plane_id=DATA_PLANE_ID,
+            ),
+        )
 
-    executor._execute_gcp_sweep.assert_called_once()
     # No source, so nothing for the run store to hold.
     assert reporter.outcomes == []
 
@@ -1322,6 +1328,31 @@ class VendorHTTPError(RuntimeError):
         self.status_code = status_code
 
 
+class DeniedSomewhereConnector(FakeConnector):
+    """A connector whose scope has parts: it read what it could and names the rest."""
+
+    def denied_scopes(self) -> Sequence[DeniedScope]:
+        return (DeniedScope("projects/acme-dev-456", "permission_denied"),)
+
+
+def test_a_scan_refused_part_of_its_scope_is_done_with_its_denied_scopes() -> None:
+    reporter = RecordingReporter()
+
+    _executor(
+        DeniedSomewhereConnector([[_record("a")]]),
+        run_reporter=reporter,
+    ).execute(_job(), _spec(_config()))
+
+    (outcome,) = reporter.outcomes
+    assert (outcome.error, outcome.records_published) == (None, 1)
+    assert outcome.denied_scopes == [
+        DeniedScope("projects/acme-dev-456", "permission_denied"),
+    ]
+    assert json.loads(json.dumps(outcome.to_log_payload()))["denied_scopes"] == [
+        {"scope": "projects/acme-dev-456", "reason": "permission_denied"},
+    ]
+
+
 def test_a_finished_scan_reports_one_outcome_to_the_run_store() -> None:
     reporter = RecordingReporter()
 
@@ -1360,8 +1391,9 @@ def test_a_finished_scan_reports_one_outcome_to_the_run_store() -> None:
         (
             {
                 "connector": FakeConnector(
-                    [], raises=DiscoveryConfigurationError("no base_url")
-                )
+                    [],
+                    raises=DiscoveryConfigurationError("no base_url"),
+                ),
             },
             {},
             "not_configured",
@@ -1384,7 +1416,8 @@ def test_a_finished_scan_reports_one_outcome_to_the_run_store() -> None:
             {
                 "connector": FakeConnector([]),
                 "credentials_client": _credentials_client(
-                    {"detail": "denied"}, status=403
+                    {"detail": "denied"},
+                    status=403,
                 ),
             },
             {},

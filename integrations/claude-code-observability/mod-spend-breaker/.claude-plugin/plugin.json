@@ -1,0 +1,1 @@
+{ "name": "arthur-spend-breaker", "version": "0.1.0", "description": "Experimental: pause Claude Code when model spend in the last five minutes passes a cap" }

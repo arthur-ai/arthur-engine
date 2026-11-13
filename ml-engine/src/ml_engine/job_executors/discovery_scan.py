@@ -24,7 +24,7 @@ them by exact match from everything it ships (see `log_redaction`).
 import json
 import logging
 import traceback
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from typing import (
@@ -41,7 +41,11 @@ from arthur_client.api_bindings import (
     DiscoverySourceConfigSpec,
     OutputColumnCheckResult,
 )
-from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
+from arthur_common.models.agent_discovery_schemas import (
+    DiscoveredAgentRecord,
+    DiscoveryOutputRecord,
+)
+from pydantic import Field
 
 from job_executors.discovery_output_contract import (
     OutputContractError,
@@ -65,7 +69,7 @@ class DiscoveryConfigurationError(ValueError):
 
 
 class DiscoveryErrorCode(str, Enum):
-    """Why a run failed, as the Platform's run store accepts it (D-11).
+    """Why a run failed, as the Platform's run store accepts it.
 
     The Platform writes what an admin reads from the code alone, so no vendor text
     has to travel for a source to say why it is failing.
@@ -143,6 +147,35 @@ class DiscoverySourceConnector(Protocol):
     ) -> Iterator[Sequence[DiscoveryOutputRecord]]: ...
 
 
+# The most unreadable devices one run lists by identity. The counts are complete whatever
+# the fleet's size; the list is what someone acts on, and the Platform caps what it keeps
+# per run, as it does `denied_scopes`. Past the cap, `unreadable_devices_truncated` says
+# how many more there were.
+MAX_UNREADABLE_DEVICES = 1000
+
+
+@dataclass(frozen=True)
+class UnreadableDevice:
+    """One device the scan could not read: who it is, where it is, and why.
+
+    IDENTIFIERS ONLY. The carrier's device key, the name the carrier shows for it, where
+    in the carrier it lives, and when its status line last dated a report. Never an
+    attribute value, a payload or a credential: this travels in the job log, to every
+    standalone destination, and to the Platform's run store where the client declares it.
+    """
+
+    device_key: str
+    name: Optional[str]
+    # Where the carrier addresses the device, as `ManagedDevice.address_scope` has it:
+    # `project/zone`, `account/region`, None for an MDM whose key is unique.
+    location: Optional[str]
+    # A reason from `unreadable_by_reason`.
+    reason: str
+    # ISO 8601, from the device's status line or the MDM's report date; None when
+    # neither says.
+    last_reported: Optional[str]
+
+
 @dataclass
 class DeviceCoverage:
     """Which devices an endpoint scan read, and which of them it was allowed to use.
@@ -155,6 +188,10 @@ class DeviceCoverage:
     A device in several excluded groups counts toward each of them, so the per-group
     counts can sum to more than `devices_excluded`. Those are two different questions:
     how many devices policy kept out, and what each rule is keeping out.
+
+    THE UNREADABLE DEVICES ARE A FINDING, NOT ONLY A DENOMINATOR. A machine the scan
+    cannot see is where unmanaged AI sits, so each one is listed by identity and reason
+    as well as counted, for someone to go and look at.
     """
 
     devices_read: int = 0
@@ -166,6 +203,11 @@ class DeviceCoverage:
     # `devices_unreadable`: a Mac that has not reported since the collector shipped
     # asks for a different fix than a payload this side cannot parse.
     unreadable_by_reason: dict[str, int] = field(default_factory=dict)
+    # Each unreadable device the connector could name, up to MAX_UNREADABLE_DEVICES.
+    # The counts above cover every one of them, listed or not.
+    unreadable_devices: list[UnreadableDevice] = field(default_factory=list)
+    # Unreadable devices counted but not listed, once the cap was reached.
+    unreadable_devices_truncated: int = 0
     devices_excluded: int = 0
     # Group name -> devices it kept out.
     excluded_by_group: dict[str, int] = field(default_factory=dict)
@@ -174,9 +216,24 @@ class DeviceCoverage:
     # Group name -> in-scope devices it let in.
     included_by_group: dict[str, int] = field(default_factory=dict)
 
-    def count_unreadable(self, reason: str) -> None:
+    def count_unreadable(
+        self,
+        reason: str,
+        device: Optional[UnreadableDevice] = None,
+    ) -> None:
+        """Count one unreadable device, and list it when the caller can name it.
+
+        `device.reason` is the count's reason: the list and the counts must tell one
+        story, so the entry is listed under the reason it was counted by.
+        """
         self.devices_unreadable += 1
         self.unreadable_by_reason[reason] = self.unreadable_by_reason.get(reason, 0) + 1
+        if device is None:
+            return
+        if len(self.unreadable_devices) >= MAX_UNREADABLE_DEVICES:
+            self.unreadable_devices_truncated += 1
+            return
+        self.unreadable_devices.append(replace(device, reason=reason))
 
 
 @runtime_checkable
@@ -189,6 +246,41 @@ class ReportsDeviceCoverage(Protocol):
     """
 
     def device_coverage(self) -> Optional[DeviceCoverage]: ...
+
+
+# The Platform's `DiscoveryDeniedScope` reasons, and the only two it takes.
+DENIED_PERMISSION = "permission_denied"
+DENIED_UNREACHABLE = "unreachable"
+
+# The most denied scopes one run reports: the Platform's cap on the field.
+MAX_DENIED_SCOPES = 1000
+
+
+@dataclass(frozen=True)
+class DeniedScope:
+    """A part of the source's scope the scan could not read, as the run reports it.
+
+    IDENTIFIERS ONLY: a project, an account, an account and region. Never a credential
+    or an answer's body. `reason` is `DENIED_PERMISSION` or `DENIED_UNREACHABLE`.
+    """
+
+    scope: str
+    reason: str
+
+
+@runtime_checkable
+class ReportsDeniedScopes(Protocol):
+    """A connector whose scope has parts it can be refused one at a time -- the projects
+    under an organization, an organization's accounts and their regions -- and can say
+    which it was.
+
+    Optional, like `ReportsDeviceCoverage`, and asked once the scan ends however it
+    ended. A run that read some of its scope and was refused the rest is `done` with
+    denied scopes, which the Platform reads as a degraded source: the scan completed,
+    and its coverage did not.
+    """
+
+    def denied_scopes(self) -> Sequence[DeniedScope]: ...
 
 
 @runtime_checkable
@@ -220,7 +312,7 @@ class FailedDiscoveryRecord:
     """A record GenAI Engine could not resolve onto a task, as the run reports it.
 
     Mirrors GenAI Engine's `FailedDiscoveredRecord` but is declared here rather than
-    taken from the generated client, so the outcome D-11 persists does not change shape
+    taken from the generated client, so the job-log payload does not change shape
     whenever that client is regenerated.
     """
 
@@ -232,10 +324,59 @@ class FailedDiscoveryRecord:
 
 @dataclass(frozen=True)
 class DiscoveryPublishResult:
-    """What GenAI Engine made of one batch: every record is in exactly one of the two."""
+    """What GenAI Engine made of one batch: every agent record is in exactly one of the two.
+
+    A `CorroboratingRecord` is further evidence for one of them rather than an agent, so
+    `accepted` never counts it, and `failed` holds it only when it failed on its own,
+    after its agent record resolved.
+    """
 
     accepted: int
     failed: Sequence[FailedDiscoveryRecord] = ()
+
+
+class CorroboratingRecord(DiscoveredAgentRecord):
+    """Further evidence for an agent another record in the same batch reports.
+
+    A task holds one provenance entry per (source, `external_id`), and the Platform
+    keeps one evidence row per entry, so an agent found through four routes on one
+    device needs four records to show four pieces of evidence. Each has its own
+    `external_id` and must join its agent's task, not mint a task of its own: rung 4 of
+    GenAI Engine's resolution ladder would turn one agent into four. The sink resolves
+    the record named by `corroborates` first and sends this one with that record's
+    `task_id`, which is rung 1.
+
+    `corroborates` never reaches the wire. A sink that does not resolve records onto
+    tasks has nothing to join this one to, and drops it rather than report the same
+    agent twice.
+    """
+
+    corroborates: str = Field(
+        exclude=True,
+        min_length=1,
+        description="`external_id` of the agent record this is evidence for, which "
+        "must come earlier in the same batch.",
+    )
+
+
+def corroboration_external_id(agent_external_id: str, route: str, value: str) -> str:
+    """A corroboration's `external_id`: its agent record's, extended by the catalog
+    identifier it reports. Extending rather than inventing is what lets a reader of
+    provenance, which has no `corroborates`, tell the agent record from its evidence."""
+    return f"{agent_external_id}:{route}:{value}"
+
+
+def corroborated_candidates(external_id: str) -> list[str]:
+    """Each `external_id` that `corroboration_external_id` could have extended into this
+    one: every prefix a route and a value follow.
+
+    Only candidates. The shape proves nothing on its own -- a SIEM's `external_id` is
+    whatever its query returns, and a Wiz technology's is `<workload>:<technology>` --
+    so a reader takes it only from a vendor in `discovery.corroborating_vendors()`, and
+    only where a candidate is another record of the same source.
+    """
+    cuts = [i for i, char in enumerate(external_id) if char == ":"]
+    return [external_id[:cut] for cut in cuts[:-1]]
 
 
 class DiscoveryRecordSink(Protocol):
@@ -245,11 +386,16 @@ class DiscoveryRecordSink(Protocol):
     ``external_id`` (D-08). `discovery_record_sink.GenAIEngineRecordSink` implements it
     against that endpoint.
 
-    Accepted means every record that resolved, whether it created a task or joined one
-    that already existed -- a source that reports the same twenty agents every scan
-    contributes twenty each time. The count says how much of what the source produced
-    survived the trip, not how many agents are new, and nothing downstream should
-    present it as a count of new agents.
+    A `CorroboratingRecord` resolves only after the record it `corroborates`, onto that
+    record's task; one whose agent record failed is not sent, and that failure stands for
+    it.
+
+    Accepted means every agent record that resolved, whether it created a task or joined
+    one that already existed -- a source that reports the same twenty agents every scan
+    contributes twenty each time, however much evidence each one brings, and a sink that
+    drops corroborations counts the same as one that sends them. The count says how much
+    of what the source produced survived the trip, not how many agents are new, and
+    nothing downstream should present it as a count of new agents.
 
     A RECORD THAT FAILS DOES NOT FAIL ITS BATCH. GenAI Engine resolves the rest and
     reports the failure alongside them, and the sink hands both back. There is nothing
@@ -274,7 +420,7 @@ class DiscoveryRecordSink(Protocol):
 
 
 class OutcomeReporter(Protocol):
-    """Where a finished run's outcome goes: D-11's run store, which also writes the
+    """Where a finished run's outcome goes: the Platform's run store, which also writes the
     source's health from it. `discovery_run_reporter.PlatformRunReporter` implements
     it against the Platform.
 
@@ -297,7 +443,7 @@ DiscoveryConnectorFactory = Callable[[], DiscoverySourceConnector]
 class DiscoveryScanOutcome:
     """What one source contributed to one run, and how it ended.
 
-    Delivered to D-11's run store by an `OutcomeReporter`, which is also what writes
+    Delivered to the Platform's run store by an `OutcomeReporter`, which is also what writes
     the source's health there. It is emitted as JSON in the job log as well, for
     what the run store does not keep (failed records, the column check, the redacted
     error) -- the log exporter drops `extra`, so a structured record has to be *in*
@@ -306,7 +452,7 @@ class DiscoveryScanOutcome:
 
     # Everything naming the source is optional: a job whose spec is too malformed to
     # say what it would have scanned still owes the Platform a record that it ran and
-    # failed, and a guessed-at vendor would be aggregated as a real source by D-11.
+    # failed, and a guessed-at vendor would be aggregated as a real source by the run store.
     discovery_source_config_id: Optional[str]
     discovery_source_config_name: Optional[str]
     discovery_source_id: Optional[str]
@@ -319,7 +465,8 @@ class DiscoveryScanOutcome:
     )
     finished_at: Optional[datetime] = None
     batches_published: int = 0
-    # Records the sink accepted, created and updated alike -- see DiscoveryRecordSink.
+    # Agent records the sink accepted, created and updated alike -- see
+    # DiscoveryRecordSink.
     records_published: int = 0
     # Records GenAI Engine could not resolve. They do not fail the run: the source
     # reported them and the rest of their batch landed, so the scan succeeded and these
@@ -333,9 +480,14 @@ class DiscoveryScanOutcome:
     # ever produced, which is not the same answer as a source that produced one and
     # failed the contract.
     output_column_check: Optional[OutputColumnCheckResult] = None
-    # Endpoint sources only: the devices behind the records, and the ones policy kept
-    # out. Null for a source that does not read devices.
+    # Sources that read machines -- an MDM's endpoints, a cloud's VMs: the devices
+    # behind the records, and the ones policy kept out. Null for a source that does not
+    # read devices.
     device_coverage: Optional[DeviceCoverage] = None
+    # The parts of the source's scope the scan was refused -- a project under the
+    # organization, an account, a region -- and continued past. Empty for a source
+    # whose scope is one thing, which is refused whole and fails the run instead.
+    denied_scopes: list[DeniedScope] = field(default_factory=list)
 
     def record_failure(
         self,
@@ -379,6 +531,7 @@ class DiscoveryScanOutcome:
             "device_coverage": (
                 asdict(self.device_coverage) if self.device_coverage else None
             ),
+            "denied_scopes": [asdict(scope) for scope in self.denied_scopes],
             "succeeded": self.error is None,
         }
 
@@ -494,6 +647,8 @@ def run_source_scan(
     finally:
         if isinstance(connector, ReportsDeviceCoverage):
             outcome.device_coverage = connector.device_coverage()
+        if isinstance(connector, ReportsDeniedScopes):
+            outcome.denied_scopes = list(connector.denied_scopes())
         finalize_outcome(outcome, logger, reporter)
 
     return outcome

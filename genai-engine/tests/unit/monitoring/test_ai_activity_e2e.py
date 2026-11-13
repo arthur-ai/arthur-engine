@@ -22,6 +22,11 @@ from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClass
 from scorer.score import ScorerClient
 from tests.clients.base_test_client import TEST_AUDIT_LOG_DIR, app
 
+# Loads real ML models: one xdist worker runs every module in this group, so
+# parallel CI holds one copy of them rather than one per worker.
+pytestmark = pytest.mark.xdist_group("ml_models")
+
+
 AUDIT_LOG_FILE = os.path.join(TEST_AUDIT_LOG_DIR, "audit.log")
 
 
@@ -51,7 +56,7 @@ def test_model_invocations_recorded_end_to_end(client, monkeypatch):
     app.dependency_overrides[get_scorer_client] = lambda: real_scorer
 
     try:
-        status, task = client.create_task(name="ai-activity e2e task", empty_rules=True)
+        status, task = client.create_task(name="ai-activity e2e task")
         assert status == 200
         status, _rule = client.create_rule(
             name="",

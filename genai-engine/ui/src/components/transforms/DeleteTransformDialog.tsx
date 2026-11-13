@@ -117,12 +117,23 @@ const DeleteTransformDialog: React.FC<DeleteTransformDialogProps> = ({ transform
               onClose={onClose}
             />
 
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Remove these references before deleting this transform.
             </Typography>
           </>
         ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              textAlign: "center",
+            }}
+          >
             Are you sure you want to delete this transform? This action cannot be undone.
           </Typography>
         )}

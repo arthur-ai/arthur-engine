@@ -35,6 +35,22 @@ def primary_timestamp_col_name(dataset: Dataset | AvailableDataset) -> str:
     raise ValueError(missing_col_msg)
 
 
+def primary_timestamp_col_id(dataset: Dataset | AvailableDataset) -> Optional[str]:
+    """Retrieves the id of the primary timestamp tagged column, or None if there is none."""
+    if not dataset.dataset_schema:
+        return None
+
+    dataset_schema = client_to_common_dataset_schema(dataset.dataset_schema)
+    for col in dataset_schema.columns:
+        if (
+            col.definition
+            and col.definition.tag_hints
+            and ScopeSchemaTag.PRIMARY_TIMESTAMP in col.definition.tag_hints
+        ):
+            return str(col.id)
+    return None
+
+
 def get_keys_with_param_type(
     args: (
         list[MetricsParameterSchemaUnion]

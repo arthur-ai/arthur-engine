@@ -76,7 +76,6 @@ from arthur_common.models.response_schemas import (
     UserResponse,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalTransformVariableMappingResponse,
     TraceTransformDefinition,
     TraceTransformResponse,
@@ -210,6 +209,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
@@ -922,6 +922,7 @@ class TraceMetadata(TokenCountCostSchema):
     start_time: datetime
     end_time: datetime
     span_count: int
+    ingest_bytes: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     input_content: Optional[str] = None
@@ -949,6 +950,7 @@ class TraceMetadata(TokenCountCostSchema):
             start_time=x.start_time,
             end_time=x.end_time,
             span_count=x.span_count,
+            ingest_bytes=x.ingest_bytes,
             prompt_token_count=x.prompt_token_count,
             completion_token_count=x.completion_token_count,
             total_token_count=x.total_token_count,
@@ -972,6 +974,7 @@ class TraceMetadata(TokenCountCostSchema):
             start_time=self.start_time,
             end_time=self.end_time,
             span_count=self.span_count,
+            ingest_bytes=self.ingest_bytes,
             prompt_token_count=self.prompt_token_count,
             completion_token_count=self.completion_token_count,
             total_token_count=self.total_token_count,
@@ -1006,6 +1009,7 @@ class TraceMetadata(TokenCountCostSchema):
             start_time=self.start_time,
             end_time=self.end_time,
             span_count=self.span_count,
+            ingest_bytes=self.ingest_bytes,
             duration_ms=duration_ms,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -3965,6 +3969,10 @@ class ContinuousEval(BaseModel):
         default=True,
         description="Whether the continuous eval is enabled.",
     )
+    sample_rate: Optional[float] = Field(
+        default=None,
+        description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -3990,6 +3998,7 @@ class ContinuousEval(BaseModel):
             updated_at=db_eval.updated_at,
             transform_variable_mapping=transform_variable_mapping,
             enabled=db_eval.enabled,
+            sample_rate=db_eval.sample_rate,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -4015,6 +4024,7 @@ class ContinuousEval(BaseModel):
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
+            sample_rate=self.sample_rate,
         )
 
 

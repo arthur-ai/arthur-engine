@@ -1,4 +1,4 @@
-import { TextOperators, TracesEmptyState } from "@arthur/shared-components";
+import { TextOperators, TracesEmptyState } from "@arthur/shared-components/traces";
 import { Search } from "@mui/icons-material";
 import {
   Box,
@@ -98,8 +98,13 @@ export const Results = () => {
       <Stack
         direction="row"
         spacing={2}
-        alignItems="center"
-        sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}
+        sx={{
+          alignItems: "center",
+          p: 2,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
       >
         <TextField
           size="small"

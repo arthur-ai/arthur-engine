@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import { Add, Storage } from "@mui/icons-material";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -27,7 +28,6 @@ import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
 import { useRagCollections } from "@/hooks/rag/useRagCollections";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
 import { useCreateRagConfig } from "@/hooks/rag-search-settings/useCreateRagConfig";
-import useSnackbar from "@/hooks/useSnackbar";
 import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface CreateRagConfigurationModalProps {
@@ -181,10 +181,22 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
             ) : hasNoProviders ? (
               <Box className="py-6 text-center">
                 <Storage sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   No RAG Providers Found
                 </Typography>
-                <Typography variant="body2" color="text.secondary" className="mb-4">
+                <Typography
+                  variant="body2"
+                  className="mb-4"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   You need to create a RAG provider connection before you can create a configuration. A provider connects to your vector database
                   (e.g., Weaviate).
                 </Typography>
@@ -359,9 +371,9 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                         }
                         setTagInputValue("");
                       }}
-                      renderTags={(value, getTagProps) =>
+                      renderValue={(value, getItemProps) =>
                         value.map((option, index) => {
-                          const { key, ...tagProps } = getTagProps({ index });
+                          const { key, ...tagProps } = getItemProps({ index });
                           return <Chip key={key} label={option} variant="outlined" size="small" {...tagProps} />;
                         })
                       }

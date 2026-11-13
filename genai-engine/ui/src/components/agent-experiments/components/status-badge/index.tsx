@@ -29,10 +29,10 @@ export const StatusBadge = ({ status }: Props) => {
 
   return (
     <Stack
-      gap={0.5}
       direction="row"
-      alignItems="center"
       sx={{
+        gap: 0.5,
+        alignItems: "center",
         color,
         px: 1,
         backgroundColor: alpha(color, 0.12),
@@ -43,7 +43,14 @@ export const StatusBadge = ({ status }: Props) => {
       }}
     >
       <Icon sx={{ fontSize: 12 }} />
-      <Typography variant="caption" sx={{ color }} fontWeight={500} className="select-none">
+      <Typography
+        variant="caption"
+        className="select-none"
+        sx={{
+          fontWeight: 500,
+          color,
+        }}
+      >
         {capitalize(status)}
       </Typography>
     </Stack>

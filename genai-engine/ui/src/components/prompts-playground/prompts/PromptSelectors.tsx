@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -14,7 +15,6 @@ import toFrontendPrompt from "../utils/toFrontendPrompt";
 import VersionSelector from "./VersionSelector";
 
 import { useApi } from "@/hooks/useApi";
-import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { ModelProvider, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 import { track } from "@/services/analytics";
@@ -44,13 +44,13 @@ const TruncatedText = ({ text }: { text: string }) => {
   const content = (
     <Typography
       variant="body1"
-      color="text.primary"
+      ref={textRef}
       sx={{
+        color: "text.primary",
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
       }}
-      ref={textRef}
     >
       {text}
     </Typography>
@@ -215,7 +215,14 @@ const PromptSelectors = ({
                 >
                   <TruncatedText text={option.name} />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 1, flexShrink: 0 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    ml: 1,
+                    flexShrink: 0,
+                  }}
+                >
                   ({option.versions})
                 </Typography>
               </Box>

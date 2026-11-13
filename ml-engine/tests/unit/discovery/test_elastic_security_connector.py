@@ -785,6 +785,89 @@ def test_responses_captured_from_elasticsearch_9_5_parse(
     assert "security_exception" in str(bad_key.value)
 
 
+# The Kong Gateway sample query of docs/standalone-discovery.md, and what it returned
+# over Kong 3.12 http-log entries (ai-proxy, key-auth consumers) in Elasticsearch.
+KONG_QUERY = """FROM kong-ai-logs
+| WHERE consumer.id.keyword IS NOT NULL AND ai.proxy.meta.plugin_id.keyword IS NOT NULL
+| EVAL model = CASE(
+    response.status < 400 AND ai.proxy.meta.response_model.keyword IS NOT NULL,
+    CONCAT(ai.proxy.meta.provider_name.keyword, "/", ai.proxy.meta.response_model.keyword),
+    NULL)
+| STATS last_seen = MAX(@timestamp),
+        name = MAX(consumer.username.keyword),
+        llm_models = VALUES(model)
+    BY consumer_id = consumer.id.keyword
+| EVAL external_id = CONCAT("kong:kong:8000:", consumer_id),
+       name = COALESCE(name, consumer_id),
+       llm_models = MV_SORT(llm_models)
+| KEEP external_id, name, last_seen, llm_models
+| SORT external_id
+| LIMIT 10000
+"""
+CAPTURED_KONG = {
+    "took": 161,
+    "is_partial": False,
+    "documents_found": 20,
+    "values_loaded": 120,
+    "columns": [
+        {"name": "external_id", "type": "keyword"},
+        {"name": "name", "type": "keyword"},
+        {"name": "last_seen", "type": "date"},
+        {"name": "llm_models", "type": "keyword"},
+    ],
+    "values": [
+        [
+            "kong:kong:8000:57830791-ea6e-5ea6-b701-3e1c3678ce4b",
+            "shared-ci",
+            "2026-10-14T06:13:45.587Z",
+            ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
+        ],
+        [
+            "kong:kong:8000:e7414937-4cfb-568c-aaa0-d317547fc0bc",
+            "support-bot",
+            "2026-10-14T06:13:45.591Z",
+            "openai/gpt-4o",
+        ],
+        [
+            "kong:kong:8000:f79bd904-e765-5ee3-985b-4c63c4b0f822",
+            "research-agent",
+            "2026-10-14T06:13:46.906Z",
+            ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
+        ],
+    ],
+}
+
+
+def test_the_kong_sample_query_result_becomes_one_record_per_consumer_with_its_models() -> (
+    None
+):
+    records = scan(
+        FakeSession(FakeResponse(200, CAPTURED_KONG)),
+        query=KONG_QUERY,
+    )
+
+    check_batch(records, "Source config 'proxy logs' (elastic_security)")
+    assert [
+        (r.name, r.last_seen.isoformat(), [m.name for m in r.llm_models])
+        for r in records
+    ] == [
+        (
+            "shared-ci",
+            "2026-10-14T06:13:45.587000+00:00",
+            ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
+        ),
+        ("support-bot", "2026-10-14T06:13:45.591000+00:00", ["openai/gpt-4o"]),
+        (
+            "research-agent",
+            "2026-10-14T06:13:46.906000+00:00",
+            ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
+        ),
+    ]
+    address = records[0].creation_source.address
+    assert address.resource_id == records[0].external_id
+    assert address.query == esql_text(KONG_QUERY)
+
+
 @pytest.mark.parametrize("body", [None, ["not", "an", "object"], {"error": "x"}])
 def test_a_success_status_without_an_esql_result_is_the_vendors_error(
     body: Any,

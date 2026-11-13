@@ -16,12 +16,12 @@ from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
-from utils.constants import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import InferencePrompt, Rule, Task
 from scorer.llm_client import LLMExecutor
 from tests.clients.base_test_client import TEST_AUDIT_LOG_DIR, override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 def pytest_configure(config):
@@ -147,7 +147,7 @@ def create_rule_for_task_hallucination_v2(
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture
@@ -181,7 +181,7 @@ def create_rule_for_task_sensitive_data(
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture
@@ -206,7 +206,7 @@ def create_rule_for_task_regex(create_task: Task) -> Generator[Rule, None, None]
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture
@@ -229,7 +229,7 @@ def create_rule_for_task_keywords(create_task: Task) -> Generator[Rule, None, No
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture
@@ -250,7 +250,7 @@ def create_rule_for_task_prompt_injection(
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture
@@ -277,7 +277,7 @@ def create_rule_for_task_pii(create_task: Task) -> Generator[Rule, None, None]:
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture
@@ -297,7 +297,7 @@ def create_rule_for_task_toxicity(create_task: Task) -> Generator[Rule, None, No
     db_session = override_get_db_session()
     rules_repo = RuleRepository(db_session)
 
-    rules_repo.delete_rule(rule_id=rule.id)
+    rules_repo.archive_rule(rule_id=rule.id)
 
 
 @pytest.fixture

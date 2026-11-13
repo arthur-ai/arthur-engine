@@ -1,3 +1,4 @@
+import { useSnackbar } from "@arthur/shared-components";
 import {
   Dialog,
   DialogTitle,
@@ -22,7 +23,6 @@ import type { CreateRagExperimentModalProps } from "./types";
 import { useRagExperimentForm } from "./useRagExperimentForm";
 
 import { useApi } from "@/hooks/useApi";
-import useSnackbar from "@/hooks/useSnackbar";
 import { getApiErrorMessage } from "@/utils/errorUtils";
 
 const STEP_LABELS = ["Experiment Info", "Configure Evals"];

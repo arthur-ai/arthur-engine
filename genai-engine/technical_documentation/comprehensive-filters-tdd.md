@@ -160,7 +160,7 @@ class FilterService:
 def get_paginated_trace_ids_with_filters(filters, pagination) -> (List[str], int)
 def _build_unified_trace_query(filters) -> select  # Single composite query
 def _apply_trace_level_filters(query, filters) -> select
-def _apply_span_level_filters_with_joins(query, filters) -> select
+def _apply_span_level_filters_with_exists(query, filters) -> select
 ```
 
 **Span-Based Query Methods** (New):
@@ -172,8 +172,8 @@ def _apply_trace_filters_with_join(query, filters) -> select
 ```
 
 **Optimization Strategies**:
-- **Single vs Multiple Span Types**: Different optimization paths based on span type count
-- **JOIN vs EXISTS**: JOINs for simple filters, EXISTS for complex metric filters
+- **Trace-based span filters**: Every span-level filter (span types, tool name, span name, span IDs, status, metrics) is an EXISTS correlated on `trace_metadata.trace_id`, so each trace matches at most once and the `spans` table never enters the outer query. Joining `spans` into the trace query would cause SQLAlchemy to auto-correlate those EXISTS subqueries away, leaving them with no FROM clause
+- **Span-based span filters**: Direct WHERE conditions on the span row, OR-grouped across span types when more than one is requested; trace-level filters JOIN `trace_metadata`, metric filters use EXISTS
 - **Index-first Filtering**: Task IDs and trace metadata leverage existing indexes
 - **Database-level Pagination**: LIMIT/OFFSET applied at database layer
 

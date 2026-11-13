@@ -1,5 +1,5 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import VpnKeyOutlinedIcon from "@mui/icons-material/VpnKeyOutlined";
 import { Alert, Box, Button, CircularProgress, InputAdornment, Stack, TextField, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
@@ -170,7 +170,13 @@ export const LoginPage: React.FC = () => {
               sx={{ textTransform: "none", fontSize: 15, fontWeight: 600, borderRadius: "8px", py: 1.25 }}
             >
               {isSubmitting ? (
-                <Stack direction="row" alignItems="center" spacing={1}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                  }}
+                >
                   <CircularProgress size={16} thickness={5} sx={{ color: "inherit" }} />
                   <Typography component="span" sx={{ fontSize: 15, fontWeight: 600, color: "inherit" }}>
                     Signing in…

@@ -182,13 +182,25 @@ const AgentNotebookDetailModal: React.FC<AgentNotebookDetailModalProps> = ({ ope
                   EXPERIMENT HISTORY
                 </Typography>
                 {notebook.experiments.length > 0 && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {notebook.experiments.length} run{notebook.experiments.length !== 1 ? "s" : ""}
                   </Typography>
                 )}
               </Box>
               {notebook.experiments.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", py: 2 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontStyle: "italic",
+                    py: 2,
+                  }}
+                >
                   No experiments run yet
                 </Typography>
               ) : (
@@ -219,7 +231,12 @@ const AgentNotebookDetailModal: React.FC<AgentNotebookDetailModalProps> = ({ ope
                             <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "text.secondary",
+                              }}
+                            >
                               {new Date(experiment.created_at).toLocaleString()}
                             </Typography>
                           </TableCell>

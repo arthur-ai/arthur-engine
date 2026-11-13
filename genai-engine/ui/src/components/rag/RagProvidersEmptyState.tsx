@@ -16,14 +16,33 @@ export const RagProvidersEmptyState = () => {
       }}
     >
       <Storage sx={{ fontSize: 64, color: "text.secondary", opacity: 0.5 }} />
-      <Typography variant="h6" color="text.secondary">
+      <Typography
+        variant="h6"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         No RAG Providers Yet
       </Typography>
-      <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ maxWidth: "400px" }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          textAlign: "center",
+          maxWidth: "400px",
+        }}
+      >
         Get started by creating your first RAG provider. Connect to your vector database to enable semantic search and retrieval-augmented generation
         for your tasks.
       </Typography>
-      <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ mt: 1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          textAlign: "center",
+          mt: 1,
+        }}
+      >
         Click the "Create Provider" button above to get started
       </Typography>
     </Box>

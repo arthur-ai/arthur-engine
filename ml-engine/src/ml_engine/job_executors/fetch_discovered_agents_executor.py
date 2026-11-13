@@ -6,6 +6,10 @@ Engine; this reads those tasks back for one source, converts each to an agent, a
 upserts them through `PUT /workspaces/{id}/agents`, where the Platform decides whether
 each one is a registered application or an unregistered agent.
 
+Each fetch then also uploads every task on the engine that no discovery source has
+reported, such as an agent GenAI Engine only knows from its traces or one created by
+hand: no source's own walk will ever carry those, so they ride along with every scan.
+
 Tasks are the seam between the two jobs, so everything this uploads carries a
 `task_id` by construction. Running it twice over the same window uploads the same
 agents twice: task identity is stable across scans (D-08) and the Platform upserts on
@@ -28,6 +32,11 @@ from arthur_client.api_bindings import (
     RejectedAgent,
     ToxicityConfig,
 )
+from arthur_common.models.agent_governance_schemas import (
+    CREATION_SOURCE_TYPE_BY_CLASS,
+    IdentityBasis,
+    NetworkCallerKind,
+)
 from genai_client import (
     ApiClient,
     Configuration,
@@ -35,12 +44,22 @@ from genai_client import (
     TasksApi,
 )
 
+from discovery import corroborating_vendors
+from job_executors.discovery_scan import corroborated_candidates
 from job_log_exporter import REPORT_AS_JOB_ERROR
 
 # Tasks per GET, and so agents per PUT. Well under GenAI Engine's own cap of 1,000:
 # every task on a page is enriched from its spans, and the Platform upserts a PUT one
 # agent at a time inside a single request, so a smaller page bounds both calls.
 FETCH_PAGE_SIZE = 200
+
+# GenAI Engine's own bookkeeping tasks (genai-engine `utils/constants.py`). They are not
+# agents, and the agent-tasks response does not say a task is a system task. The
+# unmapped task (`__unmapped__`) is a system task too, but is left out of this set: it
+# holds the traces of agents that sent no service name, and is uploaded like an agent.
+GENAI_ENGINE_SYSTEM_TASK_NAMES = frozenset(
+    {"__arthur_system_task__", "__synthetic_dataset_generation__"},
+)
 
 # Rejected agents reported one by one before the rest are summarized: each is a log line
 # and a job error, so a batch the Platform refused wholesale does not become thousands.
@@ -89,6 +108,10 @@ class FetchDiscoveredAgentsExecutor:
     def execute(self, job_spec: FetchDiscoveredAgentsJobSpec) -> None:
         """Upload every task the source reported in the window, a page at a time.
 
+        Then upload every task no source has reported, so the agents the engine knows
+        only from their own traces or a manual create surface on the same scan as
+        the source's.
+
         Each page is uploaded as it arrives rather than after the last one, so memory
         is bounded by a page whatever the source reported, and a failure part-way
         leaves the pages before it upserted -- which a retry then updates in place.
@@ -110,7 +133,6 @@ class FetchDiscoveredAgentsExecutor:
             },
         )
 
-        uploaded = 0
         with ApiClient(
             Configuration(
                 host=self.genai_engine_url,
@@ -118,40 +140,100 @@ class FetchDiscoveredAgentsExecutor:
             ),
         ) as api_client:
             tasks_api = TasksApi(api_client)
-            after_task_id: str | None = None
-            while True:
-                tasks: List[EnrichedTaskResponse] = (
-                    tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
-                        discovery_source_id=source_id,
-                        reported_since=job_spec.reported_since,
-                        after_task_id=after_task_id,
-                        page_size=self.page_size,
-                        _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
-                    )
-                )
-                if tasks:
-                    uploaded += publish_enriched_tasks(
-                        self.agents_client,
-                        self.logger,
-                        workspace_id,
-                        data_plane_id,
-                        tasks,
-                        discovery_source_id=source_id,
-                    )
-                # A short page is the last one, which is how the endpoint says so.
-                if len(tasks) < self.page_size:
-                    break
-                # Paged by cursor: the next page starts after this one's last task.
-                after_task_id = tasks[-1].id
+            uploaded = self._upload_walk(
+                tasks_api,
+                workspace_id,
+                data_plane_id,
+                source_id=source_id,
+                reported_since=job_spec.reported_since,
+                # Left out of a source's request, which reads as before.
+                unreported=None,
+            )
+            # No window: these tasks have no report times to measure one against,
+            # and every one of them is uploaded again, which the Platform's upsert on
+            # task_id makes an update in place. No source's evidence goes with them:
+            # none reported them.
+            unreported_uploaded = self._upload_walk(
+                tasks_api,
+                workspace_id,
+                data_plane_id,
+                source_id=None,
+                reported_since=None,
+                unreported=True,
+            )
 
         self.logger.info(
-            f"Uploaded {uploaded} agent(s) from discovery source {source_id}",
+            f"Uploaded {uploaded} agent(s) from discovery source {source_id}, and "
+            f"{unreported_uploaded} agent(s) no discovery source reported",
             extra={
                 "workspace_id": workspace_id,
                 "discovery_source_id": source_id,
                 "num_upserted": uploaded,
+                "num_unreported_upserted": unreported_uploaded,
             },
         )
+
+    def _upload_walk(
+        self,
+        tasks_api: TasksApi,
+        workspace_id: str,
+        data_plane_id: str,
+        source_id: Optional[str],
+        reported_since: Any,
+        unreported: Optional[bool],
+    ) -> int:
+        """Walk one agent-tasks query by cursor, uploading each page as it arrives.
+
+        Uploads carry `source_id`'s evidence, or none when it is None: the unreported
+        tasks were reported by no source, so they must not be dressed as this one's.
+        """
+        uploaded = 0
+        after_task_id: str | None = None
+        while True:
+            tasks: List[EnrichedTaskResponse] = (
+                tasks_api.get_agent_tasks_api_v2_agent_tasks_get(
+                    discovery_source_id=source_id,
+                    reported_since=reported_since,
+                    unreported=unreported,
+                    after_task_id=after_task_id,
+                    page_size=self.page_size,
+                    _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
+                )
+            )
+            # A GenAI Engine that predates the `unreported` filter ignores it and
+            # answers with every task, so the walk drops what the filter would have.
+            to_upload = (
+                [t for t in tasks if _is_unreported_agent(t)] if unreported else tasks
+            )
+            if to_upload:
+                uploaded += publish_enriched_tasks(
+                    self.agents_client,
+                    self.logger,
+                    workspace_id,
+                    data_plane_id,
+                    to_upload,
+                    discovery_source_id=source_id,
+                )
+            # A short page is the last one, which is how the endpoint says so. Judged
+            # on the page as served, so the cursor walks on past a filtered page.
+            if len(tasks) < self.page_size:
+                return uploaded
+            # Paged by cursor: the next page starts after this one's last task.
+            after_task_id = tasks[-1].id
+
+
+def _is_unreported_agent(task: EnrichedTaskResponse) -> bool:
+    """Whether a task belongs in an unreported walk: no source reported it, and it is
+    not one of GenAI Engine's bookkeeping tasks (the unmapped task is not one).
+
+    Every task carries provenance; a task no source reported has only its creation
+    source's entry, which names no source. Any entry that names one means a source
+    reported the task, and that source's own fetch uploads it with its evidence.
+    """
+    if task.name in GENAI_ENGINE_SYSTEM_TASK_NAMES:
+        return False
+    provenance = task.to_dict().get("provenance") or {}
+    return not any(entry.get("source_id") for entry in provenance.get("sources") or [])
 
 
 def publish_enriched_tasks(
@@ -315,8 +397,11 @@ def source_evidence(
     the Platform derives it from the sightings it receives, and `visibility` is graded
     there too, so the value sent only satisfies the schema.
 
-    The task's observations belong to the record it was created from, which may be
-    another source's: that record is picked among every source's records, and the
+    Each record carries what its latest report saw -- its version, and the version
+    before that one changed -- as its entry serves them. An entry stored before GenAI
+    Engine kept them serves none, and then the task's creation source is the only place
+    they can be read: what the record the task was created from saw when it was. That
+    record may be another source's: it is picked among every source's records, and the
     observations go on it only if it is one of this source's.
     """
     task_creation_source = task_dict.get("creation_source") or {}
@@ -336,13 +421,16 @@ def source_evidence(
             or last_seen is None
         ):
             continue
+        creation_source = {
+            "type": creation_type,
+            "vendor": entry.get("vendor"),
+            "address": entry.get("address"),
+        }
+        if entry.get("observations"):
+            creation_source["observations"] = entry["observations"]
         records.append(
             {
-                "creation_source": {
-                    "type": creation_type,
-                    "vendor": entry.get("vendor"),
-                    "address": entry.get("address"),
-                },
+                "creation_source": creation_source,
                 "external_id": external_id,
                 "visibility": "limited",
                 "last_seen": last_seen,
@@ -353,27 +441,68 @@ def source_evidence(
     evidence = [
         record for record in records if str(record["source_id"]) == discovery_source_id
     ]
+    for record in evidence:
+        basis = _identity_basis(record["creation_source"], task_creation_source)
+        if basis is not None:
+            record["creation_source"]["identity_basis"] = basis
 
-    # What the source observed is carried by the record the task was created from, so
-    # only that record's evidence can say it.
+    # The creation source's observations stand in only where the entry served none: they
+    # are what the first report saw, and the record the task was created from is the
+    # only one they speak for.
     observations = task_creation_source.get("observations")
     origin = _creation_record(records, task_creation_source)
     if (
         observations is not None
         and origin is not None
+        and "observations" not in origin["creation_source"]
         and any(record is origin for record in evidence)
     ):
         origin["creation_source"]["observations"] = observations
     return evidence
 
 
-# The creation source a discovery record of each class is reported as. OTEL and manual
+# The creation source a discovery record of each class is reported as, from
+# arthur-common so a class added there is not silently dropped here. OTEL and manual
 # entries have no configured source, so never belong to a fetched one.
 _CREATION_SOURCE_TYPES: dict[str, str] = {
-    "cloud": "CLOUD",
-    "endpoint": "ENDPOINT",
-    "siem": "SIEM",
+    source_class.value: type_tag
+    for source_class, type_tag in CREATION_SOURCE_TYPE_BY_CLASS.items()
 }
+
+# What a gateway caller record of each kind rests on when the kind alone says. An agent
+# id may be registered or only claimed, which only the record itself said.
+_BASIS_OF_CALLER_KIND = {
+    NetworkCallerKind.VIRTUAL_KEY.value: IdentityBasis.CREDENTIAL.value,
+    NetworkCallerKind.CONSUMER.value: IdentityBasis.CREDENTIAL.value,
+    NetworkCallerKind.CLIENT_ADDRESS.value: IdentityBasis.CLIENT_ADDRESS.value,
+}
+_CALLER_KINDS = frozenset(_BASIS_OF_CALLER_KIND) | {NetworkCallerKind.AGENT_ID.value}
+
+
+def _identity_basis(
+    creation_source: dict[str, Any],
+    task_creation_source: dict[str, Any],
+) -> Optional[str]:
+    """A gateway caller record's identity basis, which provenance does not carry and
+    the Platform requires on one.
+
+    The task's own creation source says it when it is this record. Otherwise the kind
+    does, and an agent id falls back to `claimed_agent`, which never claims more than
+    the record could.
+    """
+    kind = (creation_source.get("address") or {}).get("resource_kind")
+    if kind not in _CALLER_KINDS:
+        return None
+    task_basis = task_creation_source.get("identity_basis")
+    if task_basis and _same_place(
+        creation_source,
+        task_creation_source,
+        _IDENTITY_FIELDS,
+    ):
+        # The generated client's enum member: str() of one is its qualified name.
+        return str(getattr(task_basis, "value", task_basis))
+    return _BASIS_OF_CALLER_KIND.get(kind, IdentityBasis.CLAIMED_AGENT.value)
+
 
 # Address fields that say which record an entry is, most specific last. Never the
 # query, which a source config can have edited since the task was created.
@@ -393,16 +522,38 @@ def _creation_record(
     which changes when that route is uninstalled though the record does not. An
     ambiguous match names no record, since observations on the wrong one are worse than
     none.
+
+    Corroborations are never candidates. One never creates a task, yet it shares its
+    agent record's instance, and once that record's address has moved off the route the
+    task was created from, the corroboration of that route still holds the task's
+    address.
     """
+    candidates = _agent_records(evidence)
     for fields in (_IDENTITY_FIELDS, _IDENTITY_FIELDS[:1]):
         matches = [
             record
-            for record in evidence
+            for record in candidates
             if _same_place(record["creation_source"], task_creation_source, fields)
         ]
         if matches:
             return matches[0] if len(matches) == 1 else None
     return None
+
+
+def _agent_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """`records` less the corroborations: a record of a vendor that corroborates whose
+    `external_id` extends another of the same source's."""
+    named = {(record["source_id"], record["external_id"]) for record in records}
+    vendors = corroborating_vendors()
+    return [
+        record
+        for record in records
+        if record["creation_source"]["vendor"] not in vendors
+        or not any(
+            (record["source_id"], candidate) in named
+            for candidate in corroborated_candidates(record["external_id"])
+        )
+    ]
 
 
 def _same_place(

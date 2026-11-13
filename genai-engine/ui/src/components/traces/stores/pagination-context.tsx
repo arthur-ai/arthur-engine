@@ -1,6 +1,5 @@
+import { Level } from "@arthur/shared-components";
 import { create } from "zustand";
-
-import { Level } from "../constants";
 
 type Context = {
   type: Level;

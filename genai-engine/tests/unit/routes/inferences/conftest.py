@@ -80,7 +80,7 @@ def create_rule(create_task: Task) -> Generator[Rule, None, None]:
 
     yield new_rule
 
-    rules_repo.delete_rule(rule_id=new_rule.id)
+    rules_repo.archive_rule(rule_id=new_rule.id)
 
 
 def add_response_to_inference(

@@ -1,4 +1,4 @@
-import { withFieldGroup } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import { Divider, Stack, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
@@ -19,7 +19,11 @@ export const BedrockFields = withFieldGroup({
     const type = useStore(group.store, (state) => state.values.type);
 
     return (
-      <Stack gap={2}>
+      <Stack
+        sx={{
+          gap: 2,
+        }}
+      >
         <group.AppField
           name="type"
           defaultValue="api_key"
