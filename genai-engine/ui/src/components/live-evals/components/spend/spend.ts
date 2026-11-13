@@ -16,6 +16,9 @@ const formatTracesPerDay = (tracesPerDay: number): string => tracesPerDay.toLoca
 // traces/day × sample rate × average run cost, with the numbers the backend used.
 export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstimate, currency: string): string => {
   const parts = [`${formatTracesPerDay(estimate.traces_per_day)} traces/day`, `${sampleRateToPercent(estimate.sample_rate)}% sampled`];
+  if (estimate.filter_match_share != null) {
+    parts.push(`${sampleRateToPercent(estimate.filter_match_share)}% match the filter (of ${estimate.filter_traces_checked} recent traces)`);
+  }
   if (estimate.average_run_cost != null) parts.push(`${formatSpend(estimate.average_run_cost, currency)} per run`);
   return `${parts.join(" × ")} (last ${estimate.window_days} days)`;
 };

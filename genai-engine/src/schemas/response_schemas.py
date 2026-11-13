@@ -31,6 +31,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import (
     ConnectionCheckOutcome,
     EvalKind,
@@ -452,9 +453,9 @@ class ModelReasoningOptions(BaseModel):
 
 
 class ContinuousEvalResponse(CommonContinuousEvalResponse):
-    """The continuous eval response, with its sample rate.
+    """The continuous eval response, with its sample rate and trace filter.
 
-    Extends the shared model only until `arthur_common` carries `sample_rate` on
+    Extends the shared model only until `arthur_common` carries these fields on
     `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
     same so the OpenAPI component, and the generated clients built from it, keep
     their name either way.
@@ -463,6 +464,10 @@ class ContinuousEvalResponse(CommonContinuousEvalResponse):
     sample_rate: Optional[float] = Field(
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
     )
 
 
@@ -1064,6 +1069,7 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     """Projected daily cost of a continuous eval at the task's recent traffic.
 
     estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+    (* filter_match_share, when a trace filter was given)
     """
 
     window_days: int = Field(
@@ -1090,6 +1096,18 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     unavailable_reason: Optional[SpendEstimateUnavailableReason] = Field(
         default=None,
         description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window.",
+    )
+    filter_match_share: Optional[float] = Field(
+        default=None,
+        description=(
+            "Share of the task's recent traces that match the given trace filter, "
+            "checked over up to filter_traces_checked of the latest traces in the "
+            "window. Null when no trace filter was given."
+        ),
+    )
+    filter_traces_checked: Optional[int] = Field(
+        default=None,
+        description="How many recent traces filter_match_share was measured on.",
     )
 
 

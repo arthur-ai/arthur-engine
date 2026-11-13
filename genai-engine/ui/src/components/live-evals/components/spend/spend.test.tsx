@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ContinuousEvalSpendCards, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
+import { ContinuousEvalSpendCards, describeEstimateFormula, SpendCards, SpendEstimateLine, SpendEstimateText } from ".";
 
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse } from "@/lib/api-client/api-client";
 
@@ -99,5 +99,16 @@ describe("malformed spend responses", () => {
     const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="50" />);
 
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("trace filter share in the estimate", () => {
+  it("states the share of recent traces that match the filter", () => {
+    const text = describeEstimateFormula({ ...estimate, filter_match_share: 0.25, filter_traces_checked: 200 }, "USD");
+    expect(text).toBe("2 traces/day × 50% sampled × 25% match the filter (of 200 recent traces) × $0.040000 per run (last 7 days)");
+  });
+
+  it("leaves it out without a filter", () => {
+    expect(describeEstimateFormula(estimate, "USD")).not.toContain("match the filter");
   });
 });
