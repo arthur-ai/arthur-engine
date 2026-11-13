@@ -25,13 +25,17 @@ The catalog covers agents only. Model runners, the MCP SDK, LLM gateways and con
 runtimes do not act on a user's behalf, so they are out of scope. The catalog's `removed`
 list records each exclusion and its reason.
 
-**One driver, two builds.** Upstream's macOS and Linux queries use different tables, so this
-tree builds one collector per platform around the same driver:
+**One build per platform.** Upstream's queries use different tables on each platform, so this
+tree builds one collector for each:
 
 - `dist/collect.sh` for Macs, run by a Jamf Policy or a LaunchDaemon
 - `dist/collect-linux.sh` for Compute Engine and EC2, run by a systemd timer
+- `dist/collect-windows.ps1` for Windows. No carrier reads a Windows machine yet, so it
+  writes no `inventory.ea`; the standalone `local` source reads the folder it writes
 
-Each refuses to run on the other platform and names the reason.
+The first two share one driver. The third has its own, in PowerShell, because upstream's
+Windows runner and bundle are PowerShell. Each refuses to run on another platform and names
+the reason.
 
 ## End-to-end flow
 
@@ -303,6 +307,7 @@ whichever way they travel.
 | A reporter wraps the collector on Linux, one per cloud | The collector names no carrier. The reporter is the carrier half, as the Extension Attribute is on Jamf, and it can name a failed run because it saw it |
 | One unit file for both clouds; a drop-in picks EC2's reporter | The collector, schedule and hardening are the same on both clouds, so a second unit would be a drifting copy. The drop-in clears `ExecStart` before setting it, which `test/lint.sh` checks |
 | EC2 deploys from one CloudFormation template, as a stack or an organization StackSet; no Terraform module | A service-managed StackSet reaches every account in an OU, including accounts that join it later. A Terraform AWS provider reaches one account, so a module would cover only the accounts named when it was applied. The template is the only copy of the install script: the runbook renders it, and CI lints it and runs it |
+| The Windows build is PowerShell, and writes no `inventory.ea` | Upstream's Windows runner and bundle are PowerShell, so the driver handed to them is too. All three keep to what ConstrainedLanguage mode allows, which is what an unsigned script gets where AppLocker or WDAC is enforced. The framed value is what a carrier's attribute holds, and no carrier reads a Windows machine, so nothing would read the file |
 | Queries vendored at a pinned tag | Diffs are reviewable, the build works offline, and the version is visible in the tree. A submodule adds friction to cloning and CI; fetching at build time needs network in CI |
 
 ## Open questions

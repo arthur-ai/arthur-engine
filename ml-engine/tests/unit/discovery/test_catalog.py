@@ -67,7 +67,7 @@ def test_floor_catalog_is_the_vendored_one() -> None:
     assert m.agent_count == 63
     # Upstream's own catalog_sha, computed over file bytes. If this changes, the vendor
     # tree moved and every record's recorded catalog version moved with it.
-    assert m.catalog_sha == "809c96703265"
+    assert m.catalog_sha == "30863ddd6ac2"
 
 
 def test_a_catalog_built_from_a_mapping_marks_its_hash_as_not_upstreams() -> None:
@@ -636,7 +636,7 @@ class TestCatalogHashUsesFileBytes:
     number -- which is sha256 over the file's BYTES."""
 
     def test_the_floor_still_matches_upstreams_value(self) -> None:
-        assert Matcher.from_source().catalog_sha == "809c96703265"
+        assert Matcher.from_source().catalog_sha == "30863ddd6ac2"
 
     def test_crlf_does_not_change_the_hash_the_way_read_text_would(
         self,

@@ -32,7 +32,15 @@ cat /tmp/arthur/status.txt                        # starts with ok or degraded
 python3 -m json.tool /tmp/arthur/inventory.json   # what it found
 ```
 
-On Linux, run `dist/collect-linux.sh`. The Jamf runbook's
+On Linux, run `dist/collect-linux.sh`. On Windows, with osquery 5.17 or later, run
+`dist\collect-windows.ps1` from PowerShell:
+
+```powershell
+$env:ARTHUR_OUT_DIR = "$env:TEMP\arthur"
+powershell -NoProfile -ExecutionPolicy Bypass -File dist\collect-windows.ps1
+```
+
+It writes `inventory.json` and `status.txt` there, and no `inventory.ea`. The Jamf runbook's
 [section 05](mdm/jamf-pro.md#05--prove-it-on-one-mac--the-mac) explains the three files, and
 its [section 08](mdm/jamf-pro.md#08--reading-the-status--jamf-pro) explains each status
 outcome.

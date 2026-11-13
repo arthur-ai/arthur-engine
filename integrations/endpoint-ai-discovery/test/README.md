@@ -44,6 +44,9 @@ what a fleet receives.
 | `tools/render-cfn-template.sh HEAD` leaves no placeholder, names HEAD in both URLs, and pins each file to its own sha256 | A rendered template every instance refuses. Skipped, and says so, until the template is committed: the renderer reads git |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
 | `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
+| `dist/collect-windows.ps1` and `test/run-collector.ps1` are ASCII and parse, where `pwsh` is installed | The same for the Windows build, and a character Windows PowerShell 5.1 would read as another one |
+| The Windows driver reads the variable the wrapper sets, and passes `discover.ps1` only flags it accepts | A vendor bump that renames either, after which the collector exits 1 on every Windows machine |
+| The Windows driver keeps to cmdlets and core types | A collector that stops wherever AppLocker or WDAC is enforced, where an unsigned script runs in ConstrainedLanguage mode |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
 | The plist runs `collect.sh` with `RunAtLoad` | A fresh Mac reporting nothing until the first interval elapses |
 | `DOCKER_PING_TIMEOUT` ≥ 10 **and** ≥ the vendored default | A cold Docker reported as `unhealthy:000`. The second half catches an upstream bump crossing our value, after which the export would lower the bound instead of raising it |
@@ -53,6 +56,22 @@ what a fleet receives.
 The `no second implementation` guard is mutation-tested by construction — drop a `.sql`
 file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or paste
 `FROM apps` into a `.py`, and it names the file and fails.
+
+## `test/run-collector.ps1`
+
+`test/run-collector.sh`'s questions, asked of `dist/collect-windows.ps1` on Windows: four
+runs into a scratch directory, from PowerShell. CI runs it in Windows PowerShell 5.1 and
+again in ConstrainedLanguage mode.
+
+| Guard | What it catches |
+|---|---|
+| The collector exits 0 and leaves exactly `inventory.json` and `status.txt` | The wrapper failing to unpack or run; a staging directory left behind; an `inventory.ea` nothing reads |
+| Every row is an evidence row, the status is one line, and its branches are the payload's markers | A status and a payload that disagree about what ran |
+| Every marker is dated within the hour | A kept-but-stale scan passing for a new one |
+| A run whose runner fails exits non-zero and leaves both files byte for byte | A failed run replacing, removing or re-dating the last good scan |
+| With no previous scan, a failed run leaves no file | A partial file claiming to be a result |
+| A scan that fails its JSON check keeps the last good one, and leaves no staging directory | A corrupt payload published because only the scan step was guarded |
+| Nothing is left in `TEMP` | One extracted payload per run, filling a volume on a schedule |
 
 ## `test/run-collector.sh`
 
