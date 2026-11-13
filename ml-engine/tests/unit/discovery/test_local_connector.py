@@ -268,6 +268,9 @@ def test_a_windows_machine_is_read_with_its_platform(tmp_path: pathlib.Path) -> 
     # An Uninstall key's loc is a registry key, which is not a path on disk.
     windsurf = records[f"{WINDOWS_ID}:windsurf"].creation_source.observations
     assert (windsurf.install_path, windsurf.version) == (None, "1.12.21")
+    # A Windows home folder is written as ~ too, so the path names no user.
+    code = records[f"{WINDOWS_ID}:claude-code"].creation_source.observations
+    assert code.install_path == "~\\.claude\\"
 
 
 # --- Staleness -----------------------------------------------------------------------
