@@ -1,5 +1,5 @@
 repo   https://github.com/arthur-ai/ai-detection-spec.git
-ref    4be2f32
-kind   commit (PROVISIONAL -- pin a tag once one carries this)
-sha    4be2f323d0804a076a34f9340ffa872cc3e3989f
-at     2026-11-13T07:31:05Z
+ref    v0.18.0
+kind   tag
+sha    5bbfe2d61e897dc334bbcd762d0103c62dc95b9e
+at     2026-11-13T20:24:53Z
