@@ -449,7 +449,9 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 variable.model_dump() for variable in input_variables
             ]
         if cost is not None:
-            db_annotation.cost = cost
+            # Added rather than replaced, so a rerun's judge call counts on top of
+            # the earlier ones. Only the worker that claimed the run gets here.
+            db_annotation.cost = (db_annotation.cost or 0.0) + cost
 
         db_session.commit()
         logger.debug(f"Updated annotation {annotation_id} to status {run_status}")
