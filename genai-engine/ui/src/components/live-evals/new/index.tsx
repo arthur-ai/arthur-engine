@@ -310,7 +310,7 @@ const LiveEvalsNewForm = () => {
 
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
-        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} samplePercent={samplePercent} />
+        <SpendEstimateLine taskId={task?.id ?? ""} llmEvalName={evaluator.name} llmEvalVersion={evaluator.version} samplePercent={samplePercent} />
 
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>

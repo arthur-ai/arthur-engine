@@ -8,6 +8,7 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from clients.llm.llm_client import COST_UNAVAILABLE
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
@@ -393,7 +394,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 input_variables=input_variables,
                 annotation_score=int(eval_run_result.score),
                 annotation_description=eval_run_result.reason,
-                cost=float(eval_run_result.cost) if eval_run_result.cost else None,
+                cost=(
+                    float(eval_run_result.cost)
+                    if eval_run_result.cost and eval_run_result.cost != COST_UNAVAILABLE
+                    else None
+                ),
             )
 
         except Exception as e:

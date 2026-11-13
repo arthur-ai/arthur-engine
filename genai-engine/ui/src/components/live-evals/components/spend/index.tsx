@@ -32,7 +32,7 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
         subValue={
           estimate.estimated_daily_cost != null
             ? describeEstimateFormula(estimate, currency)
-            : describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days)
+            : describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days, estimate.unpriced_run_count, estimate.priced_since)
         }
       />
     </Stack>
@@ -70,7 +70,7 @@ export const SpendEstimateText = ({ estimate, currency }: { estimate: Continuous
           : {describeEstimateFormula(estimate, currency)}
         </>
       ) : (
-        `No cost estimate yet. ${describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days)}${
+        `No cost estimate yet. ${describeUnavailableEstimate(estimate.unavailable_reason, estimate.window_days, estimate.unpriced_run_count)}${
           estimate.unavailable_reason === "no_runs" ? " for this evaluator on this task." : "."
         }`
       )}
@@ -81,15 +81,16 @@ export const SpendEstimateText = ({ estimate, currency }: { estimate: Continuous
 type SpendEstimateLineProps = {
   taskId: string;
   llmEvalName: string | null;
+  llmEvalVersion: string | null;
   samplePercent: string;
 };
 
-// Estimate shown under the evaluator on the create forms; follows the evaluator and sample rate fields.
-export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent }: SpendEstimateLineProps) => {
+// Estimate shown under the evaluator on the create forms; follows the evaluator, its version and the sample rate fields.
+export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent }: SpendEstimateLineProps) => {
   const { defaultCurrency } = useDisplaySettings();
   const debouncedPercent = useDebouncedValue(samplePercent);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
-  const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(taskId, llmEvalName, sampleRate);
+  const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(taskId, llmEvalName, llmEvalVersion, sampleRate);
 
   if (!llmEvalName || sampleRate === undefined) return null;
   if (!estimate) {
