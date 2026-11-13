@@ -1,0 +1,198 @@
+"""Generate the engine permission matrix: which role reaches which route.
+
+Walks every route on the app, reads the permission set that
+`permission_checker` attached to the handler, and writes one plain-text file
+listing, per role, the routes that role is allowed to call. The file is
+committed, so a change to a permission set or a new route shows up as a diff
+in review, and `tests/coverage/test_permission_matrix.py` fails when the file
+is stale or a route has no permission set at all.
+
+Usage (from genai-engine/):
+    uv run permission_matrix            # rewrite docs/permission_matrix.txt
+    uv run permission_matrix --check    # exit 1 if the file is stale
+"""
+
+import argparse
+import os
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+GENAI_ENGINE_DIR = Path(__file__).resolve().parent
+MATRIX_PATH = GENAI_ENGINE_DIR / "docs" / "permission_matrix.txt"
+
+# Routes that need neither a permission set nor @public_endpoint. Every other
+# route without a permission set is reported as UNGUARDED.
+NO_AUTH_ROUTES = frozenset(
+    {
+        ("GET", "/"),  # API-only mode: redirect to /docs, defined in server.py
+    },
+)
+
+
+@dataclass(frozen=True)
+class RouteInfo:
+    method: str
+    path: str
+    permission_set: str | None
+    roles: frozenset[str]
+    scope: str
+    access: str  # roles | public | no-auth | UNGUARDED
+
+
+def _walk_wrapped(fn):  # type: ignore[no-untyped-def]
+    seen: set[int] = set()
+    current = fn
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        yield current
+        current = getattr(current, "__wrapped__", None)
+
+
+def _required_permissions(handler) -> frozenset[str] | None:  # type: ignore[no-untyped-def]
+    for fn in _walk_wrapped(handler):
+        perms = getattr(fn, "_required_permissions", None)
+        if perms is not None:
+            return frozenset(perms)
+    return None
+
+
+def _scope_kind(handler) -> str:  # type: ignore[no-untyped-def]
+    for fn in _walk_wrapped(handler):
+        if getattr(fn, "_org_scope_enforced", False):
+            return f"org-{getattr(fn, '_org_scope_kind', '?')}"
+    return "-"
+
+
+def _is_public(handler) -> bool:  # type: ignore[no-untyped-def]
+    return any(getattr(fn, "_is_public", False) for fn in _walk_wrapped(handler))
+
+
+def _permission_set_name(perms: frozenset[str]) -> str:
+    from schemas.enums import PermissionLevelsEnum
+
+    # Members with equal frozensets are Enum aliases, so the handler cannot
+    # tell which name the route used; list every name that shares the set.
+    names = sorted(
+        name
+        for name, member in PermissionLevelsEnum.__members__.items()
+        if member.value == perms
+    )
+    return "|".join(names) if names else "<inline>"
+
+
+def collect_routes() -> list[RouteInfo]:
+    os.environ.setdefault("GENAI_ENGINE_SECRET_STORE_KEY", "permission-matrix")
+    sys.path.insert(0, str(GENAI_ENGINE_DIR / "src"))
+
+    import server
+    from utils.routes import iter_api_routes
+
+    # Build the app with fixed settings so the matrix does not depend on the
+    # caller's environment:
+    # - API-only mode at its default ("enabled"), which decides whether GET / exists;
+    # - audit logging off: building the app with it on attaches another handler to
+    #   the process-wide "audit" logger, so every later audit entry would be
+    #   written twice. It does not change the routes.
+    pinned = {
+        "GENAI_ENGINE_API_ONLY_MODE_ENABLED": "enabled",
+        "AUDIT_LOG_ENABLED": "false",
+    }
+    previous = {name: os.environ.get(name) for name in pinned}
+    os.environ.update(pinned)
+    try:
+        app = server.get_test_app()
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                del os.environ[name]
+            else:
+                os.environ[name] = value
+    routes: list[RouteInfo] = []
+    for route in iter_api_routes(app):
+        perms = _required_permissions(route.endpoint)
+        # FastAPI registers only the methods a route declares (no implicit HEAD
+        # or OPTIONS), so every method here was registered on purpose.
+        for method in sorted(route.methods or []):
+            if perms:
+                access = "roles"
+            elif _is_public(route.endpoint):
+                access = "public"
+            elif (method, route.path) in NO_AUTH_ROUTES:
+                access = "no-auth"
+            else:
+                access = "UNGUARDED"
+            routes.append(
+                RouteInfo(
+                    method=method,
+                    path=route.path,
+                    permission_set=_permission_set_name(perms) if perms else None,
+                    roles=perms or frozenset(),
+                    scope=_scope_kind(route.endpoint),
+                    access=access,
+                ),
+            )
+    return sorted(set(routes), key=lambda r: (r.path, r.method))
+
+
+def unguarded_routes(routes: list[RouteInfo]) -> list[RouteInfo]:
+    return [r for r in routes if r.access == "UNGUARDED"]
+
+
+def render(routes: list[RouteInfo]) -> str:
+    roles = sorted({role for r in routes for role in r.roles})
+    lines = [
+        "# GenAI Engine permission matrix. Generated by permission_matrix.py;",
+        "# do not edit by hand. Regenerate with `uv run permission_matrix`.",
+        "# scope: org-path / org-query = org-scope decorator on the route;",
+        "#        '-' = no task/org check at the route (admin-only or repository-level).",
+        "",
+        "## Summary: routes allowed per role",
+        "",
+    ]
+    for role in roles:
+        count = sum(1 for r in routes if role in r.roles)
+        lines.append(f"{role:<20} {count:>4}")
+    for access in ("public", "no-auth", "UNGUARDED"):
+        count = sum(1 for r in routes if r.access == access)
+        lines.append(f"{'(' + access + ')':<20} {count:>4}")
+    lines.append("")
+
+    for role in roles:
+        lines.append(f"## {role}")
+        lines.append("")
+        for r in routes:
+            if role in r.roles:
+                lines.append(
+                    f"{r.method:<7} {r.path:<75} {r.permission_set:<60} {r.scope}",
+                )
+        lines.append("")
+
+    lines.append("## Routes without a permission set")
+    lines.append("")
+    for r in routes:
+        if r.permission_set is None:
+            lines.append(f"{r.method:<7} {r.path:<75} {r.access}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+
+    text = render(collect_routes())
+    if args.check:
+        current = MATRIX_PATH.read_text() if MATRIX_PATH.exists() else ""
+        if current != text:
+            print(f"{MATRIX_PATH} is stale; run `uv run permission_matrix`.")
+            sys.exit(1)
+        print(f"{MATRIX_PATH} is up to date.")
+        return
+    MATRIX_PATH.write_text(text)
+    print(f"Wrote {MATRIX_PATH}")
+
+
+if __name__ == "__main__":
+    main()
