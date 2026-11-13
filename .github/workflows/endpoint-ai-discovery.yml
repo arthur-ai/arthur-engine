@@ -306,10 +306,11 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Continue'
-          [Environment]::SetEnvironmentVariable('__PSLockdownPolicy', '4', 'Machine')
-          $env:__PSLockdownPolicy = '4'
           $code = 1
+          # Set inside the try, so nothing can leave the machine in this mode.
           try {
+            [Environment]::SetEnvironmentVariable('__PSLockdownPolicy', '4', 'Machine')
+            $env:__PSLockdownPolicy = '4'
             $mode = powershell.exe -NoProfile -Command '$ExecutionContext.SessionState.LanguageMode'
             if ($mode -ne 'ConstrainedLanguage') {
               Write-Host "::error::PowerShell started in $mode mode, so this step would prove nothing"

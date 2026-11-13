@@ -9,7 +9,7 @@
 #                 one payload file. One unavailable table costs one branch, and a dated
 #                 kind=scan row says which.
 # --status TXT    with --write: the one-line health summary, `ok|degraded <time> rows=N ...`.
-# --cache PATH    check the file --write produced and print it. Runs no query.
+# --cache PATH    check the file --write produced and print it, in ASCII. Runs no query.
 #
 # THE STATEMENTS ARE bin/discover's AND bin/container-scan's: the merge, the payload CTE and
 # the status expression. test/lint.sh renders each from both runners and fails when they
@@ -18,6 +18,8 @@
 # --write PRINTS MESSAGES AND NO PAYLOAD. Windows PowerShell 5.1 re-encodes what a script
 # prints, and its `>` writes UTF-16, which nothing here reads. Every byte of the payload
 # goes from osqueryi to the file through a redirected handle, and a reader uses the file.
+# --cache does print it, for a reader that is a script: with each character outside ASCII
+# as its \u escape, which is the same JSON and is all that survives the re-encoding.
 #
 # WINDOWS POWERSHELL 5.1, IN ASCII, WITH CMDLETS AND CORE TYPES ONLY. 5.1 is what every
 # supported Windows ships, and it reads a script with no byte order mark as ANSI. Where
@@ -274,12 +276,31 @@ function ConvertTo-JsonText([string]$Text) {
     return '"' + $json + '"'
 }
 
+# ASCII ON THE WAY OUT. 5.1 encodes what a script prints in the console's code page, so a
+# character outside ASCII reaches whatever reads the output as `?` or as another character:
+# a home directory named in any other script would be a wrong path that looks like a right
+# one. Valid JSON holds such a character only inside a string, where its \u escape means
+# the same, so this changes the bytes and never the document. Split on those characters,
+# so the work follows how many there are and not how long the payload is.
+function ConvertTo-AsciiJson([string]$Text) {
+    if ($Text -notmatch '[^\x00-\x7F]') { return $Text }
+    $parts = foreach ($piece in ($Text -split '([^\x00-\x7F])')) {
+        if ($piece.Length -eq 1 -and [int][char]$piece -gt 127) {
+            '\u{0:x4}' -f [int][char]$piece
+        } else {
+            $piece
+        }
+    }
+    return -join $parts
+}
+
 # The kind=scan row for a cache that cannot be read, built here and not by osqueryi: a
-# marker row may not depend on anything that could be the thing it reports.
+# marker row may not depend on anything that could be the thing it reports. Its loc is the
+# path it was asked for, so it leaves in ASCII as the payload does.
 function Get-CacheMarker([string]$Path, [string]$Reason) {
     $epoch = [int64]([datetime]::UtcNow - [datetime]'1970-01-01').TotalSeconds
-    return '[{"kind":"scan","id":"inventory","ver":"' + $epoch + '","loc":' +
-        (ConvertTo-JsonText $Path) + ',"extra":"' + $Reason + '","perms":""}]'
+    return ConvertTo-AsciiJson ('[{"kind":"scan","id":"inventory","ver":"' + $epoch + '","loc":' +
+        (ConvertTo-JsonText $Path) + ',"extra":"' + $Reason + '","perms":""}]')
 }
 
 # Beside its destination, so the move into place is a rename on one volume and a reader
@@ -318,7 +339,7 @@ function Invoke-Cache([string]$Cache) {
     $verdict = ''
     if ($rc -eq 0) { $verdict = (Read-Text $out).Trim() }
     if ($verdict -eq 'ok') {
-        Write-Output $doc
+        Write-Output (ConvertTo-AsciiJson $doc)
         $script:Code = 0
     } elseif ($verdict -eq 'bad') {
         Say "$Cache is not a JSON array. The writer may have been interrupted."
