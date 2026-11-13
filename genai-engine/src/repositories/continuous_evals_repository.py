@@ -1,6 +1,8 @@
 import hashlib
+import json
 import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from typing import Any, List, Optional
 
@@ -10,7 +12,6 @@ from arthur_common.models.enums import (
     ContinuousEvalRunStatus,
     PaginationSortMethod,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import asc, case, desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +23,16 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from repositories.organizations_repository import lookup_org_id
+from repositories.trace_transform_repository import TraceTransformRepository
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
+from schemas.enums import (
+    ContinuousEvalRollupRule,
+    ContinuousEvalRunLevel,
+    ContinuousEvalScope,
+)
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
@@ -30,18 +41,43 @@ from schemas.request_schemas import (
     ContinuousEvalRunResultsListFilterRequest,
     ContinuousEvalTransformVariableMappingRequest,
     UpdateContinuousEvalRequest,
+    validate_scope_fields,
 )
 from schemas.response_schemas import (
     ContinuousEvalRerunResponse,
     DailyAgenticAnnotationStats,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
 )
+from services.continuous_eval.span_scope import (
+    first_run_level,
+    scope_variables_problem,
+)
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
+from utils.trace import get_nested_value
 
 logger = logging.getLogger(__name__)
+
+# Grouped analytics read each run's trace attribute in Python, so they cap how many
+# runs one request may group; narrow the time range past this.
+GROUPED_ANALYTICS_MAX_RUNS = 20_000
+_SPAN_READ_CHUNK = 500
+_RERUNNABLE_STATUSES = (
+    ContinuousEvalRunStatus.FAILED.value,
+    ContinuousEvalRunStatus.ERROR.value,
+    ContinuousEvalRunStatus.SKIPPED.value,
+)
+_UNFINISHED_STATUSES = (
+    ContinuousEvalRunStatus.PENDING.value,
+    ContinuousEvalRunStatus.RUNNING.value,
+)
+
+
+def _pass_rate(passed: int, failed: int) -> Optional[float]:
+    return passed / (passed + failed) if passed + failed else None
 
 
 def is_trace_sampled(trace_id: str, sample_rate: Optional[float]) -> bool:
@@ -54,6 +90,21 @@ def is_trace_sampled(trace_id: str, sample_rate: Optional[float]) -> bool:
         return True
     digest = hashlib.sha256(trace_id.encode()).digest()
     return int.from_bytes(digest[:8], "big") / 2**64 < sample_rate
+
+
+def span_filter_to_db(
+    span_filter: Optional[ContinuousEvalSpanFilter],
+) -> Optional[dict[str, Any]]:
+    return span_filter.model_dump(mode="json") if span_filter else None
+
+
+def trace_filter_to_db(
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+) -> Optional[List[dict[str, Optional[str]]]]:
+    """Store a trace filter as JSON, with an empty list stored as NULL (no filter)."""
+    if not trace_filter:
+        return None
+    return [condition.model_dump(mode="json") for condition in trace_filter]
 
 
 class ContinuousEvalsRepository:
@@ -122,6 +173,16 @@ class ContinuousEvalsRepository:
         mapped_eval_vars = {
             mapping.eval_variable for mapping in transform_variable_mapping
         }
+        # Each eval variable takes one value; a second mapping would overwrite it.
+        eval_targets = [mapping.eval_variable for mapping in transform_variable_mapping]
+        repeated_eval_vars = {
+            name for name in eval_targets if eval_targets.count(name) > 1
+        }
+        if repeated_eval_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Each eval variable can be mapped once. Mapped more than once: {sorted(repeated_eval_vars)}",
+            )
 
         # Check that all transform variables in the mapping exist in the transform
         invalid_transform_vars = mapped_transform_vars - transform_vars
@@ -174,8 +235,19 @@ class ContinuousEvalsRepository:
             transform_variable_mapping=transform_variable_mapping_dicts,
             enabled=continuous_eval_request.enabled,
             sample_rate=continuous_eval_request.sample_rate,
+            daily_cost_cap_usd=continuous_eval_request.daily_cost_cap_usd,
+            trace_filter=trace_filter_to_db(continuous_eval_request.trace_filter),
+            scope=continuous_eval_request.scope.value,
+            span_filter=span_filter_to_db(continuous_eval_request.span_filter),
+            max_spans_per_trace=continuous_eval_request.max_spans_per_trace,
+            rollup_rule=(
+                continuous_eval_request.rollup_rule.value
+                if continuous_eval_request.rollup_rule
+                else None
+            ),
         )
 
+        self._check_scope_variables(db_continuous_eval)
         try:
             self.db_session.add(db_continuous_eval)
             if commit:
@@ -218,6 +290,10 @@ class ContinuousEvalsRepository:
         if update_continuous_eval.description:
             db_continuous_eval.description = update_continuous_eval.description
             has_changes = True
+        previous_judge = (
+            db_continuous_eval.llm_eval_name,
+            db_continuous_eval.llm_eval_version,
+        )
         if update_continuous_eval.llm_eval_name:
             db_continuous_eval.llm_eval_name = update_continuous_eval.llm_eval_name
             has_changes = True
@@ -226,6 +302,10 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.llm_eval_version,
             )
             has_changes = True
+        previous_transform = (
+            db_continuous_eval.transform_id,
+            db_continuous_eval.transform_version_id,
+        )
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
             has_changes = True
@@ -234,6 +314,30 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.transform_version_id
             )
             has_changes = True
+        # A new judge, a new transform or a new mapping (each decides what the
+        # judge reads, e.g. a bigger 'all' value) changes the cost per run, so
+        # spend is priced afresh.
+        if (
+            (
+                update_continuous_eval.transform_variable_mapping
+                and [
+                    mapping.model_dump()
+                    for mapping in update_continuous_eval.transform_variable_mapping
+                ]
+                != db_continuous_eval.transform_variable_mapping
+            )
+            or (
+                db_continuous_eval.llm_eval_name,
+                db_continuous_eval.llm_eval_version,
+            )
+            != previous_judge
+            or (
+                db_continuous_eval.transform_id,
+                db_continuous_eval.transform_version_id,
+            )
+            != previous_transform
+        ):
+            db_continuous_eval.judge_changed_at = datetime.now()
         if update_continuous_eval.transform_variable_mapping:
             # Convert Pydantic models to dicts for JSON serialization
             db_continuous_eval.transform_variable_mapping = [
@@ -247,14 +351,116 @@ class ContinuousEvalsRepository:
         if "sample_rate" in update_continuous_eval.model_fields_set:
             db_continuous_eval.sample_rate = update_continuous_eval.sample_rate
             has_changes = True
+        if "daily_cost_cap_usd" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.daily_cost_cap_usd = (
+                update_continuous_eval.daily_cost_cap_usd
+            )
+            has_changes = True
+        if "trace_filter" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.trace_filter = trace_filter_to_db(
+                update_continuous_eval.trace_filter,
+            )
+            has_changes = True
+        if self._apply_scope_update(db_continuous_eval, update_continuous_eval):
+            has_changes = True
 
         if not has_changes:
             return ContinuousEval.from_db_model(db_continuous_eval)
+        if update_continuous_eval.model_fields_set & {
+            "scope",
+            "transform_id",
+            "transform_version_id",
+            "transform_variable_mapping",
+        }:
+            try:
+                self._check_scope_variables(db_continuous_eval)
+            except HTTPException:
+                self.db_session.rollback()
+                raise
 
         db_continuous_eval.updated_at = datetime.now()
         self.db_session.commit()
 
         return ContinuousEval.from_db_model(db_continuous_eval)
+
+    def _check_scope_variables(
+        self, db_continuous_eval: DatabaseContinuousEval
+    ) -> None:
+        """Reject an eval whose mapped variables don't fit its scope: span scope
+        must read the judged span, trace scope must not."""
+        transform_repository = TraceTransformRepository(self.db_session)
+        definition = (
+            transform_repository.get_version_by_id(
+                db_continuous_eval.transform_id,
+                db_continuous_eval.transform_version_id,
+            ).definition
+            if db_continuous_eval.transform_version_id is not None
+            else transform_repository.get_latest_definition(
+                db_continuous_eval.transform_id,
+            )
+        )
+        problem = scope_variables_problem(
+            db_continuous_eval.scope,
+            definition,
+            (
+                mapping["transform_variable"]
+                for mapping in db_continuous_eval.transform_variable_mapping or []
+            ),
+        )
+        if problem:
+            raise HTTPException(status_code=400, detail=problem)
+
+    @staticmethod
+    def _apply_scope_update(
+        db_continuous_eval: DatabaseContinuousEval,
+        update: UpdateContinuousEvalRequest,
+    ) -> bool:
+        """Apply scope, span_filter, max_spans_per_trace and rollup_rule, then check
+        the eval they leave behind: span scope needs a span filter and a rollup
+        rule; trace scope keeps neither. Returns whether anything changed."""
+        fields = update.model_fields_set & {
+            "scope",
+            "span_filter",
+            "max_spans_per_trace",
+            "rollup_rule",
+        }
+        if not fields:
+            return False
+        scope = update.scope or ContinuousEvalScope(db_continuous_eval.scope)
+        span_filter = (
+            update.span_filter
+            if "span_filter" in fields
+            else (
+                ContinuousEvalSpanFilter.model_validate(db_continuous_eval.span_filter)
+                if db_continuous_eval.span_filter
+                else None
+            )
+        )
+        rollup_rule = (
+            update.rollup_rule
+            if "rollup_rule" in fields
+            else (
+                ContinuousEvalRollupRule(db_continuous_eval.rollup_rule)
+                if db_continuous_eval.rollup_rule
+                else None
+            )
+        )
+        if scope == ContinuousEvalScope.TRACE and "scope" in fields:
+            # Switching back to trace scope drops the span settings with it.
+            if "span_filter" not in fields:
+                span_filter = None
+            if "rollup_rule" not in fields:
+                rollup_rule = None
+        try:
+            validate_scope_fields(scope, span_filter, rollup_rule)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        db_continuous_eval.scope = scope.value
+        db_continuous_eval.span_filter = span_filter_to_db(span_filter)
+        db_continuous_eval.rollup_rule = rollup_rule.value if rollup_rule else None
+        if update.max_spans_per_trace is not None:
+            db_continuous_eval.max_spans_per_trace = update.max_spans_per_trace
+        return True
 
     def get_continuous_eval_by_id(
         self,
@@ -424,6 +630,13 @@ class ContinuousEvalsRepository:
                     == filter_request.continuous_eval_enabled,
                 )
 
+            if filter_request.run_levels:
+                base_query = base_query.filter(
+                    DatabaseAgenticAnnotation.run_level.in_(
+                        [level.value for level in filter_request.run_levels],
+                    ),
+                )
+
         total_count = base_query.count()
 
         if pagination_parameters:
@@ -527,6 +740,9 @@ class ContinuousEvalsRepository:
                     trace_id=trace_id,
                     continuous_eval_id=continuous_eval.id,
                     run_status=ContinuousEvalRunStatus.PENDING,
+                    # A span-scope eval queues the trace's rollup, which fans out
+                    # to span runs once the trace is idle.
+                    run_level=first_run_level(continuous_eval.scope).value,
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                     org_id=task_org_id,
@@ -587,6 +803,75 @@ class ContinuousEvalsRepository:
                     commit=commit,
                 )
 
+    def _span_runs_of(self, run: DatabaseAgenticAnnotation) -> Query[Any]:
+        """The span runs of run's eval, trace and test run."""
+        return self._runs_like(run, ContinuousEvalRunLevel.SPAN)
+
+    def _runs_like(
+        self,
+        run: DatabaseAgenticAnnotation,
+        run_level: ContinuousEvalRunLevel,
+    ) -> Query[Any]:
+        test_run_match = (
+            DatabaseAgenticAnnotation.test_run_id.is_(None)
+            if run.test_run_id is None
+            else DatabaseAgenticAnnotation.test_run_id == run.test_run_id
+        )
+        return self.db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.continuous_eval_id == run.continuous_eval_id,
+            DatabaseAgenticAnnotation.trace_id == run.trace_id,
+            DatabaseAgenticAnnotation.run_level == run_level.value,
+            test_run_match,
+        )
+
+    def _reopen_rollups(self, span_run: DatabaseAgenticAnnotation) -> None:
+        """A rerun span run makes its trace's finished rollup undecided again; it
+        is decided anew when the span run finishes. The rollup row is locked first:
+        two sibling span runs rerun at once must not both take its result out of
+        the test run's counters."""
+        for rollup in self._runs_like(
+            span_run,
+            ContinuousEvalRunLevel.SPAN_ROLLUP,
+        ).with_for_update():
+            if rollup.run_status in _UNFINISHED_STATUSES:
+                continue
+            self._uncount_test_run_result(rollup)
+            rollup.run_status = ContinuousEvalRunStatus.RUNNING.value
+            rollup.annotation_score = None
+            rollup.label = None
+            rollup.annotation_description = (
+                f"Re-deciding after span {span_run.span_id} was rerun"
+            )
+            rollup.updated_at = datetime.now()
+
+    def _uncount_test_run_result(self, run: DatabaseAgenticAnnotation) -> None:
+        """Take a finished run's result back out of its test run's counters."""
+        if run.test_run_id is None:
+            return
+        old_status = run.run_status
+        update_values: dict[Any, Any] = {
+            "completed_count": DatabaseContinuousEvalTestRun.completed_count - 1,
+            "status": "running",
+            "updated_at": datetime.now(),
+        }
+        if old_status == ContinuousEvalRunStatus.PASSED.value:
+            update_values["passed_count"] = (
+                DatabaseContinuousEvalTestRun.passed_count - 1
+            )
+        elif old_status == ContinuousEvalRunStatus.FAILED.value:
+            update_values["failed_count"] = (
+                DatabaseContinuousEvalTestRun.failed_count - 1
+            )
+        elif old_status == ContinuousEvalRunStatus.ERROR.value:
+            update_values["error_count"] = DatabaseContinuousEvalTestRun.error_count - 1
+        elif old_status == ContinuousEvalRunStatus.SKIPPED.value:
+            update_values["skipped_count"] = (
+                DatabaseContinuousEvalTestRun.skipped_count - 1
+            )
+        self.db_session.query(DatabaseContinuousEvalTestRun).filter(
+            DatabaseContinuousEvalTestRun.id == run.test_run_id,
+        ).update(update_values, synchronize_session=False)
+
     def rerun_continuous_eval_by_annotation_id(
         self,
         run_id: uuid.UUID,
@@ -610,11 +895,7 @@ class ContinuousEvalsRepository:
         if annotation.annotation_type != AgenticAnnotationType.CONTINUOUS_EVAL.value:
             raise HTTPException(status_code=400, detail="Run is not a continuous eval.")
 
-        if annotation.run_status not in [
-            ContinuousEvalRunStatus.FAILED.value,
-            ContinuousEvalRunStatus.ERROR.value,
-            ContinuousEvalRunStatus.SKIPPED.value,
-        ]:
+        if annotation.run_status not in _RERUNNABLE_STATUSES:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot rerun a non-failed continuous eval.",
@@ -640,42 +921,36 @@ class ContinuousEvalsRepository:
                 detail="Continuous eval queue service is not available.",
             )
 
-        # If this annotation belongs to a test run, decrement the old status counter
-        # and completed count so re-execution doesn't corrupt the totals
-        if annotation.test_run_id is not None:
-            old_status = annotation.run_status
-            update_values: dict[Any, Any] = {
-                "completed_count": DatabaseContinuousEvalTestRun.completed_count - 1,
-                "status": "running",
-                "updated_at": datetime.now(),
-            }
-            if old_status == ContinuousEvalRunStatus.PASSED.value:
-                update_values["passed_count"] = (
-                    DatabaseContinuousEvalTestRun.passed_count - 1
-                )
-            elif old_status == ContinuousEvalRunStatus.FAILED.value:
-                update_values["failed_count"] = (
-                    DatabaseContinuousEvalTestRun.failed_count - 1
-                )
-            elif old_status == ContinuousEvalRunStatus.ERROR.value:
-                update_values["error_count"] = (
-                    DatabaseContinuousEvalTestRun.error_count - 1
-                )
-            elif old_status == ContinuousEvalRunStatus.SKIPPED.value:
-                update_values["skipped_count"] = (
-                    DatabaseContinuousEvalTestRun.skipped_count - 1
-                )
-
-            self.db_session.query(DatabaseContinuousEvalTestRun).filter(
-                DatabaseContinuousEvalTestRun.id == annotation.test_run_id,
-            ).update(update_values, synchronize_session=False)
+        # A test run counts traces: through the run itself, or through the rollup
+        # of a span run. Undo the old count so re-execution doesn't corrupt it.
+        if annotation.run_level == ContinuousEvalRunLevel.SPAN.value:
+            self._reopen_rollups(annotation)
+        else:
+            self._uncount_test_run_result(annotation)
+        if annotation.run_level == ContinuousEvalRunLevel.SPAN_ROLLUP.value:
+            # Rerunning a trace's rollup re-judges the span runs that did not pass;
+            # the fan-out reuses the ones that did.
+            self._span_runs_of(annotation).filter(
+                DatabaseAgenticAnnotation.run_status.in_(_RERUNNABLE_STATUSES),
+            ).update(
+                {
+                    "run_status": ContinuousEvalRunStatus.PENDING.value,
+                    "annotation_score": None,
+                    "annotation_description": None,
+                    "label": None,
+                    "input_variables": None,
+                    "updated_at": datetime.now(),
+                },
+                synchronize_session=False,
+            )
 
         # Reset annotation to PENDING status
         annotation.run_status = ContinuousEvalRunStatus.PENDING.value
         annotation.annotation_score = None
         annotation.annotation_description = None
+        annotation.label = None
         annotation.input_variables = None
-        annotation.cost = None
+        # cost is kept: the earlier judge call was billed, and the rerun adds its own.
         annotation.updated_at = datetime.now()
         self.db_session.commit()
 
@@ -702,29 +977,43 @@ class ContinuousEvalsRepository:
         task_id: str,
         start_time: datetime,
         end_time: datetime,
+        group_by: Optional[str] = None,
+        group_by_span_name: Optional[str] = None,
     ) -> List[DailyAgenticAnnotationStats]:
         """Get daily aggregated statistics for agentic annotations.
 
-        Includes both continuous eval annotations and human annotations.
+        Includes both continuous eval annotations and human annotations. With
+        group_by (an attribute path, as transforms use), each day is split by the
+        attribute's value on the run's trace, e.g. a prompt version.
         """
+        if group_by:
+            return self._grouped_daily_annotation_analytics(
+                task_id,
+                start_time,
+                end_time,
+                group_by,
+                group_by_span_name,
+            )
         # Use func.date() for database-agnostic date truncation
         date_col = func.date(DatabaseAgenticAnnotation.created_at)
 
-        # Conditional counts using CASE WHEN
+        # Counts are per trace verdict: a span-scope eval's span runs are left out
+        # (their rollup counts once), but their judge costs are what it spent.
+        verdict = DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN
         passed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 1, 1)),
+            case((verdict & (DatabaseAgenticAnnotation.annotation_score == 1), 1)),
         )
         failed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 0, 1)),
+            case((verdict & (DatabaseAgenticAnnotation.annotation_score == 0), 1)),
         )
         error_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "error", 1)),
+            case((verdict & (DatabaseAgenticAnnotation.run_status == "error"), 1)),
         )
         skipped_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "skipped", 1)),
+            case((verdict & (DatabaseAgenticAnnotation.run_status == "skipped"), 1)),
         )
         total_cost = func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0)
-        total_count = func.count(DatabaseAgenticAnnotation.id)
+        total_count = func.count(case((verdict, 1)))
 
         # Build query with JOIN to continuous_evals for task_id filtering
         # Note: This will only include annotations with a continuous_eval_id (not human annotations)
@@ -766,6 +1055,119 @@ class ContinuousEvalsRepository:
                 skipped_count=row.skipped_count,
                 total_cost=float(row.total_cost),
                 total_count=row.total_count,
+                pass_rate=_pass_rate(row.passed_count, row.failed_count),
             )
             for row in results
         ]
+
+    def _grouped_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        group_by: str,
+        group_by_span_name: Optional[str],
+    ) -> List[DailyAgenticAnnotationStats]:
+        runs = (
+            self.db_session.query(
+                DatabaseAgenticAnnotation.trace_id,
+                DatabaseAgenticAnnotation.created_at,
+                DatabaseAgenticAnnotation.annotation_score,
+                DatabaseAgenticAnnotation.run_status,
+                DatabaseAgenticAnnotation.cost,
+                DatabaseAgenticAnnotation.run_level,
+            )
+            .join(
+                DatabaseContinuousEval,
+                DatabaseAgenticAnnotation.continuous_eval_id
+                == DatabaseContinuousEval.id,
+            )
+            .filter(
+                DatabaseContinuousEval.task_id == task_id,
+                DatabaseAgenticAnnotation.created_at >= start_time,
+                DatabaseAgenticAnnotation.created_at < end_time,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
+            )
+            .limit(GROUPED_ANALYTICS_MAX_RUNS + 1)
+            .all()
+        )
+        if len(runs) > GROUPED_ANALYTICS_MAX_RUNS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"More than {GROUPED_ANALYTICS_MAX_RUNS} runs in the time range to "
+                    "group; narrow start_time and end_time."
+                ),
+            )
+        groups = self._trace_attribute_values(
+            task_id,
+            {run.trace_id for run in runs if run.trace_id},
+            group_by,
+            group_by_span_name,
+        )
+
+        totals: dict[tuple[str, Optional[str]], dict[str, float]] = defaultdict(
+            lambda: defaultdict(float),
+        )
+        for run in runs:
+            day = run.created_at.date().isoformat()
+            t = totals[(day, groups.get(run.trace_id) if run.trace_id else None)]
+            t["cost"] += run.cost or 0.0
+            # As in the ungrouped stats: span runs cost, their rollup counts.
+            if run.run_level == ContinuousEvalRunLevel.SPAN.value:
+                continue
+            t["total"] += 1
+            t["passed"] += run.annotation_score == 1
+            t["failed"] += run.annotation_score == 0
+            t["error"] += run.run_status == "error"
+            t["skipped"] += run.run_status == "skipped"
+
+        stats = [
+            DailyAgenticAnnotationStats(
+                date=day,
+                group=group,
+                passed_count=int(t["passed"]),
+                failed_count=int(t["failed"]),
+                error_count=int(t["error"]),
+                skipped_count=int(t["skipped"]),
+                total_cost=t["cost"],
+                total_count=int(t["total"]),
+                pass_rate=_pass_rate(int(t["passed"]), int(t["failed"])),
+            )
+            for (day, group), t in totals.items()
+        ]
+        stats.sort(key=lambda s: s.group or "")
+        stats.sort(key=lambda s: s.date, reverse=True)
+        return stats
+
+    def _trace_attribute_values(
+        self,
+        task_id: str,
+        trace_ids: set[str],
+        attribute_path: str,
+        span_name: Optional[str],
+    ) -> dict[str, str]:
+        """Each trace's value at attribute_path, from the earliest span (named
+        span_name, if given) that has it. Only the task's own spans are read: a
+        trace id is not unique across tasks."""
+        values: dict[str, str] = {}
+        ordered = sorted(trace_ids)
+        for i in range(0, len(ordered), _SPAN_READ_CHUNK):
+            query = self.db_session.query(
+                DatabaseSpan.trace_id,
+                DatabaseSpan.raw_data,
+            ).filter(
+                DatabaseSpan.task_id == task_id,
+                DatabaseSpan.trace_id.in_(ordered[i : i + _SPAN_READ_CHUNK]),
+            )
+            if span_name:
+                query = query.filter(DatabaseSpan.span_name == span_name)
+            for trace_id, raw_data in query.order_by(DatabaseSpan.start_time):
+                if trace_id in values:
+                    continue
+                value = get_nested_value(raw_data, attribute_path)
+                if value is not None:
+                    values[trace_id] = (
+                        value if isinstance(value, str) else json.dumps(value)
+                    )
+        return values

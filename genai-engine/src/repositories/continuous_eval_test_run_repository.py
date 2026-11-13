@@ -19,12 +19,13 @@ from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.organizations_repository import lookup_org_id
-from schemas.enums import TestRunStatus
+from schemas.enums import ContinuousEvalRunLevel, TestRunStatus
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEvalTestRun
 from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
 )
+from services.continuous_eval.span_scope import first_run_level
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,8 @@ class ContinuousEvalTestRunRepository:
         # Validate all trace IDs exist and belong to the same task
         existing_traces = (
             self.db_session.query(
-                DatabaseTraceMetadata.trace_id, DatabaseTraceMetadata.task_id
+                DatabaseTraceMetadata.trace_id,
+                DatabaseTraceMetadata.task_id,
             )
             .filter(DatabaseTraceMetadata.trace_id.in_(trace_ids))
             .all()
@@ -120,6 +122,7 @@ class ContinuousEvalTestRunRepository:
                 trace_id=trace_id,
                 continuous_eval_id=continuous_eval_id,
                 run_status=ContinuousEvalRunStatus.PENDING,
+                run_level=first_run_level(db_continuous_eval.scope).value,
                 test_run_id=db_test_run.id,
                 created_at=now,
                 updated_at=now,
@@ -161,7 +164,8 @@ class ContinuousEvalTestRunRepository:
         # test_runs carry only task_id — join through tasks for the org filter.
         if org_scope is not None:
             q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
         db_test_run = q.first()
         if not db_test_run:
@@ -183,7 +187,8 @@ class ContinuousEvalTestRunRepository:
         )
         if org_scope is not None:
             base_query = base_query.join(
-                DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
 
         if pagination_parameters:
@@ -196,7 +201,7 @@ class ContinuousEvalTestRunRepository:
                 sort_fn(DatabaseContinuousEvalTestRun.created_at),
             )
             base_query = base_query.offset(
-                pagination_parameters.page * pagination_parameters.page_size
+                pagination_parameters.page * pagination_parameters.page_size,
             )
             base_query = base_query.limit(pagination_parameters.page_size)
         else:
@@ -217,9 +222,11 @@ class ContinuousEvalTestRunRepository:
         pagination_parameters: Optional[PaginationParameters] = None,
         org_scope: uuid.UUID | None = None,
     ) -> List[AgenticAnnotation]:
-        """Get individual test case results for a test run."""
+        """Get individual test case results for a test run: one per trace, so a
+        span-scope eval's rollups are listed and its span runs are not."""
         base_query = self.db_session.query(DatabaseAgenticAnnotation).filter(
             DatabaseAgenticAnnotation.test_run_id == test_run_id,
+            DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN.value,
         )
         # agentic_annotations carries denormalized org_id — direct filter.
         if org_scope is not None:
@@ -237,7 +244,7 @@ class ContinuousEvalTestRunRepository:
                 sort_fn(DatabaseAgenticAnnotation.updated_at),
             )
             base_query = base_query.offset(
-                pagination_parameters.page * pagination_parameters.page_size
+                pagination_parameters.page * pagination_parameters.page_size,
             )
             base_query = base_query.limit(pagination_parameters.page_size)
 
@@ -259,7 +266,9 @@ class ContinuousEvalTestRunRepository:
         )
 
     def delete_test_run(
-        self, test_run_id: uuid.UUID, org_scope: uuid.UUID | None = None
+        self,
+        test_run_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> None:
         """Delete a test run and its associated annotations."""
         q = self.db_session.query(DatabaseContinuousEvalTestRun).filter(
@@ -267,7 +276,8 @@ class ContinuousEvalTestRunRepository:
         )
         if org_scope is not None:
             q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
         db_test_run = q.first()
         if not db_test_run:
@@ -283,9 +293,13 @@ class ContinuousEvalTestRunRepository:
         self.db_session.commit()
 
     def count_test_run_results(self, test_run_id: uuid.UUID) -> int:
-        """Count results for a test run."""
+        """Count results for a test run, one per trace as get_test_run_results."""
         return (
             self.db_session.query(DatabaseAgenticAnnotation)
-            .filter(DatabaseAgenticAnnotation.test_run_id == test_run_id)
+            .filter(
+                DatabaseAgenticAnnotation.test_run_id == test_run_id,
+                DatabaseAgenticAnnotation.run_level
+                != ContinuousEvalRunLevel.SPAN.value,
+            )
             .count()
         )

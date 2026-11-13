@@ -45,7 +45,6 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationResponse,
     AgentMetadataResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
@@ -77,8 +76,6 @@ from arthur_common.models.response_schemas import (
 )
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalTransformVariableMappingResponse,
-    TraceTransformDefinition,
-    TraceTransformResponse,
 )
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
@@ -154,10 +151,18 @@ from schemas.agentic_notebook_schemas import (
     AgenticNotebookSummary,
     CreateAgenticNotebookRequest,
 )
+from schemas.annotation_schemas import AgenticAnnotationResponse
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+    NewDatasetVersionRowColumnItemRequest,
+)
 from schemas.enums import (
     ApplicationConfigurations,
+    ContinuousEvalRollupRule,
+    ContinuousEvalRunLevel,
+    ContinuousEvalScope,
     DocumentStorageEnvironment,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -238,6 +243,7 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
     ScorerToxicityScore,
 )
+from schemas.transform_schemas import TraceTransformDefinition, TraceTransformResponse
 from utils import constants
 from utils import trace as trace_utils
 from utils.constants import MAX_DATASET_ROWS
@@ -817,6 +823,22 @@ class AgenticAnnotation(BaseModel):
         default=None,
         description="Description of the annotation",
     )
+    span_id: Optional[str] = Field(
+        default=None,
+        description="Span the annotation is about; null for the whole trace",
+    )
+    label: Optional[str] = Field(
+        default=None,
+        description="Category of the result, from a person or a judge",
+    )
+    run_level: ContinuousEvalRunLevel = Field(
+        default=ContinuousEvalRunLevel.TRACE,
+        description="What the run judged: a trace, one span, or a rollup of span runs",
+    )
+    judged_span_count: Optional[int] = Field(
+        default=None,
+        description="Spans in the trace when it was judged",
+    )
     input_variables: Optional[List[VariableTemplateValue]] = Field(
         default=None,
         description="Input variables for the continuous eval",
@@ -877,6 +899,10 @@ class AgenticAnnotation(BaseModel):
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
             annotation_description=db_annotation.annotation_description,
+            span_id=db_annotation.span_id,
+            label=db_annotation.label,
+            run_level=ContinuousEvalRunLevel(db_annotation.run_level),
+            judged_span_count=db_annotation.judged_span_count,
             input_variables=[
                 VariableTemplateValue.model_validate(variable)
                 for variable in db_annotation.input_variables or []
@@ -905,6 +931,10 @@ class AgenticAnnotation(BaseModel):
             eval_version=self.eval_version,
             annotation_score=self.annotation_score,
             annotation_description=self.annotation_description,
+            span_id=self.span_id,
+            label=self.label,
+            run_level=self.run_level,
+            judged_span_count=self.judged_span_count,
             input_variables=self.input_variables,
             run_status=self.run_status,
             cost=self.cost,
@@ -3973,6 +4003,22 @@ class ContinuousEval(BaseModel):
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
     )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
+    judge_changed_at: Optional[datetime] = Field(
+        default=None,
+        description="When the eval started using its current evaluator. Null for evals created before this was tracked.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
+    )
+    scope: ContinuousEvalScope = ContinuousEvalScope.TRACE
+    span_filter: Optional[ContinuousEvalSpanFilter] = None
+    max_spans_per_trace: int = 20
+    rollup_rule: Optional[ContinuousEvalRollupRule] = None
 
     @staticmethod
     def from_db_model(
@@ -3999,6 +4045,28 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=db_eval.enabled,
             sample_rate=db_eval.sample_rate,
+            daily_cost_cap_usd=db_eval.daily_cost_cap_usd,
+            judge_changed_at=db_eval.judge_changed_at,
+            trace_filter=(
+                [
+                    ContinuousEvalTraceFilterCondition.model_validate(condition)
+                    for condition in db_eval.trace_filter
+                ]
+                if db_eval.trace_filter
+                else None
+            ),
+            scope=ContinuousEvalScope(db_eval.scope),
+            span_filter=(
+                ContinuousEvalSpanFilter.model_validate(db_eval.span_filter)
+                if db_eval.span_filter
+                else None
+            ),
+            max_spans_per_trace=db_eval.max_spans_per_trace,
+            rollup_rule=(
+                ContinuousEvalRollupRule(db_eval.rollup_rule)
+                if db_eval.rollup_rule
+                else None
+            ),
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -4025,6 +4093,12 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
             sample_rate=self.sample_rate,
+            daily_cost_cap_usd=self.daily_cost_cap_usd,
+            trace_filter=self.trace_filter,
+            scope=self.scope,
+            span_filter=self.span_filter,
+            max_spans_per_trace=self.max_spans_per_trace,
+            rollup_rule=self.rollup_rule,
         )
 
 

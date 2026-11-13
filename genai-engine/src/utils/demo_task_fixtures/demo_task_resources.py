@@ -10,10 +10,6 @@ from arthur_common.models.llm_model_providers import (
     ToolCallFunction,
     ToolFunction,
 )
-from arthur_common.models.task_eval_schemas import (
-    TraceTransformDefinition,
-    TraceTransformVariableDefinition,
-)
 
 from schemas.common_schemas import (
     NewDatasetVersionRowColumnItemRequest,
@@ -21,6 +17,10 @@ from schemas.common_schemas import (
 )
 from schemas.internal_schemas import NewTraceTransformRequest
 from schemas.request_schemas import NewDatasetRequest, NewDatasetVersionRequest
+from schemas.transform_schemas import (
+    TraceTransformDefinition,
+    TraceTransformVariableDefinition,
+)
 from utils.file_parsing import parse_csv_rows
 
 DEMO_TASK_DATASET_CSV_PATH = os.path.join(os.path.dirname(__file__), "DemoDataset.csv")

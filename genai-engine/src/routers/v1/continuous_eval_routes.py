@@ -1,14 +1,13 @@
 from datetime import datetime, timedelta
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalVariableMappingResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from pydantic import AfterValidator
+from pydantic import AfterValidator, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from dependencies import (
@@ -27,9 +26,16 @@ from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.annotation_schemas import ListAgenticAnnotationsResponse
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
+    DEFAULT_MAX_SPANS_PER_TRACE,
+    MAX_SPANS_PER_TRACE_LIMIT,
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
     ContinuousEvalRunResultsListFilterRequest,
@@ -50,6 +56,8 @@ from schemas.response_schemas import (
 from utils.url_encoding import decode_path_param
 from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
+
+_TRACE_FILTER_ADAPTER = TypeAdapter(List[ContinuousEvalTraceFilterCondition])
 
 continuous_eval_routes = APIRouter(
     prefix="/api/v1",
@@ -601,6 +609,23 @@ def get_daily_annotation_analytics(
         Optional[datetime],
         Query(description="End time (exclusive). Defaults to now."),
     ] = None,
+    group_by: Annotated[
+        Optional[str],
+        Query(
+            max_length=500,
+            description=(
+                "Attribute path on the run's trace to split each day by, as transforms use, "
+                "e.g. 'attributes.metadata.prompt_version'. Rows then carry `group`."
+            ),
+        ),
+    ] = None,
+    group_by_span_name: Annotated[
+        Optional[str],
+        Query(
+            max_length=500,
+            description="Only read group_by from spans with this name. Defaults to the earliest span that has it.",
+        ),
+    ] = None,
     db_session: Session = Depends(get_db_session),
     current_user: User = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -625,6 +650,8 @@ def get_daily_annotation_analytics(
             task.id,
             start_time,
             end_time,
+            group_by=group_by,
+            group_by_span_name=group_by_span_name,
         )
 
         return AgenticAnnotationAnalyticsResponse(
@@ -642,8 +669,10 @@ def get_daily_annotation_analytics(
     summary="Get recent and estimated daily spend for a continuous eval",
     description="Returns the number and total cost of the eval's live runs in the last 24 hours, "
     "and an estimated daily cost: the task's traces per day over the last 7 days, times the "
-    "eval's sample rate, times the average cost of its live runs that called the LLM "
-    "(passed or failed) over the last 7 days. Test runs are not counted.",
+    "eval's sample rate, times the share of finished runs that reached the LLM, times the "
+    "average cost of its live runs that called the LLM (passed or failed) and have a recorded "
+    "cost over the last 7 days. If the evaluator changed in that window, only runs since the "
+    "change are averaged; otherwise all of them are. Test runs are not counted.",
     response_model=ContinuousEvalSpendResponse,
     tags=["Continuous Evals"],
 )
@@ -676,8 +705,11 @@ def get_continuous_eval_spend(
     summary="Estimate the daily spend of a new continuous eval",
     description="Estimates the daily cost of a continuous eval that would run the given evaluator "
     "at the given sample rate: the task's traces per day over the last 7 days, times the sample "
-    "rate, times the average cost of the live runs that called the LLM (passed or failed) over "
-    "the last 7 days of the task's continuous evals using that evaluator.",
+    "rate, times the share of finished runs that reached the LLM, times the average cost of the "
+    "live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 "
+    "days of the task's continuous evals using that evaluator version (latest by default), counting each "
+    "eval's runs since its evaluator last changed, or all its runs in the window if it never "
+    "changed.",
     response_model=ContinuousEvalDailySpendEstimate,
     tags=["Continuous Evals"],
 )
@@ -688,6 +720,12 @@ def estimate_continuous_eval_spend(
         str,
         Query(description="Name of the evaluator the continuous eval would run."),
     ],
+    llm_eval_version: Annotated[
+        str,
+        Query(
+            description="Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model.",
+        ),
+    ] = "latest",
     sample_rate: Annotated[
         Optional[float],
         Query(
@@ -697,16 +735,70 @@ def estimate_continuous_eval_spend(
         # Not Query(gt=0): see validate_sample_rate.
         AfterValidator(validate_sample_rate),
     ] = None,
+    trace_filter: Annotated[
+        Optional[str],
+        Query(
+            description=(
+                "The new eval's trace filter as a JSON list of conditions, the same "
+                "shape as trace_filter on create. When set, the estimate is scaled by "
+                "the share of the task's recent traces that match it."
+            ),
+        ),
+    ] = None,
+    span_filter: Annotated[
+        Optional[str],
+        Query(
+            description=(
+                "For a span-scope eval: its span filter as JSON, the same shape as "
+                "span_filter on create. Each span is one judge call, so the estimate "
+                "is multiplied by the spans it would judge per recent trace."
+            ),
+        ),
+    ] = None,
+    max_spans_per_trace: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=MAX_SPANS_PER_TRACE_LIMIT,
+            description="For a span-scope eval: most spans judged per trace.",
+        ),
+    ] = DEFAULT_MAX_SPANS_PER_TRACE,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
 ) -> ContinuousEvalDailySpendEstimate:
     try:
+        conditions = (
+            _TRACE_FILTER_ADAPTER.validate_json(trace_filter) if trace_filter else None
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid trace_filter: {e}")
+    try:
+        parsed_span_filter = (
+            ContinuousEvalSpanFilter.model_validate_json(span_filter)
+            if span_filter
+            else None
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid span_filter: {e}")
+    try:
         # 404 for an evaluator the task doesn't have
-        LLMEvalsRepository(db_session).get_llm_item(task.id, llm_eval_name, "latest")
+        llm_eval = LLMEvalsRepository(db_session).get_llm_item(
+            task.id,
+            llm_eval_name,
+            llm_eval_version,
+        )
         return ContinuousEvalSpendRepository(
             db_session,
-        ).estimate_daily_spend_for_llm_eval(task.id, llm_eval_name, sample_rate)
+        ).estimate_daily_spend_for_llm_eval(
+            task.id,
+            llm_eval_name,
+            llm_eval.version,
+            sample_rate,
+            trace_filter=conditions,
+            span_filter=parsed_span_filter,
+            max_spans_per_trace=max_spans_per_trace,
+        )
     except HTTPException:
         raise
     except ValueError as e:

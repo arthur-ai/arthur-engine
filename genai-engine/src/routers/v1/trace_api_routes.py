@@ -7,8 +7,6 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationResponse,
-    ListAgenticAnnotationsResponse,
     SpanWithMetricsResponse,
     TraceResponse,
 )
@@ -31,6 +29,10 @@ from routers.v1.legacy_span_routes import (
     trace_query_parameters,
 )
 from routers.v2 import multi_validator
+from schemas.annotation_schemas import (
+    AgenticAnnotationResponse,
+    ListAgenticAnnotationsResponse,
+)
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import (

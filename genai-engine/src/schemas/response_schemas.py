@@ -10,7 +10,6 @@ from arthur_common.models.llm_model_providers import (
     ReasoningEffortEnum,
 )
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationResponse,
     ExternalInference,
     SpanWithMetricsResponse,
     TokenCountCostSchema,
@@ -19,7 +18,6 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse as CommonContinuousEvalResponse,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
@@ -31,8 +29,15 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.annotation_schemas import AgenticAnnotationResponse
+from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
+)
 from schemas.enums import (
     ConnectionCheckOutcome,
+    ContinuousEvalRollupRule,
+    ContinuousEvalScope,
     EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -41,6 +46,7 @@ from schemas.enums import (
     SpendEstimateUnavailableReason,
     TestRunStatus,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 
 
 class OrganizationResponse(BaseModel):
@@ -447,14 +453,14 @@ class ModelReasoningOptions(BaseModel):
         ),
     )
     thinking: ModelThinkingOptions = Field(
-        description="Thinking settings the model accepts"
+        description="Thinking settings the model accepts",
     )
 
 
 class ContinuousEvalResponse(CommonContinuousEvalResponse):
-    """The continuous eval response, with its sample rate.
+    """The continuous eval response, with its sample rate and trace filter.
 
-    Extends the shared model only until `arthur_common` carries `sample_rate` on
+    Extends the shared model only until `arthur_common` carries these fields on
     `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
     same so the OpenAPI component, and the generated clients built from it, keep
     their name either way.
@@ -463,6 +469,30 @@ class ContinuousEvalResponse(CommonContinuousEvalResponse):
     sample_rate: Optional[float] = Field(
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
+    )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description="Conditions a trace must meet to be judged. Null judges every sampled trace.",
+    )
+    scope: ContinuousEvalScope = Field(
+        default=ContinuousEvalScope.TRACE,
+        description="'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup.",
+    )
+    span_filter: Optional[ContinuousEvalSpanFilter] = Field(
+        default=None,
+        description="Spans judged when scope is 'span'.",
+    )
+    max_spans_per_trace: int = Field(
+        default=20,
+        description="Most spans judged per trace when scope is 'span'.",
+    )
+    rollup_rule: Optional[ContinuousEvalRollupRule] = Field(
+        default=None,
+        description="How span verdicts decide the trace when scope is 'span'.",
     )
 
 
@@ -885,6 +915,10 @@ class EvalRunResponse(BaseModel):
     )
     score: int = Field(..., description="Score for this llm eval")
     cost: str = Field(..., description="Cost of this llm completion")
+    label: Optional[str] = Field(
+        default=None,
+        description="Category of the result when the eval's instructions define categories.",
+    )
 
 
 class RenderedPromptResponse(BaseModel):
@@ -899,6 +933,13 @@ class UnsavedPromptVariablesListResponse(BaseModel):
     )
 
 
+class TransformVariableSpans(BaseModel):
+    variable_name: str = Field(description="Name of the transform variable.")
+    span_ids: list[str] = Field(
+        description="IDs of the spans the value was read from, in tree order.",
+    )
+
+
 class TransformExtractionResponseList(BaseModel):
     variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
@@ -908,6 +949,13 @@ class TransformExtractionResponseList(BaseModel):
     )
     missing_spans: list[str] = Field(
         description="List of matching spans for the variables.",
+    )
+    variable_spans: list[TransformVariableSpans] = Field(
+        default_factory=list,
+        description=(
+            "For each variable, the ids of the spans its value was read from, in "
+            "tree order. Empty when no span matched."
+        ),
     )
 
 
@@ -1049,21 +1097,35 @@ class DailyAgenticAnnotationStats(BaseModel):
     )
     total_cost: float = Field(description="Total cost for the day")
     total_count: int = Field(description="Total annotations for the day")
+    pass_rate: Optional[float] = Field(
+        default=None,
+        description="passed_count / (passed_count + failed_count). Null with no passed or failed runs.",
+    )
+    group: Optional[str] = Field(
+        default=None,
+        description=(
+            "With group_by: the attribute's value on these runs' traces, such as a prompt "
+            "version. Null when not grouping or when the trace has no such attribute."
+        ),
+    )
 
 
 class AgenticAnnotationAnalyticsResponse(BaseModel):
     """Response containing daily aggregated statistics."""
 
     stats: List[DailyAgenticAnnotationStats] = Field(
-        description="Daily statistics ordered by date descending",
+        description="Daily statistics ordered by date descending (then by group)",
     )
-    count: int = Field(description="Number of days with data")
+    count: int = Field(
+        description="Number of rows: days, or day and group pairs with group_by",
+    )
 
 
 class ContinuousEvalDailySpendEstimate(BaseModel):
     """Projected daily cost of a continuous eval at the task's recent traffic.
 
-    estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+    estimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost
+    (* filter_match_share, when a trace filter was given)
     """
 
     window_days: int = Field(
@@ -1077,7 +1139,19 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
         description="Fraction of traces the eval runs on. 1.0 when the eval has no sample rate set.",
     )
     run_count: int = Field(
-        description="Live runs in the window that called the LLM (passed or failed), which the average is taken over.",
+        description="Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over.",
+    )
+    judged_share: float = Field(
+        default=1.0,
+        description="Share of finished runs that called the LLM rather than being skipped. Errored runs are left out. 1.0 with no finished runs.",
+    )
+    unpriced_run_count: int = Field(
+        default=0,
+        description="Runs that called the LLM but have no cost (a model without a price), left out of the average.",
+    )
+    priced_since: Optional[datetime] = Field(
+        default=None,
+        description="Set when the evaluator changed inside the window: the average only uses runs from this time on.",
     )
     average_run_cost: Optional[float] = Field(
         default=None,
@@ -1089,7 +1163,29 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     )
     unavailable_reason: Optional[SpendEstimateUnavailableReason] = Field(
         default=None,
-        description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window.",
+        description="Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs in the window that called the LLM and have a recorded cost (unpriced_run_count counts the ones without).",
+    )
+    filter_match_share: Optional[float] = Field(
+        default=None,
+        description=(
+            "Share of the task's recent traces that match the given trace filter, "
+            "checked over up to filter_traces_checked of the latest traces in the "
+            "window. Null when no trace filter was given."
+        ),
+    )
+    filter_traces_checked: Optional[int] = Field(
+        default=None,
+        description="How many recent traces filter_match_share was measured on.",
+    )
+    spans_per_trace: Optional[float] = Field(
+        default=None,
+        description=(
+            "Span scope only: judge calls per sampled trace, one per judged span. For "
+            "an existing eval, its judged span runs per judged trace; for a new one, "
+            "the average number of spans in the task's recent traces that match the "
+            "span filter (capped at max_spans_per_trace), with traces the trace filter "
+            "leaves out counted as 0. The estimate is multiplied by it."
+        ),
     )
 
 
@@ -1105,6 +1201,16 @@ class ContinuousEvalSpendResponse(BaseModel):
     )
     estimate: ContinuousEvalDailySpendEstimate = Field(
         description="Projected daily cost at the current sample rate.",
+    )
+    spent_today: float = Field(
+        description="Total cost of the live runs judged since midnight, counted against the daily cap.",
+    )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        description="The eval's daily spend cap. Null means no cap.",
+    )
+    cap_reached: bool = Field(
+        description="Whether today's spend has reached the cap, so new runs are skipped until midnight.",
     )
 
 

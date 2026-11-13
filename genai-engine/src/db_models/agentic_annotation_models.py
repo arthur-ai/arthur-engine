@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
@@ -20,6 +21,9 @@ from db_models.base import Base
 
 if TYPE_CHECKING:
     from db_models.llm_eval_models import DatabaseContinuousEval
+
+_LIVE_SPAN_RUNS = "run_level = 'span' AND test_run_id IS NULL"
+_TEST_SPAN_RUNS = "run_level = 'span' AND test_run_id IS NOT NULL"
 
 
 class DatabaseAgenticAnnotation(Base):
@@ -42,6 +46,22 @@ class DatabaseAgenticAnnotation(Base):
     )
 
     annotation_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Span the annotation is about; NULL for the whole trace.
+    span_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # Category of the result (e.g. "wrong_tool"), from a person or a judge.
+    label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # ContinuousEvalRunLevel: 'trace' (every human annotation and every trace-scope
+    # run), 'span' (one judged span of a span-scope eval) or 'span_rollup' (the
+    # trace's summary of its span runs). Trace-level reads leave 'span' rows out.
+    run_level: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="trace",
+        server_default="trace",
+    )
+    # Spans in the trace when the run judged it. A run is stale when the trace now
+    # has more spans (late spans); nothing re-runs it automatically yet.
+    judged_span_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     annotation_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Continuous eval run result parameters
@@ -116,5 +136,32 @@ class DatabaseAgenticAnnotation(Base):
             "ix_agentic_annotations_continuous_eval_created",
             "continuous_eval_id",
             "created_at",
+        ),
+        # The daily spend cap sums each eval's runs judged since midnight.
+        Index(
+            "ix_agentic_annotations_continuous_eval_updated",
+            "continuous_eval_id",
+            "updated_at",
+        ),
+        # A retried fan-out never makes a second span run for the same span, live
+        # or within one test run.
+        Index(
+            "uq_agentic_annotations_live_span_run",
+            "continuous_eval_id",
+            "trace_id",
+            "span_id",
+            unique=True,
+            postgresql_where=text(_LIVE_SPAN_RUNS),
+            sqlite_where=text(_LIVE_SPAN_RUNS),
+        ),
+        Index(
+            "uq_agentic_annotations_test_span_run",
+            "continuous_eval_id",
+            "trace_id",
+            "span_id",
+            "test_run_id",
+            unique=True,
+            postgresql_where=text(_TEST_SPAN_RUNS),
+            sqlite_where=text(_TEST_SPAN_RUNS),
         ),
     )

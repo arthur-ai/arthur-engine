@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
@@ -15,7 +16,6 @@ from arthur_common.models.llm_model_providers import (
     ToolChoice,
     ToolChoiceEnum,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
@@ -37,11 +37,16 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from schemas.common_schemas import (
+    ContinuousEvalSpanFilter,
+    ContinuousEvalTraceFilterCondition,
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
 )
 from schemas.enums import (
+    ContinuousEvalRollupRule,
+    ContinuousEvalRunLevel,
+    ContinuousEvalScope,
     DocumentStorageEnvironment,
     EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
@@ -50,6 +55,7 @@ from schemas.enums import (
     RagSearchKind,
     TaskAnalyticsBucketSize,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 from utils.reasoning_capabilities import reasoning_settings_error
 
@@ -1141,6 +1147,15 @@ class AgenticAnnotationRequest(BaseModel):
         default=None,
         description="Description of the annotation",
     )
+    span_id: Optional[str] = Field(
+        default=None,
+        description="Span in the trace the annotation is about. Omit to annotate the whole trace; each span keeps its own annotation.",
+    )
+    label: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Category for the annotation, such as 'wrong_tool' or 'wrong_args'.",
+    )
 
 
 class TransformListFilterRequest(BaseModel):
@@ -1184,6 +1199,42 @@ def validate_sample_rate(value: Optional[float]) -> Optional[float]:
 
 
 SampleRate = Annotated[Optional[float], AfterValidator(validate_sample_rate)]
+
+
+def validate_daily_cost_cap(value: Optional[float]) -> Optional[float]:
+    # Same reason as validate_sample_rate: Field(gt=0) would render as an
+    # exclusiveMinimum that oasdiff can't parse.
+    if value is not None and not (math.isfinite(value) and value > 0.0):
+        raise ValueError("daily_cost_cap_usd must be a finite number greater than 0")
+    return value
+
+
+DailyCostCap = Annotated[Optional[float], AfterValidator(validate_daily_cost_cap)]
+
+
+DEFAULT_MAX_SPANS_PER_TRACE = 20
+MAX_SPANS_PER_TRACE_LIMIT = 200
+
+
+def validate_scope_fields(
+    scope: ContinuousEvalScope,
+    span_filter: Optional[ContinuousEvalSpanFilter],
+    rollup_rule: Optional[ContinuousEvalRollupRule],
+) -> None:
+    """span_filter and rollup_rule belong to span scope: required there, and not
+    accepted on a trace-scope eval, where they would silently do nothing."""
+    if scope == ContinuousEvalScope.SPAN:
+        if span_filter is None:
+            raise ValueError("A span-scope continuous eval needs a span_filter.")
+        if rollup_rule is None:
+            raise ValueError(
+                "A span-scope continuous eval needs a rollup_rule: 'any_fail' or "
+                "'final_attempt'.",
+            )
+    elif span_filter is not None or rollup_rule is not None:
+        raise ValueError(
+            "span_filter and rollup_rule only apply when scope is 'span'.",
+        )
 
 
 class ContinuousEvalCreateRequest(BaseModel):
@@ -1230,6 +1281,53 @@ class ContinuousEvalCreateRequest(BaseModel):
             "evaluates every trace."
         ),
     )
+    daily_cost_cap_usd: DailyCostCap = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description=(
+            "Conditions a trace must meet to be judged; all must hold. A trace that "
+            "doesn't match is skipped before the judge is called. Null or empty judges "
+            "every sampled trace."
+        ),
+    )
+    scope: ContinuousEvalScope = Field(
+        default=ContinuousEvalScope.TRACE,
+        description=(
+            "'trace' (default) judges each trace once. 'span' judges every span that "
+            "matches span_filter, one run each, and records a per-trace rollup of "
+            "their verdicts decided by rollup_rule."
+        ),
+    )
+    span_filter: Optional[ContinuousEvalSpanFilter] = Field(
+        default=None,
+        description="Spans to judge. Required when scope is 'span', null otherwise.",
+    )
+    max_spans_per_trace: int = Field(
+        default=DEFAULT_MAX_SPANS_PER_TRACE,
+        ge=1,
+        le=MAX_SPANS_PER_TRACE_LIMIT,
+        description=(
+            "Most spans judged per trace when scope is 'span', the first ones in "
+            "tree order. Each span run is one judge call."
+        ),
+    )
+    rollup_rule: Optional[ContinuousEvalRollupRule] = Field(
+        default=None,
+        description=(
+            "How span verdicts decide the trace when scope is 'span' (required "
+            "then): 'any_fail' fails the trace on any failing span; 'final_attempt' "
+            "lets only the last span of each name under the same parent decide, so a "
+            "call that failed and was retried successfully passes."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> "ContinuousEvalCreateRequest":
+        validate_scope_fields(self.scope, self.span_filter, self.rollup_rule)
+        return self
 
 
 class UpdateContinuousEvalRequest(BaseModel):
@@ -1273,6 +1371,40 @@ class UpdateContinuousEvalRequest(BaseModel):
             "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; "
             "send null to evaluate every trace."
         ),
+    )
+    daily_cost_cap_usd: DailyCostCap = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.",
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description=(
+            "Conditions a trace must meet to be judged; all must hold. Omit to leave "
+            "it unchanged; send null or an empty list to judge every sampled trace."
+        ),
+    )
+
+    scope: Optional[ContinuousEvalScope] = Field(
+        default=None,
+        description=(
+            "'trace' or 'span'. Omit to leave it unchanged. Switching to 'trace' "
+            "clears span_filter and rollup_rule; switching to 'span' needs both, "
+            "here or already on the eval."
+        ),
+    )
+    span_filter: Optional[ContinuousEvalSpanFilter] = Field(
+        default=None,
+        description="Spans to judge in span scope. Omit to leave it unchanged.",
+    )
+    max_spans_per_trace: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=MAX_SPANS_PER_TRACE_LIMIT,
+        description="Most spans judged per trace in span scope. Omit to leave it unchanged.",
+    )
+    rollup_rule: Optional[ContinuousEvalRollupRule] = Field(
+        default=None,
+        description="How span verdicts decide the trace in span scope. Omit to leave it unchanged.",
     )
 
     @model_validator(mode="after")
@@ -1432,6 +1564,12 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         None,
         description="Whether the continuous eval is enabled.",
     )
+    run_levels: Optional[List[ContinuousEvalRunLevel]] = Field(
+        None,
+        description=(
+            "Run levels to include: 'trace', 'span', 'span_rollup'. Null includes all."
+        ),
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1470,6 +1608,13 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         continuous_eval_enabled: Optional[str] = Query(
             None,
             description="Whether the continuous eval is enabled.",
+        ),
+        run_levels: Optional[List[ContinuousEvalRunLevel]] = Query(
+            None,
+            description=(
+                "Run levels to include: 'trace', 'span' (one judged span), "
+                "'span_rollup' (a trace's summary of its span runs). Omit for all."
+            ),
         ),
     ) -> "ContinuousEvalRunResultsListFilterRequest":
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
@@ -1512,6 +1657,7 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
                 if continuous_eval_enabled
                 else None
             ),
+            run_levels=run_levels,
         )
 
 

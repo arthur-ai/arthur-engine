@@ -34,6 +34,7 @@ from db_models import (
     DatabaseTraceMetadata,
 )
 from db_models.llm_eval_models import DatabaseContinuousEval
+from schemas.enums import ContinuousEvalRunLevel
 from schemas.internal_schemas import (
     SessionMetadata,
     Span,
@@ -108,7 +109,8 @@ class SpanQueryService:
             return [], 0
 
         sort_column = TRACE_SORT_COLUMN_MAP.get(
-            sort_by, DatabaseTraceMetadata.start_time
+            sort_by,
+            DatabaseTraceMetadata.start_time,
         )
         query = self._apply_sorting_and_pagination(
             base_query,
@@ -250,7 +252,7 @@ class SpanQueryService:
                             escape="\\",
                         )
                         for uid in filters.user_ids
-                    ]
+                    ],
                 ),
             )
         if filters.session_ids:
@@ -323,6 +325,8 @@ class SpanQueryService:
         ):
             join_conditions = [
                 DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+                # A span-scope eval filters traces by its rollup, not each span run.
+                DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN,
             ]
 
             if filters.annotation_score is not None:
@@ -747,7 +751,7 @@ class SpanQueryService:
                             escape="\\",
                         )
                         for uid in filters.user_ids
-                    ]
+                    ],
                 ),
             )
         if filters.session_ids:
@@ -810,6 +814,8 @@ class SpanQueryService:
         ):
             join_conditions = [
                 DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+                # A span-scope eval filters traces by its rollup, not each span run.
+                DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN,
             ]
 
             if filters.annotation_score is not None:
@@ -1117,7 +1123,7 @@ class SpanQueryService:
                             escape="\\",
                         )
                         for uid in user_ids
-                    ]
+                    ],
                 ),
             )
 

@@ -4,7 +4,6 @@ from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import String, asc, cast, desc, func
 from sqlalchemy.exc import IntegrityError
@@ -31,6 +30,7 @@ from schemas.response_schemas import (
     TransformDependentRef,
     TransformDependents,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 
 
 class TraceTransformRepository:
@@ -264,6 +264,16 @@ class TraceTransformRepository:
             if new_definition is None:
                 # Name/description-only change — snapshot current definition
                 new_definition = self._get_latest_definition(db_transform.id)
+            else:
+                # Continuous evals that follow the latest version now read something
+                # else, so their spend estimates start a new pricing window.
+                self.db_session.query(DatabaseContinuousEval).filter(
+                    DatabaseContinuousEval.transform_id == db_transform.id,
+                    DatabaseContinuousEval.transform_version_id.is_(None),
+                ).update(
+                    {"judge_changed_at": datetime.now()},
+                    synchronize_session=False,
+                )
             db_transform.updated_at = datetime.now()
             self._create_version(db_transform, new_definition)
             self.db_session.commit()

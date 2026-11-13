@@ -4,7 +4,9 @@ import {
   Box,
   Button,
   Dialog,
+  FormControlLabel,
   Paper,
+  Switch,
   Stack,
   Table,
   TableBody,
@@ -17,7 +19,7 @@ import {
 } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
+import { parseAsBoolean, parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 
 import { createColumns } from "../../data/results-columns";
@@ -41,6 +43,7 @@ export const Results = () => {
 
   const [annotationId, setAnnotationId] = useQueryState("id", parseAsString.withDefault(""));
   const [action, setAction] = useQueryState("action", parseAsStringEnum(["rerun"]));
+  const [showSpanRuns, setShowSpanRuns] = useQueryState("spanRuns", parseAsBoolean.withDefault(false));
 
   const [searchInput, setSearchInput] = useState("");
   const filters = useFilterStore((state) => state.filters);
@@ -70,6 +73,7 @@ export const Results = () => {
       taskId: task!.id,
       pagination: { page: pagination.page, page_size: pagination.rowsPerPage },
       filters,
+      showSpanRuns,
     })
   );
 
@@ -122,6 +126,11 @@ export const Results = () => {
           Search
         </Button>
         <FilterModal />
+        <FormControlLabel
+          control={<Switch checked={showSpanRuns} onChange={(e) => setShowSpanRuns(e.target.checked || null)} />}
+          label="Show span runs"
+          slotProps={{ typography: { color: "text.primary", variant: "body2" } }}
+        />
       </Stack>
       {data.annotations.length === 0 ? (
         <Box sx={{ p: 2 }}>

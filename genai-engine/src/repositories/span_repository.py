@@ -22,7 +22,7 @@ from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from schemas.enums import TaskAnalyticsBucketSize
+from schemas.enums import ContinuousEvalRunLevel, TaskAnalyticsBucketSize
 from schemas.internal_schemas import (
     AgenticAnnotation,
     SessionMetadata,
@@ -286,7 +286,7 @@ class SpanRepository:
                             ContinuousEvalRunStatus.SKIPPED.value,
                             ContinuousEvalRunStatus.PENDING.value,
                             ContinuousEvalRunStatus.RUNNING.value,
-                        ]
+                        ],
                     ),
                 )
                 .label("eval_count"),
@@ -307,6 +307,8 @@ class SpanRepository:
                 DatabaseTraceMetadata.start_time <= end_time,
                 DatabaseAgenticAnnotation.annotation_type
                 == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                # Span runs count through their trace's rollup.
+                DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN,
             )
             .group_by(DatabaseTraceMetadata.task_id)
             .all()
@@ -427,6 +429,8 @@ class SpanRepository:
                 DatabaseTraceMetadata.start_time < end_time,
                 DatabaseAgenticAnnotation.annotation_type
                 == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                # Span runs count through their trace's rollup.
+                DatabaseAgenticAnnotation.run_level != ContinuousEvalRunLevel.SPAN,
             )
             .group_by(bucket_index)
             .all()

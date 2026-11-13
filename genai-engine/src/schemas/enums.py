@@ -331,3 +331,44 @@ class SpendEstimateUnavailableReason(str, Enum):
 
     NO_TRACES = "no_traces"
     NO_RUNS = "no_runs"
+
+
+class ContinuousEvalScope(str, Enum):
+    """What one continuous eval run judges."""
+
+    # One run per trace, as before span scope existed.
+    TRACE = "trace"
+    # One run per matching span, plus a per-trace rollup of their verdicts.
+    SPAN = "span"
+
+
+class ContinuousEvalRunLevel(str, Enum):
+    """What an agentic_annotations row is a run for. Only continuous eval rows use
+    anything but 'trace'; human annotations keep the default."""
+
+    TRACE = "trace"
+    # One judged span of a span-scope eval: the only span-scope rows that call the
+    # judge and carry a cost.
+    SPAN = "span"
+    # The trace's summary of its span runs: never calls the judge, cost NULL.
+    SPAN_ROLLUP = "span_rollup"
+
+
+class ContinuousEvalRollupRule(str, Enum):
+    """How a span-scope eval's span verdicts decide the trace's rollup."""
+
+    # Any failing span run fails the trace (for checks like PII).
+    ANY_FAIL = "any_fail"
+    # Span runs are grouped by span name under the same parent; only the last one
+    # in tree order decides, so a failed call that was retried successfully does
+    # not fail the trace.
+    FINAL_ATTEMPT = "final_attempt"
+
+
+class ContinuousEvalTraceFilterOperator(str, Enum):
+    """How a continuous eval trace filter condition compares a span attribute."""
+
+    EQUALS = "equals"
+    NOT_EQUALS = "not_equals"
+    CONTAINS = "contains"
+    EXISTS = "exists"

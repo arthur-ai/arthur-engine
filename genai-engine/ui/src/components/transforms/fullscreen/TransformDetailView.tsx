@@ -15,16 +15,13 @@ import { useState, useCallback } from "react";
 
 import { useTransformVersions } from "../hooks/useTransformVersions";
 
+import { describeVariableSpans } from "@/components/transforms/variableRows";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import type { TraceTransformVariableDefinition } from "@/lib/api-client/api-client";
 import { TraceTransformResponse, TraceTransformVersionResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
-interface VariableDefinition {
-  variable_name: string;
-  span_name: string;
-  attribute_path: string;
-  fallback?: unknown;
-}
+type VariableDefinition = TraceTransformVariableDefinition;
 
 interface TransformDetailViewProps {
   transform: TraceTransformResponse | null;
@@ -205,7 +202,7 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
                       color: "text.secondary",
                     }}
                   >
-                    Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
+                    Span: <code>{describeVariableSpans(variable)}</code> → Path: <code>{variable.attribute_path}</code>
                   </Typography>
                   {variable.fallback !== undefined && variable.fallback !== null && (
                     <Typography
