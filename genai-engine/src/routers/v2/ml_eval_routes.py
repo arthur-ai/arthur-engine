@@ -19,7 +19,7 @@ from schemas.internal_schemas import Task, User
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import CreateMLEvalRequest
 from utils.url_encoding import decode_path_param
-from utils.users import enforce_org_scope, permission_checker
+from utils.users import actor_of, enforce_org_scope, permission_checker
 
 ml_eval_routes = APIRouter(
     prefix="/api/v2",
@@ -46,7 +46,12 @@ def save_ml_eval(
 ) -> Eval:
     try:
         repo = MLEvalsRepository(db_session)
-        return repo.save_ml_eval(task.id, eval_name, create_request)
+        return repo.save_ml_eval(
+            task.id,
+            eval_name,
+            create_request,
+            created_by=actor_of(current_user),
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

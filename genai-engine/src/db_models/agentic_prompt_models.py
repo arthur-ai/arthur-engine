@@ -20,13 +20,13 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from db_models.base import Base, SoftDeletedModel
+from db_models.base import Base, HasCreatedBy, SoftDeletedModel
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
 
 
-class DatabaseAgenticPrompt(SoftDeletedModel, Base):
+class DatabaseAgenticPrompt(SoftDeletedModel, HasCreatedBy, Base):
     """Database model for storing agentic prompts associated with tasks"""
 
     __tablename__ = "agentic_prompts"
