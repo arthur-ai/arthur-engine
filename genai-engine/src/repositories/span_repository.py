@@ -42,7 +42,6 @@ from schemas.response_schemas import (
     TraceTimeSeriesResponse,
 )
 from services.trace.metrics_integration_service import MetricsIntegrationService
-from services.trace.otel_conversion_service import OtelConversionService
 from services.trace.span_query_service import SpanQueryService
 from services.trace.trace_annotation_service import TraceAnnotationService
 from services.trace.trace_ingestion_service import TraceIngestionService
@@ -84,7 +83,6 @@ class SpanRepository:
             metrics_repo,
         )
         self.tree_building_service = TreeBuildingService()
-        self.otel_conversion_service = OtelConversionService()
 
     # ============================================================================
     # Public API Methods - Used by Optimized Trace Endpoints
@@ -734,15 +732,19 @@ class SpanRepository:
     def create_traces(
         self,
         trace_data: bytes,
+        default_task_id: str | None = None,
     ) -> Tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data received on a trace ingestion endpoint and store it.
 
         Counts the request body as customer ingest volume (ingest_bytes).
+        default_task_id is used for resource spans without an arthur.task
+        attribute, before service.name is looked up.
         """
         try:
             return self.trace_ingestion_service.process_trace_data(
                 trace_data,
                 count_ingest_bytes=True,
+                default_task_id=default_task_id,
             )
         except DecodeError as e:
             raise DecodeError("Failed to parse protobuf message.") from e
