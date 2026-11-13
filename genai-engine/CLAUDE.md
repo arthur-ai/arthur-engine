@@ -33,7 +33,7 @@ Represent any data with known structure — API objects, LLM response schemas, r
 
 ## Multi-tenancy
 
-The engine supports multi-tenant organizations. Tasks belong to exactly one org; tenant API keys are scoped to a single org via `api_keys.org_id` and reach all tasks within it. Admin keys (`org_id = NULL`) keep cross-org access. Existing tasks migrate into the `default` org; system tasks (`is_system_task=True`) migrate into the `system` org.
+The engine supports multi-tenant organizations. Tasks belong to exactly one org; tenant API keys are scoped to a single org via `api_keys.org_id` and reach all tasks within it. Admin keys (`org_id = NULL`) keep cross-org access. A key created with `task_id` is narrower still: it inherits the task's org, reaches only that task, and `permission_checker` refuses it on any route that does not check the task (org-scope decorators or `@task_scope_aware`), so new routes fail closed. Existing tasks migrate into the `default` org; system tasks (`is_system_task=True`) migrate into the `system` org.
 
 Tenant provisioning is gated by `GENAI_ENGINE_DEMO_MODE` (default off). When enabled, `POST /api/v2/tenant/signup` creates `(org, task, api_key)` in one transaction and returns the raw key once. When disabled, the endpoint returns 404. Keep this flag **off** for customer production deployments.
 
