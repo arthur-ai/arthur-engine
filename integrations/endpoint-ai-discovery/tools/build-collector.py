@@ -324,7 +324,6 @@ $discover = Join-Path (Join-Path $env:AI_DETECTION_SPEC_ROOT 'bin') 'discover.ps
 $out = $env:ARTHUR_OUT_DIR
 $ours = -not $out
 if ($ours) { $out = Join-Path $env:ProgramData 'Arthur' }
-$made = -not (Test-Path -LiteralPath $out)
 try {
     New-Item -ItemType Directory -Path $out -Force | Out-Null
 } catch {
@@ -356,10 +355,30 @@ if (Get-Command -Name Get-Acl -ErrorAction SilentlyContinue) {
         }
     } catch { }
 }
+
+# Owned by SYSTEM (SY), the Administrators group (BA) or this account. The first two are
+# read off the SDDL, because their names are localised.
+function Test-Ours([string]$Path) {
+    try {
+        $acl = Get-Acl -LiteralPath $Path
+        return (($acl.Sddl -match '^O:(BA|SY)') -or ($me -and $acl.Owner -eq $me))
+    } catch {
+        return $false
+    }
+}
+
 if ($elevated) {
-    # THE FOLDER THIS CHOSE IS MADE FOR ADMINISTRATORS ONLY. One created in ProgramData
-    # takes on its rule that any user may add files, which would let one plant a scan
-    # before the first real one.
+    if (-not (Test-Ours $out)) {
+        $owner = ''
+        try { $owner = (Get-Acl -LiteralPath $out).Owner } catch { }
+        Write-Host "arthur: $out is owned by '$owner', not by SYSTEM, the Administrators group or this account."
+        Write-Host 'arthur: a run with administrator rights does not write where another account put the folder. Remove it, or set ARTHUR_OUT_DIR to one an administrator made.'
+        exit 1
+    }
+    # THE FOLDER THIS CHOSE IS FOR ADMINISTRATORS ONLY, AND IS HELD TO THAT ON EVERY RUN. One
+    # made in ProgramData, by this run or by an administrator's mkdir, takes on its rule
+    # that any user may add files. A folder named in ARTHUR_OUT_DIR is for whoever named it
+    # to restrict; Use-LastGood below does not trust what another account left in one.
     #
     # THE WHOLE LIST IS REPLACED, NOT EDITED. A new folder can hold entries of its own that
     # came from its parent, which removing inheritance leaves: on Windows Server 2025,
@@ -368,7 +387,7 @@ if ($elevated) {
     # in SDDL: SYSTEM (SY) and Administrators (BA) in full, Users (BU) to read and traverse,
     # each for the folder and what is made in it, and nothing inherited (P). It reads a
     # file in the form `icacls /save` writes: a name, then its list, in UTF-16.
-    if ($ours -and $made) {
+    if ($ours) {
         $list = Join-Path $out ".acl.$(Get-Random)"
         $restricted = $false
         try {
@@ -383,18 +402,6 @@ if ($elevated) {
             Write-Host "arthur: cannot restrict $out to administrators"
             exit 1
         }
-    }
-    $owner = ''
-    $trusted = $false
-    try {
-        $acl = Get-Acl -LiteralPath $out
-        $owner = $acl.Owner
-        $trusted = ($acl.Sddl -match '^O:(BA|SY)') -or ($me -and $owner -eq $me)
-    } catch { }
-    if (-not $trusted) {
-        Write-Host "arthur: $out is owned by '$owner', not by SYSTEM, the Administrators group or this account."
-        Write-Host 'arthur: a run with administrator rights does not write where another account put the folder. Remove it, or set ARTHUR_OUT_DIR to one an administrator made.'
-        exit 1
     }
 }
 
@@ -418,10 +425,15 @@ $published = @('inventory.json', 'status.txt')
 # timestamp says how old it is, and fail the run. With nothing good ever written there is
 # nothing to keep: leave no partial file claiming to be a result.
 function Use-LastGood {
+    # AND, FOR A RUN WITH ADMINISTRATOR RIGHTS, ONLY A PAIR SUCH A RUN WROTE. A folder can
+    # belong to an administrator and still let any user add files, and a pair one of them
+    # left there before the first scan would be served as the last good one.
     $good = $true
     foreach ($name in $published) {
         $path = Join-Path $out $name
         if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -eq 0) {
+            $good = $false
+        } elseif ($elevated -and -not (Test-Ours $path)) {
             $good = $false
         }
     }
@@ -458,47 +470,70 @@ try {
             Write-Host 'arthur: no status written'
             Use-LastGood
         } else {
-            # PUBLISH BY RENAME, AND PUT THE PREVIOUS PAIR BACK IF IT CANNOT FINISH. Nothing is
-            # overwritten: Windows PowerShell's Move-Item -Force onto an existing file deletes
-            # it and then moves, so a move that failed there would leave neither. Each previous
-            # file is renamed into the staging directory and the new one renamed into its
-            # place, the status last. A reader between two renames finds a file missing or
-            # the previous status, never a partial file.
+            # PUBLISH BY RENAME, IN TWO STEPS, AND PUT THE PREVIOUS PAIR BACK IF IT CANNOT
+            # FINISH. Nothing is overwritten: Windows PowerShell's Move-Item -Force onto an
+            # existing file deletes it and then moves, so a move that failed there would leave
+            # neither. First both previous files are renamed into the staging directory, then
+            # both new ones into their places. A reader in between finds a file missing, never
+            # a partial one and never a payload beside another scan's status.
             #
             # AND A PUBLISH CAN FAIL HALFWAY HERE, which it cannot on macOS or Linux: Windows
-            # refuses to rename a file another process holds open. Then what was moved is
-            # moved back, so the two files still describe one scan.
+            # refuses to rename a file another process holds open. That stops the first step,
+            # before anything new is in place, and what was set aside is moved back. If the
+            # second step fails, what it placed is taken back first. THE PREVIOUS PAIR RETURNS
+            # ONLY TO AN EMPTY PLACE: beside a new file that could not be taken back it would
+            # be two scans passing for one, so then the folder is left without a pair.
             $aside = Join-Path $stage 'previous'
             New-Item -ItemType Directory -Path $aside | Out-Null
-            $placed = @()
-            $moved = $true
+            $failed = ''
+            $set = @()
             foreach ($name in $published) {
                 $dest = Join-Path $out $name
+                if (-not (Test-Path -LiteralPath $dest)) { continue }
                 try {
-                    if (Test-Path -LiteralPath $dest) {
-                        Move-Item -LiteralPath $dest -Destination (Join-Path $aside $name)
-                    }
-                    Move-Item -LiteralPath (Join-Path $stage $name) -Destination $dest
-                    $placed += $name
+                    Move-Item -LiteralPath $dest -Destination (Join-Path $aside $name)
+                    $set += $name
                 } catch {
-                    Write-Host "arthur: could not publish $name"
-                    $moved = $false
+                    $failed = $name
                     break
                 }
             }
-            if (-not $moved) {
+            $placed = @()
+            if (-not $failed) {
                 foreach ($name in $published) {
-                    $dest = Join-Path $out $name
-                    $previous = Join-Path $aside $name
                     try {
-                        if ($placed -contains $name) { Remove-Item -LiteralPath $dest -Force }
-                        # Only into a gap: a file that refused to move is still in place.
-                        if ((Test-Path -LiteralPath $previous) -and -not (Test-Path -LiteralPath $dest)) {
-                            Move-Item -LiteralPath $previous -Destination $dest
-                        }
+                        Move-Item -LiteralPath (Join-Path $stage $name) -Destination (Join-Path $out $name)
+                        $placed += $name
                     } catch {
-                        Write-Host "arthur: could not put back the previous $name"
+                        $failed = $name
+                        break
                     }
+                }
+            }
+            if ($failed) {
+                Write-Host "arthur: could not publish $failed"
+                $clean = $true
+                foreach ($name in $placed) {
+                    try {
+                        Remove-Item -LiteralPath (Join-Path $out $name) -Force
+                    } catch {
+                        $clean = $false
+                    }
+                }
+                if ($clean) {
+                    foreach ($name in $set) {
+                        $dest = Join-Path $out $name
+                        try {
+                            # Only into a gap: a file that refused to move is still in place.
+                            if (-not (Test-Path -LiteralPath $dest)) {
+                                Move-Item -LiteralPath (Join-Path $aside $name) -Destination $dest
+                            }
+                        } catch {
+                            Write-Host "arthur: could not put back the previous $name"
+                        }
+                    }
+                } else {
+                    Write-Host 'arthur: could not take back what this run placed, so the previous scan is not put back beside it'
                 }
                 Use-LastGood
             } else {

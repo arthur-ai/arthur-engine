@@ -403,10 +403,33 @@ try {
             if ($left) { Bad "[$left] was written into a folder another account owns" }
         }
 
-        # ProgramData is pointed at a scratch folder, so the default is made there and not
-        # on this machine. The scan is broken as above: the folder is made before it runs.
+        # A PAIR ANOTHER ACCOUNT LEFT IS NOT THE LAST GOOD SCAN. The folder is this account's,
+        # as one an administrator made by hand would be, and such a folder can still let any
+        # user add files. A failed run must not serve what one of them put there.
+        $planted = Join-Path $Work 'planted'
+        New-Item -ItemType Directory -Path $planted | Out-Null
+        foreach ($name in @('inventory.json', 'status.txt')) {
+            $file = Join-Path $planted $name
+            New-Item -ItemType File -Path $file -Value "planted`n" | Out-Null
+            & (Join-Path $system32 'icacls.exe') $file /setowner '*S-1-5-32-545' | Out-Null
+            if ($LASTEXITCODE -ne 0) { Bad "icacls could not give $name another owner, so this case proved nothing" }
+        }
+        $printed = Invoke-Script $Collect $planted $absent ''
+        $code = $LASTEXITCODE
+        Show $printed
+        if ($code -eq 0) { Bad 'a failed run over a planted pair exited 0' }
+        if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 0) {
+            Bad 'an elevated run served a pair another account wrote as the last good scan'
+        }
+        $left = (Get-Names $planted) -join ' '
+        if ($left) { Bad "[$left] was left of a pair another account wrote" }
+
+        # ProgramData is pointed at a scratch folder, so the default is there and not on this
+        # machine. MADE BEFORE THE RUN, as an administrator's mkdir would: it holds what its
+        # parent gave it, and the run must replace that. The scan is broken as above: the
+        # folder is dealt with before it runs.
         $programData = Join-Path $Work 'programdata'
-        New-Item -ItemType Directory -Path $programData | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $programData 'Arthur') | Out-Null
         $hostProgramData = $env:ProgramData
         $env:ProgramData = $programData
         try {
@@ -428,7 +451,7 @@ try {
             }
             if (@($sddl -split '\(A;').Count -ne 4) { Bad "the default folder grants more than its three entries: $sddl" }
         }
-        if ($Fail -eq $before) { Note "elevated: another account's folder refused; the default folder made for administrators, Users read-only" }
+        if ($Fail -eq $before) { Note "elevated: another account's folder refused, its planted pair not served; the default folder held to administrators, Users read-only" }
     }
 
     Write-Host '== nothing is left in TEMP ==============================================='

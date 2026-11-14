@@ -61,7 +61,7 @@ file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or 
 ## `test/run-collector.ps1`
 
 `test/run-collector.sh`'s questions, asked of `dist/collect-windows.ps1` on Windows, and
-three that only Windows raises: eight runs into a scratch directory, from PowerShell. CI
+four that only Windows raises: nine runs into a scratch directory, from PowerShell. CI
 runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
 
 | Guard | What it catches |
@@ -75,7 +75,8 @@ runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
 | With `status.txt` held open by another process, the run exits non-zero and both files are the previous scan's | A publish that stops after its first file, leaving a new payload beside an old status. Only on Windows, where a held file refuses a rename |
 | A second clean run replaces both files and leaves nothing beside them | The previous pair left in the folder, or a new payload beside an old status. The first run publishes into an empty folder, so only this one replaces |
 | An elevated run refuses a folder another account owns, and writes nothing into it | A run as SYSTEM moving and deleting where a standard user put the folder. Elevated runs only, which CI's is |
-| The default folder is made with three entries and no inherited ones | `C:\ProgramData`'s rule that any user may add files reaching the folder the scans are published in |
+| An elevated run that fails does not serve a pair another account wrote, and removes it | A pair planted in a folder that lets any user add files, passing for the last good scan |
+| The default folder, made beforehand as `mkdir` would, ends with three entries and no inherited ones | `C:\ProgramData`'s rule that any user may add files reaching the folder the scans are published in |
 | Nothing is left in `TEMP` | One extracted payload per run, filling a volume on a schedule |
 
 ## `test/run-collector.sh`
