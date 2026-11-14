@@ -829,8 +829,15 @@ exit $code
 #|    # THE FOLDER THIS CHOSE IS MADE FOR ADMINISTRATORS ONLY. One created in ProgramData
 #|    # inherits its rule that any user may add files, which would let one plant a scan
 #|    # before the first real one. Named by SID, because the names are localised.
+#|    #
+#|    # TWO CALLS, THE GRANTS FIRST. Given both in one call, icacls left the folder a fourth
+#|    # entry of its own: full control for the account that created it (measured on Windows
+#|    # Server 2025). Granting first also means the folder is never without its entries
+#|    # between the two.
 #|    if ($ours -and $made) {
-#|        & (Join-Path $system32 'icacls.exe') $out /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
+#|        $icacls = Join-Path $system32 'icacls.exe'
+#|        & $icacls $out /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
+#|        if ($LASTEXITCODE -eq 0) { & $icacls $out /inheritance:r | Out-Null }
 #|        if ($LASTEXITCODE -ne 0) {
 #|            Write-Host "arthur: cannot restrict $out to administrators"
 #|            exit 1
