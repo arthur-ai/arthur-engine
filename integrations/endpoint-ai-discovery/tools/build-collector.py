@@ -358,18 +358,28 @@ if (Get-Command -Name Get-Acl -ErrorAction SilentlyContinue) {
 }
 if ($elevated) {
     # THE FOLDER THIS CHOSE IS MADE FOR ADMINISTRATORS ONLY. One created in ProgramData
-    # inherits its rule that any user may add files, which would let one plant a scan
-    # before the first real one. Named by SID, because the names are localised.
+    # takes on its rule that any user may add files, which would let one plant a scan
+    # before the first real one.
     #
-    # TWO CALLS, THE GRANTS FIRST. Given both in one call, icacls left the folder a fourth
-    # entry of its own: full control for the account that created it (measured on Windows
-    # Server 2025). Granting first also means the folder is never without its entries
-    # between the two.
+    # THE WHOLE LIST IS REPLACED, NOT EDITED. A new folder can hold entries of its own that
+    # came from its parent, which removing inheritance leaves: on Windows Server 2025,
+    # `icacls /inheritance:r /grant:r` left a folder made under a user's profile with full
+    # control for the account that made it. `icacls /restore` sets the list it is handed,
+    # in SDDL: SYSTEM (SY) and Administrators (BA) in full, Users (BU) to read and traverse,
+    # each for the folder and what is made in it, and nothing inherited (P). It reads a
+    # file in the form `icacls /save` writes: a name, then its list, in UTF-16.
     if ($ours -and $made) {
-        $icacls = Join-Path $system32 'icacls.exe'
-        & $icacls $out /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
-        if ($LASTEXITCODE -eq 0) { & $icacls $out /inheritance:r | Out-Null }
-        if ($LASTEXITCODE -ne 0) {
+        $list = Join-Path $out ".acl.$(Get-Random)"
+        $restricted = $false
+        try {
+            Set-Content -LiteralPath $list -Encoding Unicode -Value @(
+                (Split-Path -Leaf $out),
+                'D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)')
+            & (Join-Path $system32 'icacls.exe') (Split-Path -Parent $out) /restore $list | Out-Null
+            $restricted = ($LASTEXITCODE -eq 0)
+        } catch { }
+        Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue
+        if (-not $restricted) {
             Write-Host "arthur: cannot restrict $out to administrators"
             exit 1
         }
