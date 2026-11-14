@@ -81,7 +81,7 @@ tools/vendor-queries.sh <ref>     # vendor upstream at a ref; checks upstream's 
 tools/build-collector.py          # rebuild every collector
 test/lint.sh                      # static checks, ~1s
 test/run-collector.sh             # run this platform's collector and check its output, ~15s
-test\run-collector.ps1            # the same on Windows, from PowerShell, ~1 min
+test\run-collector.ps1            # the same on Windows, from PowerShell, ~30s
 ```
 
 After a vendor bump, check what the new upstream version removed as well as what it added.

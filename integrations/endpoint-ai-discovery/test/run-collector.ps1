@@ -1,5 +1,5 @@
 # Run the collector built for Windows, dist/collect-windows.ps1, and assert on what it
-# produced. Needs osquery, and python for two steps; about a minute.
+# produced. Needs osquery, and python for two steps; about 30s.
 #
 #     powershell -NoProfile -ExecutionPolicy Bypass -File test\run-collector.ps1
 #
