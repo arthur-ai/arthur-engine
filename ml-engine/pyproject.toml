@@ -15,10 +15,10 @@ dependencies = [
   "google-cloud-bigquery==3.47.0",
   "google-cloud-trace>=1.13.0,<2",
   "google-cloud-aiplatform>=2.1.3,<3",
-  "pandas==3.0.6",
-  "psycopg[binary]==3.3.6",
-  "pymysql==1.2.3",
-  "pyodbc==5.3.0",
+  "pandas==3.1.1",
+  "psycopg[binary]==3.3.8",
+  "pymysql==1.2.4",
+  "pyodbc==5.5.0",
   "pyyaml==6.0.3",
   "jsonschema==4.26.0",
   "requests==2.34.2",
@@ -30,8 +30,8 @@ dependencies = [
   # Azure AI Foundry discovery. Held at 2.4.0: every later
   # azure-ai-projects requires openai>=3, and litellm (pinned by arthur-common) caps openai<3.
   "azure-ai-projects==2.4.0",
-  "azure-identity==1.25.3",
-  "regex==2026.9.29",
+  "azure-identity==1.27.0",
+  "regex==2026.11.9",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
   "duckdb==1.5.6",
@@ -39,7 +39,7 @@ dependencies = [
   "datasketches==5.2.0",
   "numpy==2.3.2",
   "types-croniter==6.2.4.20261006",
-  "types-psutil==7.2.2.20260906",
+  "types-psutil==7.2.2.20261111",
   "types-requests==2.33.0.20261030",
   "psutil==7.2.2",
   "pyarrow==25.0.1",
@@ -47,24 +47,24 @@ dependencies = [
   "gunicorn>=26,<27",
   # Held below 2.1: snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState,
   # which SQLAlchemy 2.1 made private, so it fails at import. See the sqlalchemy rule in /renovate.json.
-  "sqlalchemy==2.0.55",
+  "sqlalchemy==2.0.57",
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2971",
+  "arthur-client==1.4.3022",
 ]
 
 [dependency-groups]
 dev = [
   "pytest==9.2.0",
   "responses==0.26.3",
-  "pytest-httpserver==1.2.0",
-  "pytest-asyncio==1.4.1",
+  "pytest-httpserver==1.2.1",
+  "pytest-asyncio==1.4.1.post1",
   "pytest-httpx==0.36.2",
   "pre-commit==4.7.0",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
-  "graphql-core==3.3.1",
+  "graphql-core==3.3.2",
 ]
 linters = [
   "mypy>=2.3,<3",
