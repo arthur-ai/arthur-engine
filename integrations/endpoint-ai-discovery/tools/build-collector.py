@@ -84,14 +84,7 @@ def vendored_bundler():
     if not path.is_file():
         sys.exit(
             f"no {path.relative_to(ROOT)} -- the collector is built by upstream's "
-            f"bundler. Re-vendor at v0.15.0 or later with tools/vendor-queries.sh.",
-        )
-    # THE WINDOWS BUILD NEEDS A BUNDLER THAT KNOWS WINDOWS, and one that does not would fail
-    # below on a platform name, which says nothing about the vendored ref being the cause.
-    if "windows" not in path.read_text():
-        sys.exit(
-            f"{path.relative_to(ROOT)} cannot build a Windows bundle. Re-vendor at a ref "
-            f"that carries bin/discover.ps1 with tools/vendor-queries.sh.",
+            f"bundler. Re-vendor at v0.18.0 or later with tools/vendor-queries.sh.",
         )
     # Importing writes __pycache__ beside the module, which would have the build editing
     # vendor/ -- the one directory this tree does not edit. Restored rather than left set,
@@ -104,6 +97,16 @@ def vendored_bundler():
         spec.loader.exec_module(mod)
     finally:
         sys.dont_write_bytecode = was
+    # THIS TREE BUILDS THREE COLLECTORS, SO IT NEEDS A BUNDLER THAT KNOWS WINDOWS. One that
+    # does not would fail further down on a platform name, which says nothing about the
+    # vendored ref being the cause. Asked of the module, not searched for in its text.
+    # tools/vendor-queries.sh refuses such a ref before it clears vendor/.
+    if "windows" not in getattr(mod, "PLATFORMS", ()):
+        sys.exit(
+            f"{path.relative_to(ROOT)} cannot build a Windows bundle, and this tree builds "
+            f"one for each of three platforms. Re-vendor at v0.18.0 or later with "
+            f"tools/vendor-queries.sh.",
+        )
     return mod
 
 
@@ -319,12 +322,63 @@ if (-not $env:AI_DETECTION_SPEC_ROOT) {
 $discover = Join-Path (Join-Path $env:AI_DETECTION_SPEC_ROOT 'bin') 'discover.ps1'
 
 $out = $env:ARTHUR_OUT_DIR
-if (-not $out) { $out = Join-Path $env:ProgramData 'Arthur' }
+$ours = -not $out
+if ($ours) { $out = Join-Path $env:ProgramData 'Arthur' }
+$made = -not (Test-Path -LiteralPath $out)
 try {
     New-Item -ItemType Directory -Path $out -Force | Out-Null
 } catch {
     Write-Host "arthur: cannot create $out"
     exit 1
+}
+
+# A RUN WITH ADMINISTRATOR RIGHTS WRITES ONLY WHERE AN ADMINISTRATOR PUT THE FOLDER. Any user
+# may create a folder in ProgramData, and whoever creates one owns it: they can rewrite what
+# a run publishes there, or swap the staging directory for a link, and this run moves and
+# deletes through it with rights they do not have. So a run as SYSTEM or as an elevated
+# administrator refuses a folder owned by anyone but SYSTEM, the Administrators group or
+# the account it runs as. A run as a standard user has no rights to lend, and is not asked.
+#
+# The token's integrity label says which run this is: S-1-16-12288 is High and S-1-16-16384
+# is System. Read with whoami, which every Windows has, and taken as elevated when it
+# cannot be read. Get-Acl is missing only off Windows, where the test runs this file.
+$elevated = $false
+$me = ''
+$system32 = ''
+if (Get-Command -Name Get-Acl -ErrorAction SilentlyContinue) {
+    $elevated = $true
+    try {
+        $system32 = Join-Path $env:SystemRoot 'System32'
+        $whoami = Join-Path $system32 'whoami.exe'
+        $me = "$(& $whoami)".Trim()
+        foreach ($line in @(& $whoami /groups /fo csv /nh)) {
+            if ($line -match 'S-1-16-(\d+)') { $elevated = [int]$Matches[1] -ge 12288 }
+        }
+    } catch { }
+}
+if ($elevated) {
+    # THE FOLDER THIS CHOSE IS MADE FOR ADMINISTRATORS ONLY. One created in ProgramData
+    # inherits its rule that any user may add files, which would let one plant a scan
+    # before the first real one. Named by SID, because the names are localised.
+    if ($ours -and $made) {
+        & (Join-Path $system32 'icacls.exe') $out /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "arthur: cannot restrict $out to administrators"
+            exit 1
+        }
+    }
+    $owner = ''
+    $trusted = $false
+    try {
+        $acl = Get-Acl -LiteralPath $out
+        $owner = $acl.Owner
+        $trusted = ($acl.Sddl -match '^O:(BA|SY)') -or ($me -and $owner -eq $me)
+    } catch { }
+    if (-not $trusted) {
+        Write-Host "arthur: $out is owned by '$owner', not by SYSTEM, the Administrators group or this account."
+        Write-Host 'arthur: a run with administrator rights does not write where another account put the folder. Remove it, or set ARTHUR_OUT_DIR to one an administrator made.'
+        exit 1
+    }
 }
 
 # EACH RUN WRITES INTO A STAGING DIRECTORY AND PUBLISHES BY MOVE, only once the scan and its
@@ -387,19 +441,50 @@ try {
             Write-Host 'arthur: no status written'
             Use-LastGood
         } else {
-            # PUBLISH: two moves on one volume, the status last, so a reader between them
-            # finds the new payload beside the previous status, never a partial file.
+            # PUBLISH BY RENAME, AND PUT THE PREVIOUS PAIR BACK IF IT CANNOT FINISH. Nothing is
+            # overwritten: Windows PowerShell's Move-Item -Force onto an existing file deletes
+            # it and then moves, so a move that failed there would leave neither. Each previous
+            # file is renamed into the staging directory and the new one renamed into its
+            # place, the status last. A reader between two renames finds a file missing or
+            # the previous status, never a partial file.
+            #
+            # AND A PUBLISH CAN FAIL HALFWAY HERE, which it cannot on macOS or Linux: Windows
+            # refuses to rename a file another process holds open. Then what was moved is
+            # moved back, so the two files still describe one scan.
+            $aside = Join-Path $stage 'previous'
+            New-Item -ItemType Directory -Path $aside | Out-Null
+            $placed = @()
             $moved = $true
             foreach ($name in $published) {
+                $dest = Join-Path $out $name
                 try {
-                    Move-Item -LiteralPath (Join-Path $stage $name) -Destination (Join-Path $out $name) -Force
+                    if (Test-Path -LiteralPath $dest) {
+                        Move-Item -LiteralPath $dest -Destination (Join-Path $aside $name)
+                    }
+                    Move-Item -LiteralPath (Join-Path $stage $name) -Destination $dest
+                    $placed += $name
                 } catch {
                     Write-Host "arthur: could not publish $name"
                     $moved = $false
                     break
                 }
             }
-            if ($moved) {
+            if (-not $moved) {
+                foreach ($name in $published) {
+                    $dest = Join-Path $out $name
+                    $previous = Join-Path $aside $name
+                    try {
+                        if ($placed -contains $name) { Remove-Item -LiteralPath $dest -Force }
+                        # Only into a gap: a file that refused to move is still in place.
+                        if ((Test-Path -LiteralPath $previous) -and -not (Test-Path -LiteralPath $dest)) {
+                            Move-Item -LiteralPath $previous -Destination $dest
+                        }
+                    } catch {
+                        Write-Host "arthur: could not put back the previous $name"
+                    }
+                }
+                Use-LastGood
+            } else {
                 # The scheduler records the exit status. A branch that could not look is not
                 # a failed collection: the payload says so per branch, and this line is what
                 # a reader matches on.

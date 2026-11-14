@@ -68,7 +68,7 @@ renumbering them is a code change.
 | `tools/render-cfn-template.sh` | pin the EC2 template to one ref, as `render-os-policy.sh` pins the OS policy. |
 | `test/lint.sh` | static checks on everything this tree owns. ~1s, no VM. |
 | `test/run-collector.sh` | runs this platform's collector and asserts on it. ~15s, needs osquery. |
-| `test/run-collector.ps1` | the same for `dist/collect-windows.ps1`, from PowerShell on Windows. ~30s, needs osquery and python. |
+| `test/run-collector.ps1` | the same for `dist/collect-windows.ps1`, from PowerShell on Windows. ~1 min, needs osquery and python. |
 | `test/run-guest-attributes.sh` | runs the reporter against a fake metadata server built from measured answers. ~3s, no osquery. |
 | `test/run-ssm-inventory.sh` | runs the EC2 reporter against a fake IMDS built from AWS's documentation, and reassembles the file it writes. ~6s, no osquery. |
 | `test/run-systemd.sh` | installs and runs the Linux collector under systemd. CI only — it writes to the machine. |
@@ -193,8 +193,9 @@ against a real tenant, read-only; run it before a tenant's first scan.
   core types, in ASCII with LF line endings. Where AppLocker or WDAC is enforced an unsigned
   script runs in that mode, and the vendored runner and wrapper already keep to it.
   `test/lint.sh` has the deny-list, and CI runs the collector in that mode. It writes no
-  `inventory.ea`, because no carrier reads a Windows machine; add the frame with the first
-  carrier that does.
+  `inventory.ea`; add the frame with the first carrier that reads a Windows machine.
+  `docs/architecture.md`'s decisions say why, and why its publish and its output folder
+  follow rules the shell driver does not need.
 - The endpoint enumerates and redacts; the collector classifies (D17). Keep catalog matching
   off the device, and keep anything path-shaped out of the status line — `/Library/Managed
   Preferences` and the Jamf inventory record are readable by every Jamf admin. The bundle

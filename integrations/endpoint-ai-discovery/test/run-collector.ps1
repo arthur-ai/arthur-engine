@@ -1,5 +1,5 @@
 # Run the collector built for Windows, dist/collect-windows.ps1, and assert on what it
-# produced. Needs osquery, and python for one step; about 30s.
+# produced. Needs osquery, and python for two steps; about a minute.
 #
 #     powershell -NoProfile -ExecutionPolicy Bypass -File test\run-collector.ps1
 #
@@ -36,8 +36,18 @@ if (-not (Test-Path -LiteralPath $Collect -PathType Leaf)) {
 
 # THE TEST NEEDS python; THE COLLECTOR MUST NOT. Reading the driver back out of the built
 # collector is tools/build-collector.py's job, and this runs on a build machine.
-$Python = Get-Command -Name python, python3 -CommandType Application -ErrorAction SilentlyContinue |
-    Select-Object -First 1
+# ASKED BY RUNNING IT, as test/run-collector.sh does. Windows answers `python` with a stub
+# that opens the Store: Get-Command finds it, and it runs nothing.
+$Python = $null
+foreach ($candidate in @(Get-Command -Name python, python3 -CommandType Application -ErrorAction SilentlyContinue)) {
+    $ErrorActionPreference = 'Continue'
+    & $candidate.Path -c 'import json' 2>&1 | Out-Null
+    $ErrorActionPreference = 'Stop'
+    if ($LASTEXITCODE -eq 0) {
+        $Python = $candidate
+        break
+    }
+}
 if (-not $Python) {
     Write-Host 'FAIL: this test needs python on PATH (the collector does not, deliberately).'
     exit 1
@@ -226,6 +236,63 @@ try {
     }
     if ($Fail -eq $before) { Note "failed scan: exit $code, both files untouched" }
 
+    Write-Host '== a publish that cannot finish puts the last good pair back ============='
+    # Windows refuses to rename a file another process holds open, which macOS and Linux
+    # never do, so a publish can fail after its first file. HELD BY python, as a reader would
+    # hold it: its open() shares reading and writing and not deleting. The run has replaced
+    # inventory.json by the time status.txt refuses, and must put the previous one back, or
+    # the two files describe different scans.
+    $before = $Fail
+    if (-not $env:SystemRoot) {
+        Write-Host 'SKIP: not Windows; elsewhere an open file blocks no rename, so nothing can be held'
+    } else {
+        $holdPy = Join-Path $Work 'hold.py'
+        $held = Join-Path $Work 'held'
+        $hold = @(
+            'import sys, time',
+            'f = open(sys.argv[1])',
+            "open(sys.argv[2], 'w').close()",
+            'time.sleep(600)') -join "`n"
+        New-Item -ItemType File -Path $holdPy -Value "$hold`n" | Out-Null
+        $holder = Start-Process -FilePath $Python.Path -ArgumentList "`"$holdPy`" `"$status`" `"$held`"" -PassThru -WindowStyle Hidden
+        $printed = @()
+        $code = 0
+        $holding = $false
+        try {
+            foreach ($attempt in 1..150) {
+                if (Test-Path -LiteralPath $held) {
+                    $holding = $true
+                    break
+                }
+                Start-Sleep -Milliseconds 200
+            }
+            if ($holding) {
+                $printed = Invoke-Script $Collect $Out '' ''
+                $code = $LASTEXITCODE
+                Show $printed
+            }
+        } finally {
+            Stop-Process -Id $holder.Id -Force -ErrorAction SilentlyContinue
+            Wait-Process -Id $holder.Id -Timeout 30 -ErrorAction SilentlyContinue
+        }
+        if (-not $holding) {
+            Bad 'python did not hold status.txt open, so this case proved nothing'
+        } else {
+            if ($code -eq 0) { Bad 'a publish that could not finish exited 0' }
+            if ((Get-Hash $inventory) -ne $hashes[0]) { Bad 'a publish that stopped at status.txt left the new inventory.json beside the previous status' }
+            if ((Get-Hash $status) -ne $hashes[1]) { Bad 'a publish that could not finish rewrote status.txt' }
+            if (@($printed | Where-Object { $_ -match 'could not publish status\.txt' }).Count -ne 1) {
+                Bad 'the run did not say which file it could not publish'
+            }
+            if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 1) {
+                Bad 'the run did not say it was serving an older value'
+            }
+            $names = (Get-Names $Out) -join ' '
+            if ($names -ne 'inventory.json status.txt') { Bad "the output directory now holds [$names]" }
+            if ($Fail -eq $before) { Note "held status.txt: exit $code, the previous pair put back, no staging left" }
+        }
+    }
+
     Write-Host '== with nothing to fall back on, no value at all ========================='
     # A file that is absent, empty or stale cannot be told from a machine with no AI tools
     # on it. With no previous scan there is nothing honest to serve, so the collector must
@@ -277,6 +344,91 @@ try {
         $names = (Get-Names $Out) -join ' '
         if ($names -ne 'inventory.json status.txt') { Bad "the output directory now holds [$names]: a staging directory was left" }
         if ($Fail -eq $before) { Note "failed JSON check: exit $code, both files untouched, no staging left" }
+    }
+
+    Write-Host '== a second clean run replaces the pair =================================='
+    # The first run published into an empty folder. Every later run on a machine replaces
+    # two files that are already there, which is the other half of the publish: the previous
+    # pair is renamed aside and must not be left behind, and the new pair must be one scan.
+    $before = $Fail
+    $printed = Invoke-Script $Collect $Out '' ''
+    $code = $LASTEXITCODE
+    if ($code -ne 0) {
+        Show $printed
+        Bad "a second run over a published scan exited $code"
+    } else {
+        $names = (Get-Names $Out) -join ' '
+        if ($names -ne 'inventory.json status.txt') { Bad "after a second run the output directory holds [$names]" }
+        if ((Get-Hash $status) -eq $hashes[1]) { Bad 'a second clean run left the previous status.txt in place' }
+        $again = @(Read-Rows $inventory)
+        $line = Get-Content -LiteralPath $status -Raw -Encoding UTF8
+        if ($line -notmatch " rows=$($again.Count)\s") { Bad "after a second run the status does not count the payload's $($again.Count) rows: $line" }
+        if (@($printed | Where-Object { $_ -ceq $line.Trim() }).Count -ne 1) {
+            Bad 'the second run did not print the status line it wrote'
+        }
+        if ($Fail -eq $before) { Note "second run: exit 0, both files replaced, $($again.Count) rows, nothing left beside them" }
+    }
+
+    Write-Host '== a run with administrator rights keeps to an administrator''s folder ===='
+    # As SYSTEM or an elevated administrator the collector moves and deletes with rights a
+    # standard user lacks, so it must not do it in a folder one of them owns: ProgramData
+    # lets any user create one. And the default folder, when this run makes it, must not
+    # inherit ProgramData's rule that any user may add files. Both hold only for an elevated
+    # run, which CI's is; a standard user's run is skipped by name.
+    $before = $Fail
+    $elevated = $false
+    if ($env:SystemRoot) {
+        $system32 = Join-Path $env:SystemRoot 'System32'
+        $elevated = @(& (Join-Path $system32 'whoami.exe') /groups /fo csv /nh |
+            Where-Object { $_ -match 'S-1-16-(12288|16384)' }).Count -gt 0
+    }
+    if (-not $elevated) {
+        Write-Host 'SKIP: not an elevated run on Windows, the only kind the rule applies to'
+    } else {
+        $theirs = Join-Path $Work 'theirs'
+        New-Item -ItemType Directory -Path $theirs | Out-Null
+        # Handed to the Users group, by SID because its name is localised.
+        & (Join-Path $system32 'icacls.exe') $theirs /setowner '*S-1-5-32-545' | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Bad 'icacls could not give the scratch folder another owner, so this case proved nothing'
+        } else {
+            $printed = Invoke-Script $Collect $theirs $absent ''
+            $code = $LASTEXITCODE
+            Show $printed
+            if ($code -eq 0) { Bad "an elevated run into another account's folder exited 0" }
+            if (@($printed | Where-Object { $_ -match 'is owned by' }).Count -ne 1) {
+                Bad "an elevated run did not refuse a folder another account owns"
+            }
+            $left = (Get-Names $theirs) -join ' '
+            if ($left) { Bad "[$left] was written into a folder another account owns" }
+        }
+
+        # ProgramData is pointed at a scratch folder, so the default is made there and not
+        # on this machine. The scan is broken as above: the folder is made before it runs.
+        $programData = Join-Path $Work 'programdata'
+        New-Item -ItemType Directory -Path $programData | Out-Null
+        $hostProgramData = $env:ProgramData
+        $env:ProgramData = $programData
+        try {
+            $printed = Invoke-Script $Collect '' $absent ''
+        } finally {
+            $env:ProgramData = $hostProgramData
+        }
+        Show $printed
+        $default = Join-Path $programData 'Arthur'
+        if (-not (Test-Path -LiteralPath $default -PathType Container)) {
+            Bad 'with no ARTHUR_OUT_DIR the collector did not make ProgramData\Arthur'
+        } else {
+            # Protected from inheritance, and three entries: SYSTEM and Administrators in
+            # full, Users to read and traverse.
+            $sddl = (Get-Acl -LiteralPath $default).Sddl
+            if ($sddl -notmatch 'D:P') { Bad "the default folder still inherits ProgramData's entries: $sddl" }
+            foreach ($entry in @('(A;OICI;FA;;;SY)', '(A;OICI;FA;;;BA)', '(A;OICI;0x1200a9;;;BU)')) {
+                if (-not $sddl.Contains($entry)) { Bad "the default folder lacks $entry : $sddl" }
+            }
+            if (@($sddl -split '\(A;').Count -ne 4) { Bad "the default folder grants more than its three entries: $sddl" }
+        }
+        if ($Fail -eq $before) { Note "elevated: another account's folder refused; the default folder made for administrators, Users read-only" }
     }
 
     Write-Host '== nothing is left in TEMP ==============================================='

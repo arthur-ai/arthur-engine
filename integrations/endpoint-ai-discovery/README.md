@@ -13,8 +13,7 @@ inventory does not see them.
 1. A scheduled script runs [osquery](https://osquery.io) and writes what it found to
    `/var/lib/arthur/`. The script is `dist/collect.sh` on macOS and `dist/collect-linux.sh`
    on Linux. `dist/collect-windows.ps1` is the same script for Windows, where it writes to
-   `C:\ProgramData\Arthur\`. No carrier reads a Windows machine yet: the standalone `local`
-   source reads the folder it writes.
+   `C:\ProgramData\Arthur\` and the standalone `local` source reads that folder.
 2. The platform that already manages the machine carries that file. On Jamf Pro it is Extension
    Attributes; on Compute Engine, guest attributes; on EC2, SSM custom inventory.
 3. Arthur's collector reads the file through that platform's API and matches it against the
@@ -82,7 +81,7 @@ tools/vendor-queries.sh <ref>     # vendor upstream at a ref; checks upstream's 
 tools/build-collector.py          # rebuild every collector
 test/lint.sh                      # static checks, ~1s
 test/run-collector.sh             # run this platform's collector and check its output, ~15s
-test\run-collector.ps1            # the same on Windows, from PowerShell, ~30s
+test\run-collector.ps1            # the same on Windows, from PowerShell, ~1 min
 ```
 
 After a vendor bump, check what the new upstream version removed as well as what it added.

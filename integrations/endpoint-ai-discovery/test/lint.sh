@@ -73,8 +73,9 @@ for dirpath, dirnames, filenames in os.walk(root):
                           if not l.strip().startswith(("#", "--")))
         # bin/discover is the only thing that runs queries, and it is vendored; anything
         # here that shells out to osqueryi directly is a second runner with its own guard,
-        # its own bound and its own bugs.
-        if re.search(r"osqueryi[\"']?\s+(--|<|\$)", code):
+        # its own bound and its own bugs. `.exe` and `@` are how PowerShell spells the call:
+        # `osqueryi.exe --json`, or the arguments splatted.
+        if re.search(r"osqueryi(?:\.exe)?[\"']?\s+(--|<|\$|@)", code):
             bad.append(f"{rel}: invokes osqueryi directly -- use the vendored bin/discover")
         # dist/collect.sh embeds bin/ and dist/ as base64, so real SQL never appears in it
         # as text. Plaintext here means someone pasted a query in beside the payload.
@@ -431,6 +432,13 @@ _mark = "\n# AI_DETECTION_SPEC_PAYLOAD_EOF\n"
 if text.count(_mark) != 1:
     print(f"FAIL: dist/{name} has {text.count(_mark)} payload markers, not one -- it may be "
           "embedding a previous copy of itself"); sys.exit(1)
+# THE BARE TOKEN, AS ABOVE: the wrapper names it once and the payload opens with it once. A
+# copy of this file packed as a member has every line prefixed, so the marker line above
+# would still count one; the token would count four.
+if text.count("AI_DETECTION_SPEC_PAYLOAD_EOF") != 2:
+    print(f"FAIL: dist/{name} names the payload marker "
+          f"{text.count('AI_DETECTION_SPEC_PAYLOAD_EOF')} times, not twice -- it may be "
+          "embedding a previous copy of itself"); sys.exit(1)
 wrapper_code = "\n".join(l for l in text.partition(_mark)[0].splitlines()
                          if not l.strip().startswith("#"))
 
@@ -453,10 +461,17 @@ if not am:
     print("FAIL: cannot read which flags the vendored bin/discover.ps1 accepts, so the check "
           "that the driver's flags are still accepted would pass with nothing in it."); sys.exit(1)
 accepted = {"-" + f for f in re.findall(r"'(-[a-z]+)'", am.group(1))}
+# EVERY invocation, each read to its last continued line: PowerShell continues one with a
+# backtick, and a flag on the next line is still a flag passed.
 called = set()
-for line in driver_code.splitlines():
-    if "& $discover" in line:
-        called |= set(re.findall(r"--[a-z-]+", line))
+_lines = driver_code.splitlines()
+for _i, line in enumerate(_lines):
+    if "& $discover" not in line:
+        continue
+    called |= set(re.findall(r"--[a-z-]+", line))
+    while _lines[_i].rstrip().endswith("`") and _i + 1 < len(_lines):
+        _i += 1
+        called |= set(re.findall(r"--[a-z-]+", _lines[_i]))
 if not {"--write", "--cache"} <= called:
     print(f"FAIL: dist/{name}: found discover.ps1 called with {sorted(called)}, expected --write "
           f"and --cache. The driver's invocation changed; update this guard to find it."); sys.exit(1)
@@ -465,6 +480,21 @@ if gone:
     print(f"FAIL: dist/{name} passes {gone} to bin/discover.ps1, which does not accept it. "
           f"The vendored runner changed; see tools/build-collector.py."); sys.exit(1)
 print(f"collector: ok, dist/{name} calls discover.ps1 with {sorted(called)}, all still accepted")
+
+# MATCHING STAYS OFF THE DEVICE AND NO INTERPRETER RUNS ON IT, as above. The Windows runner
+# has no --names today, and the flag check would refuse one; said here too, because the rule
+# is this tree's and not the runner's. A stock Windows has no python, perl or ruby, and a
+# collector that reached for one would write nothing there and look like a clean machine.
+if re.search(r"--names\b", driver_code):
+    print(f"FAIL: dist/{name} passes --names to bin/discover.ps1, which would match on the "
+          "endpoint. The endpoint enumerates; matching happens off the machine."); sys.exit(1)
+interp = re.search(r"(?:^\s*|[|;&({=]\s*|&\s*['\"]?|Start-Process\s+(?:-FilePath\s+)?['\"]?)"
+                   r"(python3?|py|ruby|perl|node|bash|wsl)(?:\.exe)?\b[^\n]*",
+                   wrapper_code + "\n" + driver_code, re.M | re.I)
+if interp:
+    print(f"FAIL: dist/{name} invokes an interpreter ({interp.group(1)}). The endpoint is a "
+          f"stock Windows machine, which has none. See tools/build-collector.py."); sys.exit(1)
+print(f"collector: ok, dist/{name} never matches on the endpoint and runs no interpreter")
 
 # THE DRIVER RUNS WHERE THE VENDORED RUNNER DOES, AND UNDER ITS RULE. Where AppLocker or WDAC
 # is enforced an unsigned script runs in ConstrainedLanguage mode: cmdlets and a short list

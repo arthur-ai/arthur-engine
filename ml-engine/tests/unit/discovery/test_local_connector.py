@@ -419,9 +419,11 @@ def test_a_machine_file_that_does_not_name_the_machine_fails_the_scan(
 @pytest.mark.skipif(not ENDPOINT_TREE.is_dir(), reason="endpoint tree not present")
 def test_the_collector_still_publishes_the_file_this_reads() -> None:
     """The file name is the collector's. A collector that stops publishing it, or
-    renames it, leaves every local scan reading an empty folder."""
+    renames it, leaves every local scan reading an empty folder. Both drivers: the
+    Windows one has no other reader than this source."""
     driver = (ENDPOINT_TREE / "tools" / "build-collector.py").read_text()
     assert "for f in inventory.json status.txt inventory.ea; do" in driver
+    assert "$published = @('inventory.json', 'status.txt')" in driver
 
 
 def _osqueryi() -> bool:

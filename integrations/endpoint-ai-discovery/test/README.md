@@ -47,6 +47,7 @@ what a fleet receives.
 | `dist/collect-windows.ps1` and `test/run-collector.ps1` are ASCII and parse, where `pwsh` is installed | The same for the Windows build, and a character Windows PowerShell 5.1 would read as another one |
 | The Windows driver reads the variable the wrapper sets, and passes `discover.ps1` only flags it accepts | A vendor bump that renames either, after which the collector exits 1 on every Windows machine |
 | The Windows driver keeps to cmdlets and core types | A collector that stops wherever AppLocker or WDAC is enforced, where an unsigned script runs in ConstrainedLanguage mode |
+| The Windows build never passes `--names`, runs no interpreter, and names its payload marker exactly twice | Matching moved onto the endpoint; a collector that needs python on a stock Windows machine; a build that packed a previous copy of itself |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
 | The plist runs `collect.sh` with `RunAtLoad` | A fresh Mac reporting nothing until the first interval elapses |
 | `DOCKER_PING_TIMEOUT` ≥ 10 **and** ≥ the vendored default | A cold Docker reported as `unhealthy:000`. The second half catches an upstream bump crossing our value, after which the export would lower the bound instead of raising it |
@@ -59,9 +60,9 @@ file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or 
 
 ## `test/run-collector.ps1`
 
-`test/run-collector.sh`'s questions, asked of `dist/collect-windows.ps1` on Windows: four
-runs into a scratch directory, from PowerShell. CI runs it in Windows PowerShell 5.1 and
-again in ConstrainedLanguage mode.
+`test/run-collector.sh`'s questions, asked of `dist/collect-windows.ps1` on Windows, and
+three that only Windows raises: eight runs into a scratch directory, from PowerShell. CI
+runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
 
 | Guard | What it catches |
 |---|---|
@@ -71,6 +72,10 @@ again in ConstrainedLanguage mode.
 | A run whose runner fails exits non-zero and leaves both files byte for byte | A failed run replacing, removing or re-dating the last good scan |
 | With no previous scan, a failed run leaves no file | A partial file claiming to be a result |
 | A scan that fails its JSON check keeps the last good one, and leaves no staging directory | A corrupt payload published because only the scan step was guarded |
+| With `status.txt` held open by another process, the run exits non-zero and both files are the previous scan's | A publish that stops after its first file, leaving a new payload beside an old status. Only on Windows, where a held file refuses a rename |
+| A second clean run replaces both files and leaves nothing beside them | The previous pair left in the folder, or a new payload beside an old status. The first run publishes into an empty folder, so only this one replaces |
+| An elevated run refuses a folder another account owns, and writes nothing into it | A run as SYSTEM moving and deleting where a standard user put the folder. Elevated runs only, which CI's is |
+| The default folder is made with three entries and no inherited ones | `C:\ProgramData`'s rule that any user may add files reaching the folder the scans are published in |
 | Nothing is left in `TEMP` | One extracted payload per run, filling a volume on a schedule |
 
 ## `test/run-collector.sh`
