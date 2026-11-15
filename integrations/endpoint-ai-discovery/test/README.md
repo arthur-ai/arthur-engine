@@ -61,7 +61,7 @@ file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or 
 ## `test/run-collector.ps1`
 
 `test/run-collector.sh`'s questions, asked of `dist/collect-windows.ps1` on Windows, and
-those only Windows raises: fifteen runs into a scratch directory, from PowerShell. CI
+those only Windows raises: sixteen runs into a scratch directory, from PowerShell. CI
 runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
 
 | Guard | What it catches |
@@ -81,6 +81,7 @@ runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
 | An elevated run into a folder the Users group can only read reaches its scan | Reading taken for writing, which would refuse the default folder itself |
 | An elevated run that fails does not serve a pair another account wrote, and removes it | A pair planted in a folder that lets any user add files, passing for the last good scan |
 | An elevated run that fails does not serve a pair whose `status.txt` the Users group can modify, and removes it | A pair this account wrote and another account then changed, through an entry on the file that its folder does not have |
+| An elevated run that fails beside a `.previous` the Users group can modify leaves it alone and serves the pair in place | The scan in place deleted to make room for files another account put in `.previous` |
 | The default folder, made beforehand as `mkdir` would, ends with three entries and no inherited ones | `C:\ProgramData`'s rule that any user may add files reaching the folder the scans are published in |
 | Nothing is left in `TEMP` | One extracted payload per run, filling a volume on a schedule |
 

@@ -493,8 +493,9 @@ $published = @('inventory.json', 'status.txt')
 $kept = Join-Path $out '.previous'
 function Restore-Kept {
     if (-not (Test-Path -LiteralPath $kept -PathType Container)) { return $true }
-    # One another account made, before the folder was restricted, is not read at all.
-    if ($elevated -and -not (Test-Ours $kept)) { return $true }
+    # One another account made, before the folder was restricted, or can write in, is not
+    # read at all: clearing a place for a file one of them put there would delete a scan.
+    if ($elevated -and -not (Test-Trusted $kept)) { return $true }
     try {
         $names = @()
         foreach ($name in $published) {
@@ -664,7 +665,7 @@ try {
                         if (-not (Test-Path -LiteralPath $kept)) {
                             New-Item -ItemType Directory -Path $kept | Out-Null
                         }
-                        if ($elevated -and -not (Test-Ours $kept)) { throw 'another account made it' }
+                        if ($elevated -and -not (Test-Trusted $kept)) { throw 'another account made it, or can write in it' }
                         foreach ($name in $set) {
                             $from = Join-Path $aside $name
                             if (Test-Path -LiteralPath $from) {

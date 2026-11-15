@@ -561,6 +561,36 @@ try {
             if ($left) { Bad "[$left] was left of a pair Users can write in" }
         }
 
+        # NOR IS A .previous THAT ANOTHER ACCOUNT CAN WRITE IN. Putting back what is in it
+        # starts by clearing the places, so a file one of them put there would cost the scan
+        # that is in place. This one is this account's, the Users group can modify it, and
+        # it holds a pair. The run must leave it alone and serve the pair in place.
+        $open = Join-Path $Work 'open'
+        $openKept = Join-Path $open '.previous'
+        New-Item -ItemType Directory -Path $openKept | Out-Null
+        foreach ($name in @('inventory.json', 'status.txt')) {
+            Copy-Item -LiteralPath (Join-Path $Out $name) -Destination (Join-Path $open $name)
+            New-Item -ItemType File -Path (Join-Path $openKept $name) -Value "planted`n" | Out-Null
+        }
+        $inPlace = @((Get-Hash (Join-Path $open 'inventory.json')), (Get-Hash (Join-Path $open 'status.txt')))
+        & (Join-Path $system32 'icacls.exe') $openKept /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Bad 'icacls could not let Users write in .previous, so this case proved nothing'
+        } else {
+            $printed = Invoke-Script $Collect $open $absent ''
+            $code = $LASTEXITCODE
+            Show $printed
+            if ($code -eq 0) { Bad 'a failed run beside a .previous Users can write in exited 0' }
+            if ((Get-Hash (Join-Path $open 'inventory.json')) -ne $inPlace[0] -or (Get-Hash (Join-Path $open 'status.txt')) -ne $inPlace[1]) {
+                Bad 'an elevated run replaced the pair in place with what a .previous Users can write in held'
+            }
+            if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 1) {
+                Bad 'an elevated run beside a .previous Users can write in did not serve the pair in place'
+            }
+            $names = (Get-Names $openKept) -join ' '
+            if ($names -ne 'inventory.json status.txt') { Bad "a .previous Users can write in now holds [$names]: the run moved what was in it" }
+        }
+
         # A FOLDER AN ADMINISTRATOR OWNS CAN STILL LET ANOTHER ACCOUNT WRITE IN IT: one made
         # on the system drive outside a profile does. Granted here to the Users group, to
         # modify the folder and what is made in it. The run must name that group alone: the
@@ -627,7 +657,7 @@ try {
             }
             if (@($sddl -split '\(A;').Count -ne 4) { Bad "the default folder grants more than its three entries: $sddl" }
         }
-        if ($Fail -eq $before) { Note "elevated: another account's folder refused, and one Users can write in; a pair another account wrote or can change not served; the default folder held to administrators, Users read-only" }
+        if ($Fail -eq $before) { Note "elevated: another account's folder refused, and one Users can write in; a pair another account wrote or can change not served, nor one from a .previous it can write in; the default folder held to administrators, Users read-only" }
     }
 
     Write-Host '== nothing is left in TEMP ==============================================='
