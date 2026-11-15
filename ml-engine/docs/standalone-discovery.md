@@ -558,10 +558,15 @@ the image):
 
 | File | Written by | Holds |
 |---|---|---|
-| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read. Windows has no collector: there, the file is the output of upstream's [`discovery-windows.sql`](../../integrations/endpoint-ai-discovery/vendor/ai-detection-spec/dist/discovery-windows.sql) run through `osqueryi --json` (osquery 5.17.0 or later), kept as osqueryi writes it, in UTF-8 | the scan's rows |
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux, [`dist/collect-windows.ps1`](../../integrations/endpoint-ai-discovery/dist/collect-windows.ps1) on Windows. It needs [osquery](https://osquery.io/downloads) on the machine (5.17.0 or later on Windows), and not root: run as a user, it sees what that user can read | the scan's rows |
 | `machine.json` | whatever ran the collector | who the machine is, below |
 
-The collector also writes `status.txt` and `inventory.ea` there; neither is read.
+The collector also writes `status.txt` there, and `inventory.ea` on macOS and Linux; neither
+is read.
+
+On Windows, a collector run with administrator rights refuses a folder that any account
+other than SYSTEM, the Administrators group and its own can write in. A clone outside your
+user folder is usually one. Run without administrator rights, it is not asked.
 
 `machine.json` names the machine, because an engine in a container cannot see the host's
 own id or hostname:
@@ -754,6 +759,35 @@ principal with no access entry on that cluster, so that is the cluster's refusal
 credential's. A refused AWS credential ends the scan, and so does a scan refused every
 ECS and EKS listing, even when CloudTrail could be read: a source that listed no
 container reads as denied, not as an account without workloads.
+
+#### `azure_ai_foundry` — Azure AI Foundry agents
+
+Lists the Foundry Agent Service agents (prompt, hosted and workflow) in one Foundry
+project. Classic Assistants API agents are a different resource and are not listed.
+External agents, which Foundry only registers and which run elsewhere, are skipped.
+Only public Azure is supported.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_endpoint` | no | yes | The project endpoint from the project's overview page, `https://<resource>.services.ai.azure.com/api/projects/<project>`. Any other host is refused, since the scan sends it a token |
+| `tenant_id` | no | no | The service principal's Microsoft Entra tenant |
+| `client_id` | no | no | The service principal's application (client) ID |
+| `client_secret` | yes | no | The service principal's secret. Set all three of `tenant_id`, `client_id` and `client_secret`, or none; with none, the engine uses its `DefaultAzureCredential` (managed or workload identity, `az login`) only if `ARTHUR_ENGINE_AZURE_AI_FOUNDRY_ALLOW_DEFAULT_CREDENTIAL=true` is set |
+
+The principal needs a role on the project that can read its agents, such as `Azure AI
+User`. Use `query: ""`
+and `query_language: none`.
+
+Each agent is one record: `external_id` is `{project_endpoint}/agents/{agent name}`
+(lower-case host, no trailing slash), the address is the Foundry resource (`instance`),
+the project (`scope`) and the agent name (`resource_id`). `last_seen` is when the
+agent's latest version was created; the model deployment a prompt agent names and its
+tools are reported. A prompt agent's instructions and a hosted agent's environment
+variables arrive in the same listing and are never copied into the record or logged.
+
+The lookback window is not applied: the list is an inventory, so every scan reports
+every agent in the project. If Foundry's paging repeats an agent or a page token, the scan fails
+rather than report a partial inventory.
 
 #### `splunk_enterprise` — Splunk Enterprise
 
