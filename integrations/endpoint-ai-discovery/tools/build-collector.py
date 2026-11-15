@@ -331,18 +331,22 @@ try {
     exit 1
 }
 
-# A RUN WITH ADMINISTRATOR RIGHTS WRITES ONLY WHERE AN ADMINISTRATOR PUT THE FOLDER. Any user
-# may create a folder in ProgramData, and whoever creates one owns it: they can rewrite what
-# a run publishes there, or swap the staging directory for a link, and this run moves and
-# deletes through it with rights they do not have. So a run as SYSTEM or as an elevated
+# A RUN WITH ADMINISTRATOR RIGHTS WRITES ONLY IN A FOLDER THAT IS ADMINISTRATORS'. Any user
+# may create a folder in ProgramData, and whoever creates one owns it. And a folder an
+# administrator made can still let other accounts add, change or delete what is in it: one
+# made on the system drive outside a profile does, by default. Either way they can rewrite
+# what a run publishes there, or swap an entry for a link, and this run moves and deletes
+# through it with rights they do not have. So a run as SYSTEM or as an elevated
 # administrator refuses a folder owned by anyone but SYSTEM, the Administrators group or
-# the account it runs as. A run as a standard user has no rights to lend, and is not asked.
+# the account it runs as, and a folder any other account can write in. A run as a standard
+# user has no rights to lend, and is not asked.
 #
 # The token's integrity label says which run this is: S-1-16-12288 is High and S-1-16-16384
 # is System. Read with whoami, which every Windows has, and taken as elevated when it
 # cannot be read. Get-Acl is missing only off Windows, where the test runs this file.
 $elevated = $false
 $me = ''
+$sid = ''
 $system32 = ''
 if (Get-Command -Name Get-Acl -ErrorAction SilentlyContinue) {
     $elevated = $true
@@ -350,6 +354,7 @@ if (Get-Command -Name Get-Acl -ErrorAction SilentlyContinue) {
         $system32 = Join-Path $env:SystemRoot 'System32'
         $whoami = Join-Path $system32 'whoami.exe'
         $me = "$(& $whoami)".Trim()
+        if ("$(& $whoami /user /fo csv /nh)" -match '"(S-1-[0-9-]+)"') { $sid = $Matches[1] }
         foreach ($line in @(& $whoami /groups /fo csv /nh)) {
             if ($line -match 'S-1-16-(\d+)') { $elevated = [int]$Matches[1] -ge 12288 }
         }
@@ -367,6 +372,49 @@ function Test-Ours([string]$Path) {
     }
 }
 
+# THE OTHER ACCOUNTS A FOLDER LETS WRITE IN IT, read off the SDDL of its access list, where
+# an allowing entry is (A;flags;rights;;;account). Not counted: SYSTEM (SY), the
+# Administrators group (BA), the built-in Administrator (LA) and TrustedInstaller, which
+# are administrators by other names; this account, by its SID; and CREATOR OWNER (CO) and
+# OWNER RIGHTS (OW), which stand for whoever made or owns an entry, and so for one of the
+# accounts allowed to. The rights are a mask or two-letter codes. All but reading, listing
+# and traversing count as writing, and a mask or code that cannot be read counts too. So
+# does an entry only the folder's contents inherit: this run makes its files there.
+function Get-Writers([string]$Path) {
+    $trusted = @('SY', 'BA', 'LA', 'CO', 'OW',
+        'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')
+    if ($sid) { $trusted += $sid }
+    $known = @{ 'BU' = 'Users'; 'AU' = 'Authenticated Users'; 'WD' = 'Everyone'; 'IU' = 'Interactive' }
+    $reads = @('FR', 'FX', 'GR', 'GX', 'RC', 'CC', 'SW', 'WP', 'LO')
+    # Add an entry, change one, delete one, or take the folder over.
+    $writes = 0x500D0156
+    $sddl = ''
+    try { $sddl = (Get-Acl -LiteralPath $Path).Sddl } catch { }
+    if ($sddl -notmatch 'D:') { return , @('(not known: its access list cannot be read)') }
+    if ($sddl -match 'NO_ACCESS_CONTROL') { return , @('Everyone (it has no access list)') }
+    $found = @()
+    foreach ($piece in @($sddl -split '\(' | Select-Object -Skip 1)) {
+        $entry = ($piece -split '\)')[0] -split ';'
+        if ($entry.Count -lt 6 -or @('A', 'OA', 'XA', 'ZA') -notcontains $entry[0]) { continue }
+        $who = $entry[5]
+        if ($trusted -contains $who) { continue }
+        $rights = $entry[2]
+        $can = $true
+        if ($rights -match '^0x[0-9a-f]+$') {
+            try { $can = (([long]$rights) -band $writes) -ne 0 } catch { }
+        } elseif ($rights -match '^([A-Z][A-Z])*$') {
+            $can = $false
+            for ($i = 0; $i -lt $rights.Length; $i += 2) {
+                if ($reads -notcontains $rights.Substring($i, 2)) { $can = $true }
+            }
+        }
+        if (-not $can) { continue }
+        if ($known[$who]) { $who = "$($known[$who]) ($who)" }
+        if ($found -notcontains $who) { $found += $who }
+    }
+    return , $found
+}
+
 if ($elevated) {
     if (-not (Test-Ours $out)) {
         $owner = ''
@@ -378,7 +426,7 @@ if ($elevated) {
     # THE FOLDER THIS CHOSE IS FOR ADMINISTRATORS ONLY, AND IS HELD TO THAT ON EVERY RUN. One
     # made in ProgramData, by this run or by an administrator's mkdir, takes on its rule
     # that any user may add files. A folder named in ARTHUR_OUT_DIR is for whoever named it
-    # to restrict; Use-LastGood below does not trust what another account left in one.
+    # to restrict: its list is read below and never changed.
     #
     # THE WHOLE LIST IS REPLACED, NOT EDITED. A new folder can hold entries of its own that
     # came from its parent, which removing inheritance leaves: on Windows Server 2025,
@@ -403,6 +451,15 @@ if ($elevated) {
             exit 1
         }
     }
+    # ASKED OF EITHER FOLDER, after the default one's list is set, so that list is checked
+    # too. What a folder let another account leave before it was restricted is not trusted
+    # either: see Use-LastGood and Restore-Kept below.
+    $others = Get-Writers $out
+    if ($others.Count -gt 0) {
+        Write-Host "arthur: $out lets other accounts write in it: $($others -join ', ')."
+        Write-Host 'arthur: a run with administrator rights writes only where SYSTEM, the Administrators group and this account can. Restrict the folder to them, run without administrator rights, or leave ARTHUR_OUT_DIR unset to use the default folder.'
+        exit 1
+    }
 }
 
 # EACH RUN WRITES INTO A STAGING DIRECTORY AND PUBLISHES BY MOVE, only once the scan and its
@@ -419,15 +476,50 @@ $inventory = Join-Path $stage 'inventory.json'
 $status = Join-Path $stage 'status.txt'
 $published = @('inventory.json', 'status.txt')
 
+# WHAT A PUBLISH COULD NOT PUT BACK WAITS IN .previous, AND NOTHING IS SERVED WHILE IT WAITS.
+# A publish that fails renames the previous pair back into place. When it cannot, because a
+# file it placed will not be taken back or a previous one will not go back, the files still
+# set aside are moved here: in the output folder, under a fixed name, where the next run
+# finds them. The folder's presence is the marker that what is in place may be half of two
+# scans. Every run that reaches a publish or a fallback first finishes that job: it clears
+# the places of the kept files, then renames them in. Clearing comes first and stops at the
+# first file that will not go, so a kept file never lands beside one of another scan.
+$kept = Join-Path $out '.previous'
+function Restore-Kept {
+    if (-not (Test-Path -LiteralPath $kept -PathType Container)) { return $true }
+    # One another account made, before the folder was restricted, is not read at all.
+    if ($elevated -and -not (Test-Ours $kept)) { return $true }
+    try {
+        $names = @()
+        foreach ($name in $published) {
+            if (Test-Path -LiteralPath (Join-Path $kept $name) -PathType Leaf) { $names += $name }
+        }
+        foreach ($name in $names) {
+            $dest = Join-Path $out $name
+            if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Force }
+        }
+        foreach ($name in $names) {
+            Move-Item -LiteralPath (Join-Path $kept $name) -Destination (Join-Path $out $name)
+        }
+    } catch {
+        Write-Host "arthur: $kept holds the previous scan, which cannot be put back yet. Nothing is published or served until it is."
+        return $false
+    }
+    Remove-Item -LiteralPath $kept -Recurse -Force -ErrorAction SilentlyContinue
+    if ($names.Count -gt 0) { Write-Host "arthur: put back the previous scan, which an earlier run left in $kept" }
+    return $true
+}
+
 # A RUN THAT CANNOT FINISH KEEPS THE LAST GOOD ONE. On a schedule a transient failure is
 # ordinary, and discarding a good scan because one run could not complete reports a
 # well-equipped machine as empty. So serve what the last successful run produced, whose own
 # timestamp says how old it is, and fail the run. With nothing good ever written there is
 # nothing to keep: leave no partial file claiming to be a result.
 function Use-LastGood {
+    if (-not (Restore-Kept)) { return }
     # AND, FOR A RUN WITH ADMINISTRATOR RIGHTS, ONLY A PAIR SUCH A RUN WROTE. A folder can
-    # belong to an administrator and still let any user add files, and a pair one of them
-    # left there before the first scan would be served as the last good one.
+    # have let any user add files before it was restricted, and a pair one of them left
+    # there before the first scan would be served as the last good one.
     $good = $true
     foreach ($name in $published) {
         $path = Join-Path $out $name
@@ -469,7 +561,10 @@ try {
         } elseif (-not (Test-Path -LiteralPath $status -PathType Leaf) -or (Get-Item -LiteralPath $status).Length -eq 0) {
             Write-Host 'arthur: no status written'
             Use-LastGood
-        } else {
+        } elseif (Restore-Kept) {
+            # (When an earlier run's pair still cannot be put back, Restore-Kept has said so,
+            # and this scan is not published over a folder in that state.)
+            #
             # PUBLISH BY RENAME, IN TWO STEPS, AND PUT THE PREVIOUS PAIR BACK IF IT CANNOT
             # FINISH. Nothing is overwritten: Windows PowerShell's Move-Item -Force onto an
             # existing file deletes it and then moves, so a move that failed there would leave
@@ -482,7 +577,8 @@ try {
             # before anything new is in place, and what was set aside is moved back. If the
             # second step fails, what it placed is taken back first. THE PREVIOUS PAIR RETURNS
             # ONLY TO AN EMPTY PLACE: beside a new file that could not be taken back it would
-            # be two scans passing for one, so then the folder is left without a pair.
+            # be two scans passing for one. Then, or when a previous file will not go back,
+            # what is still set aside is kept in .previous for the next run: see Restore-Kept.
             $aside = Join-Path $stage 'previous'
             New-Item -ItemType Directory -Path $aside | Out-Null
             $failed = ''
@@ -520,6 +616,7 @@ try {
                         $clean = $false
                     }
                 }
+                $keep = $false
                 if ($clean) {
                     foreach ($name in $set) {
                         $dest = Join-Path $out $name
@@ -530,10 +627,31 @@ try {
                             }
                         } catch {
                             Write-Host "arthur: could not put back the previous $name"
+                            $keep = $true
                         }
                     }
                 } else {
                     Write-Host 'arthur: could not take back what this run placed, so the previous scan is not put back beside it'
+                    # Half a pair was never a scan to serve, so only a whole one is kept.
+                    $keep = ($set.Count -eq $published.Count)
+                }
+                if ($keep) {
+                    # Out of the staging directory, which the end of this run removes.
+                    try {
+                        if (-not (Test-Path -LiteralPath $kept)) {
+                            New-Item -ItemType Directory -Path $kept | Out-Null
+                        }
+                        if ($elevated -and -not (Test-Ours $kept)) { throw 'another account made it' }
+                        foreach ($name in $set) {
+                            $from = Join-Path $aside $name
+                            if (Test-Path -LiteralPath $from) {
+                                Move-Item -LiteralPath $from -Destination (Join-Path $kept $name)
+                            }
+                        }
+                        Write-Host "arthur: the previous scan is kept in $kept for the next run to put back"
+                    } catch {
+                        Write-Host "arthur: could not keep the previous scan in $kept, so it is lost"
+                    }
                 }
                 Use-LastGood
             } else {

@@ -369,12 +369,97 @@ try {
         if ($Fail -eq $before) { Note "second run: exit 0, both files replaced, $($again.Count) rows, nothing left beside them" }
     }
 
+    Write-Host '== a previous pair that cannot be put back waits for the next run ========'
+    # A publish can fail twice: status.txt will not go into place, and the inventory.json
+    # placed a moment before will not come back out. The previous pair must not return
+    # beside that file, and must not go with the staging directory either. It is kept in
+    # .previous, nothing is served while it is there, and the next run puts it back.
+    #
+    # NO MACHINE FAILS THAT WAY ON DEMAND, so the shipped driver is run with those two
+    # failures made for it: a function is found before a cmdlet of its name, and these two
+    # refuse the one path each and pass everything else through.
+    $before = $Fail
+    $recover = Join-Path $Work 'recover'
+    New-Item -ItemType Directory -Path $recover | Out-Null
+    foreach ($name in @('inventory.json', 'status.txt')) {
+        Copy-Item -LiteralPath (Join-Path $Out $name) -Destination (Join-Path $recover $name)
+    }
+    $pair = @((Get-Hash (Join-Path $recover 'inventory.json')), (Get-Hash (Join-Path $recover 'status.txt')))
+    # A runner whose scan and JSON check both pass, so the run reaches its publish.
+    $passing = Join-Path $Work 'passing'
+    New-Item -ItemType Directory -Path (Join-Path $passing 'bin') | Out-Null
+    $runner = @(
+        "if (`$args[0] -eq '--write') {",
+        "    New-Item -ItemType File -Path `$args[1] -Value '[]' -Force | Out-Null",
+        "    New-Item -ItemType File -Path `$args[3] -Value 'ok 2026-10-12T00:00:00Z rows=0' -Force | Out-Null",
+        '}',
+        'exit 0') -join "`n"
+    New-Item -ItemType File -Path (Join-Path (Join-Path $passing 'bin') 'discover.ps1') -Value "$runner`n" | Out-Null
+    $faulty = Join-Path $Work 'faulty.ps1'
+    $wrapped = @(
+        'function Move-Item {',
+        '    [CmdletBinding()] param([string]$LiteralPath, [string]$Destination)',
+        '    if ($LiteralPath -match ''\.scan\.\d+[\\/]status\.txt$'') { throw ''held, for the test'' }',
+        '    Microsoft.PowerShell.Management\Move-Item @PSBoundParameters',
+        '}',
+        'function Remove-Item {',
+        '    [CmdletBinding()] param([string]$LiteralPath, [switch]$Recurse, [switch]$Force)',
+        '    if ($LiteralPath -eq (Join-Path $env:ARTHUR_OUT_DIR ''inventory.json'')) { throw ''held, for the test'' }',
+        '    Microsoft.PowerShell.Management\Remove-Item @PSBoundParameters',
+        '}',
+        # The driver's own exit ends only the driver, which is run here from this file.
+        ". '$driver'",
+        'exit $LASTEXITCODE') -join "`n"
+    if (-not (Test-Path -LiteralPath $driver -PathType Leaf)) {
+        Bad 'no driver was read out of the built collector above, so this case proved nothing'
+    } else {
+        New-Item -ItemType File -Path $faulty -Value "$wrapped`n" | Out-Null
+        $printed = Invoke-Script $faulty $recover '' $passing
+        $code = $LASTEXITCODE
+        Show $printed
+        $keptDir = Join-Path $recover '.previous'
+        if ($code -eq 0) { Bad 'a publish that failed twice exited 0' }
+        if (@($printed | Where-Object { $_ -match 'could not publish status\.txt' }).Count -ne 1) {
+            Bad 'the run did not fail where the test broke it, so this case proved nothing'
+        }
+        if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 0) {
+            Bad 'a run served a scan while the previous pair was still set aside'
+        }
+        $names = (Get-Names $recover) -join ' '
+        if ($names -ne '.previous inventory.json') {
+            Bad "after a publish that failed twice the output directory holds [$names], not .previous and the one file that would not come back out"
+        }
+        $names = (Get-Names $keptDir) -join ' '
+        if ($names -ne 'inventory.json status.txt') {
+            Bad ".previous holds [$names], not the previous pair"
+        } elseif ((Get-Hash (Join-Path $keptDir 'inventory.json')) -ne $pair[0] -or (Get-Hash (Join-Path $keptDir 'status.txt')) -ne $pair[1]) {
+            Bad '.previous does not hold the previous pair byte for byte'
+        }
+
+        # The next run, with nothing wrapped. Its scan fails as the failed scan above did, so
+        # what it serves is what it put back.
+        $printed = Invoke-Script $Collect $recover $absent ''
+        $code = $LASTEXITCODE
+        Show $printed
+        if ($code -eq 0) { Bad 'the run after a publish that failed twice, whose own scan failed, exited 0' }
+        if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 1) {
+            Bad 'the next run did not serve the pair it should have put back'
+        }
+        $names = (Get-Names $recover) -join ' '
+        if ($names -ne 'inventory.json status.txt') {
+            Bad "after the next run the output directory holds [$names]"
+        } elseif ((Get-Hash (Join-Path $recover 'inventory.json')) -ne $pair[0] -or (Get-Hash (Join-Path $recover 'status.txt')) -ne $pair[1]) {
+            Bad 'the next run did not put the previous pair back byte for byte'
+        }
+        if ($Fail -eq $before) { Note "failed twice: exit non-zero, the previous pair kept in .previous and nothing served; the next run put it back" }
+    }
+
     Write-Host '== a run with administrator rights keeps to an administrator''s folder ===='
     # As SYSTEM or an elevated administrator the collector moves and deletes with rights a
-    # standard user lacks, so it must not do it in a folder one of them owns: ProgramData
-    # lets any user create one. And the default folder, when this run makes it, must not
-    # inherit ProgramData's rule that any user may add files. Both hold only for an elevated
-    # run, which CI's is; a standard user's run is skipped by name.
+    # standard user lacks, so it must not do it in a folder one of them owns, or one of them
+    # can write in: ProgramData lets any user create a folder. And the default folder must
+    # not keep ProgramData's rule that any user may add files. These hold only for an
+    # elevated run, which CI's is; a standard user's run is skipped by name.
     $before = $Fail
     $elevated = $false
     if ($env:SystemRoot) {
@@ -424,6 +509,45 @@ try {
         $left = (Get-Names $planted) -join ' '
         if ($left) { Bad "[$left] was left of a pair another account wrote" }
 
+        # A FOLDER AN ADMINISTRATOR OWNS CAN STILL LET ANOTHER ACCOUNT WRITE IN IT: one made
+        # on the system drive outside a profile does. Granted here to the Users group, to
+        # modify the folder and what is made in it. The run must name that group alone: the
+        # scratch folder's own entries are SYSTEM, Administrators and this account.
+        $shared = Join-Path $Work 'shared'
+        New-Item -ItemType Directory -Path $shared | Out-Null
+        & (Join-Path $system32 'icacls.exe') $shared /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Bad 'icacls could not let Users write in the scratch folder, so this case proved nothing'
+        } else {
+            $printed = Invoke-Script $Collect $shared $absent ''
+            $code = $LASTEXITCODE
+            Show $printed
+            if ($code -eq 0) { Bad 'an elevated run into a folder Users can write in exited 0' }
+            if (@($printed | Where-Object { $_ -match 'lets other accounts write in it: Users \(BU\)\.$' }).Count -ne 1) {
+                Bad 'an elevated run did not refuse a folder Users can write in, or did not name them alone'
+            }
+            $left = (Get-Names $shared) -join ' '
+            if ($left) { Bad "[$left] was written into a folder Users can write in" }
+        }
+
+        # AND READING IS NOT WRITING: the default folder itself lets Users read. The run must
+        # get as far as its scan, which is broken as above.
+        $readable = Join-Path $Work 'readable'
+        New-Item -ItemType Directory -Path $readable | Out-Null
+        & (Join-Path $system32 'icacls.exe') $readable /grant '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Bad 'icacls could not let Users read the scratch folder, so this case proved nothing'
+        } else {
+            $printed = Invoke-Script $Collect $readable $absent ''
+            Show $printed
+            if (@($printed | Where-Object { $_ -match 'lets other accounts write' }).Count -ne 0) {
+                Bad 'an elevated run refused a folder Users can only read'
+            }
+            if (@($printed | Where-Object { $_ -match 'no previous scan to fall back on' }).Count -ne 1) {
+                Bad 'an elevated run into a folder Users can only read did not reach its scan'
+            }
+        }
+
         # ProgramData is pointed at a scratch folder, so the default is there and not on this
         # machine. MADE BEFORE THE RUN, as an administrator's mkdir would: it holds what its
         # parent gave it, and the run must replace that. The scan is broken as above: the
@@ -451,7 +575,7 @@ try {
             }
             if (@($sddl -split '\(A;').Count -ne 4) { Bad "the default folder grants more than its three entries: $sddl" }
         }
-        if ($Fail -eq $before) { Note "elevated: another account's folder refused, its planted pair not served; the default folder held to administrators, Users read-only" }
+        if ($Fail -eq $before) { Note "elevated: another account's folder refused, and one Users can write in; a planted pair not served; the default folder held to administrators, Users read-only" }
     }
 
     Write-Host '== nothing is left in TEMP ==============================================='

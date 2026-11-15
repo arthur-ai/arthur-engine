@@ -564,6 +564,10 @@ the image):
 The collector also writes `status.txt` there, and `inventory.ea` on macOS and Linux; neither
 is read.
 
+On Windows, a collector run with administrator rights refuses a folder that any account
+other than SYSTEM, the Administrators group and its own can write in. A clone outside your
+user folder is usually one. Run without administrator rights, it is not asked.
+
 `machine.json` names the machine, because an engine in a container cannot see the host's
 own id or hostname:
 
