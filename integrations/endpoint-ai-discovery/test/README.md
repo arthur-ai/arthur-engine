@@ -44,6 +44,10 @@ what a fleet receives.
 | `tools/render-cfn-template.sh HEAD` leaves no placeholder, names HEAD in both URLs, and pins each file to its own sha256 | A rendered template every instance refuses. Skipped, and says so, until the template is committed: the renderer reads git |
 | `arthur1.` and `ERROR:oversize` present | The framing or its over-cap reason being dropped, which leaves an empty attribute — indistinguishable from a Mac with no AI tools on it |
 | `bash -n` on both collectors, the reporter and `vendor-queries.sh` | A template edit in `build-collector.py` producing a syntax error nobody runs until a Policy does |
+| `dist/collect-windows.ps1` and `test/run-collector.ps1` are ASCII and parse, where `pwsh` is installed | The same for the Windows build, and a character Windows PowerShell 5.1 would read as another one |
+| The Windows driver reads the variable the wrapper sets, and passes `discover.ps1` only flags it accepts | A vendor bump that renames either, after which the collector exits 1 on every Windows machine |
+| The Windows driver keeps to cmdlets and core types | A collector that stops wherever AppLocker or WDAC is enforced, where an unsigned script runs in ConstrainedLanguage mode |
+| The Windows build never passes `--names`, runs no interpreter, and names its payload marker exactly twice | Matching moved onto the endpoint; a collector that needs python on a stock Windows machine; a build that packed a previous copy of itself |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
 | The plist runs `collect.sh` with `RunAtLoad` | A fresh Mac reporting nothing until the first interval elapses |
 | `DOCKER_PING_TIMEOUT` ≥ 10 **and** ≥ the vendored default | A cold Docker reported as `unhealthy:000`. The second half catches an upstream bump crossing our value, after which the export would lower the bound instead of raising it |
@@ -53,6 +57,33 @@ what a fleet receives.
 The `no second implementation` guard is mutation-tested by construction — drop a `.sql`
 file anywhere outside `vendor/`, add a script that shells out to `osqueryi`, or paste
 `FROM apps` into a `.py`, and it names the file and fails.
+
+## `test/run-collector.ps1`
+
+`test/run-collector.sh`'s questions, asked of `dist/collect-windows.ps1` on Windows, and
+those only Windows raises: sixteen runs into a scratch directory, from PowerShell. CI
+runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
+
+| Guard | What it catches |
+|---|---|
+| The collector exits 0 and leaves exactly `inventory.json` and `status.txt` | The wrapper failing to unpack or run; a staging directory left behind; an `inventory.ea` nothing reads |
+| Every row is an evidence row, the status is one line, and its branches are the payload's markers | A status and a payload that disagree about what ran |
+| Every marker is dated within the hour | A kept-but-stale scan passing for a new one |
+| A run whose runner fails exits non-zero and leaves both files byte for byte | A failed run replacing, removing or re-dating the last good scan |
+| With no previous scan, a failed run leaves no file | A partial file claiming to be a result |
+| A scan that fails its JSON check keeps the last good one, and leaves no staging directory | A corrupt payload published because only the scan step was guarded |
+| With `status.txt` held open by another process, the run exits non-zero and both files are the previous scan's | A publish that stops after its first file, leaving a new payload beside an old status. Only on Windows, where a held file refuses a rename |
+| A second clean run replaces both files and leaves nothing beside them | The previous pair left in the folder, or a new payload beside an old status. The first run publishes into an empty folder, so only this one replaces |
+| A publish that fails twice keeps the previous pair in `.previous` and serves nothing, and the next run puts the pair back | The last good scan deleted with the staging directory, or put back beside a file of the scan that failed. The shipped driver is run with `Move-Item` and `Remove-Item` wrapped to refuse one path each, because no machine fails that way on demand |
+| A run finding a folder named `inventory.json` says so, publishes nothing, and leaves the folder and what is in it | A link to another folder, left under a published name, set aside and then deleted with the staging directory, contents and all |
+| An elevated run refuses a folder another account owns, and writes nothing into it | A run as SYSTEM moving and deleting where a standard user put the folder. Elevated runs only, which CI's is |
+| An elevated run refuses a folder the Users group can modify, names that group alone, and writes nothing into it | A run as SYSTEM moving and deleting where an administrator made the folder and its access list still lets others write. Naming the group alone says the folder's own entries, for SYSTEM, Administrators and the account running, are not counted |
+| An elevated run into a folder the Users group can only read reaches its scan | Reading taken for writing, which would refuse the default folder itself |
+| An elevated run that fails does not serve a pair another account wrote, and removes it | A pair planted in a folder that lets any user add files, passing for the last good scan |
+| An elevated run that fails does not serve a pair whose `status.txt` the Users group can modify, and removes it | A pair this account wrote and another account then changed, through an entry on the file that its folder does not have |
+| An elevated run that fails beside a `.previous` the Users group can modify leaves it alone and serves the pair in place | The scan in place deleted to make room for files another account put in `.previous` |
+| The default folder, made beforehand as `mkdir` would, ends with three entries and no inherited ones | `C:\ProgramData`'s rule that any user may add files reaching the folder the scans are published in |
+| Nothing is left in `TEMP` | One extracted payload per run, filling a volume on a schedule |
 
 ## `test/run-collector.sh`
 
