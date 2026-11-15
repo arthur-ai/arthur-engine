@@ -415,6 +415,12 @@ function Get-Writers([string]$Path) {
     return , $found
 }
 
+# Both: owned by one of those accounts, and no other account can write in it. Asked of a
+# file as of a folder, since a file can hold an entry of its own that its folder does not.
+function Test-Trusted([string]$Path) {
+    return ((Test-Ours $Path) -and ((Get-Writers $Path).Count -eq 0))
+}
+
 if ($elevated) {
     if (-not (Test-Ours $out)) {
         $owner = ''
@@ -496,7 +502,10 @@ function Restore-Kept {
         }
         foreach ($name in $names) {
             $dest = Join-Path $out $name
-            if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Force }
+            if (-not (Test-Path -LiteralPath $dest)) { continue }
+            # Files only, as in the publish below.
+            if (-not (Test-Path -LiteralPath $dest -PathType Leaf)) { throw "$dest is a folder" }
+            Remove-Item -LiteralPath $dest -Force
         }
         foreach ($name in $names) {
             Move-Item -LiteralPath (Join-Path $kept $name) -Destination (Join-Path $out $name)
@@ -517,15 +526,17 @@ function Restore-Kept {
 # nothing to keep: leave no partial file claiming to be a result.
 function Use-LastGood {
     if (-not (Restore-Kept)) { return }
-    # AND, FOR A RUN WITH ADMINISTRATOR RIGHTS, ONLY A PAIR SUCH A RUN WROTE. A folder can
-    # have let any user add files before it was restricted, and a pair one of them left
-    # there before the first scan would be served as the last good one.
+    # AND, FOR A RUN WITH ADMINISTRATOR RIGHTS, ONLY A PAIR THAT SUCH A RUN WROTE AND NO OTHER
+    # ACCOUNT CAN CHANGE. A folder can have let any user add files before it was restricted,
+    # and a pair one of them left there before the first scan would be served as the last
+    # good one. And a file can let an account write in it that its folder does not. This is
+    # asked of the files in place, so of a pair Restore-Kept has just put back as well.
     $good = $true
     foreach ($name in $published) {
         $path = Join-Path $out $name
         if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -eq 0) {
             $good = $false
-        } elseif ($elevated -and -not (Test-Ours $path)) {
+        } elseif ($elevated -and -not (Test-Trusted $path)) {
             $good = $false
         }
     }
@@ -535,7 +546,11 @@ function Use-LastGood {
         return
     }
     foreach ($name in $published) {
-        Remove-Item -LiteralPath (Join-Path $out $name) -Force -ErrorAction SilentlyContinue
+        $path = Join-Path $out $name
+        # Files only: a folder under one of these names is never this run's to delete.
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+        }
     }
     Write-Host 'arthur: no previous scan to fall back on; no value written'
 }
@@ -586,6 +601,14 @@ try {
             foreach ($name in $published) {
                 $dest = Join-Path $out $name
                 if (-not (Test-Path -LiteralPath $dest)) { continue }
+                # A FOLDER UNDER A PUBLISHED NAME IS NOT A PREVIOUS SCAN, AND IS LEFT WHERE IT
+                # IS. It may be a link to another folder, left before this one was restricted,
+                # and what is set aside is deleted with the staging directory, contents and all.
+                if (-not (Test-Path -LiteralPath $dest -PathType Leaf)) {
+                    Write-Host "arthur: $dest is a folder, not a file. Remove it."
+                    $failed = $name
+                    break
+                }
                 try {
                     Move-Item -LiteralPath $dest -Destination (Join-Path $aside $name)
                     $set += $name

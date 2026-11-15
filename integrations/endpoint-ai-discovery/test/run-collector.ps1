@@ -454,6 +454,33 @@ try {
         if ($Fail -eq $before) { Note "failed twice: exit non-zero, the previous pair kept in .previous and nothing served; the next run put it back" }
     }
 
+    Write-Host '== a folder under a published name is left where it is ==================='
+    # A folder named inventory.json is not a previous scan. It may be a link to another
+    # folder, and what a publish sets aside is deleted with the staging directory, contents
+    # and all. So the run must not move it or delete it, and must say that it is in the way.
+    $before = $Fail
+    $blocked = Join-Path $Work 'blocked'
+    $inside = Join-Path (Join-Path $blocked 'inventory.json') 'keep.txt'
+    New-Item -ItemType Directory -Path (Join-Path $blocked 'inventory.json') | Out-Null
+    New-Item -ItemType File -Path $inside -Value "kept`n" | Out-Null
+    if (-not (Test-Path -LiteralPath $driver -PathType Leaf)) {
+        Bad 'no driver was read out of the built collector above, so this case proved nothing'
+    } else {
+        $printed = Invoke-Script $driver $blocked '' $passing
+        $code = $LASTEXITCODE
+        Show $printed
+        if ($code -eq 0) { Bad 'a publish over a folder named inventory.json exited 0' }
+        if (@($printed | Where-Object { $_ -match 'is a folder, not a file' }).Count -ne 1) {
+            Bad 'the run did not say that a folder is in the way'
+        }
+        if (-not (Test-Path -LiteralPath $inside -PathType Leaf)) {
+            Bad 'the run moved or deleted a folder under a published name, or what is in it'
+        }
+        $names = (Get-Names $blocked) -join ' '
+        if ($names -ne 'inventory.json') { Bad "the output directory holds [$names], not the folder alone" }
+        if ($Fail -eq $before) { Note "a folder named inventory.json: exit $code, left as it was, nothing published beside it" }
+    }
+
     Write-Host '== a run with administrator rights keeps to an administrator''s folder ===='
     # As SYSTEM or an elevated administrator the collector moves and deletes with rights a
     # standard user lacks, so it must not do it in a folder one of them owns, or one of them
@@ -508,6 +535,31 @@ try {
         }
         $left = (Get-Names $planted) -join ' '
         if ($left) { Bad "[$left] was left of a pair another account wrote" }
+
+        # NOR IS A PAIR THAT ANOTHER ACCOUNT CAN CHANGE. A file can let an account write in
+        # it that its folder does not. This pair is this account's, in a folder only it and
+        # administrators can write in, and its status.txt carries an entry of its own for
+        # the Users group. The failed scan above, in the first folder, is the other half:
+        # there a pair with no such entry was served.
+        $loose = Join-Path $Work 'loose'
+        New-Item -ItemType Directory -Path $loose | Out-Null
+        foreach ($name in @('inventory.json', 'status.txt')) {
+            Copy-Item -LiteralPath (Join-Path $Out $name) -Destination (Join-Path $loose $name)
+        }
+        & (Join-Path $system32 'icacls.exe') (Join-Path $loose 'status.txt') /grant '*S-1-5-32-545:M' | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Bad 'icacls could not let Users write in status.txt, so this case proved nothing'
+        } else {
+            $printed = Invoke-Script $Collect $loose $absent ''
+            $code = $LASTEXITCODE
+            Show $printed
+            if ($code -eq 0) { Bad 'a failed run over a pair Users can write in exited 0' }
+            if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 0) {
+                Bad 'an elevated run served a pair that Users can write in as the last good scan'
+            }
+            $left = (Get-Names $loose) -join ' '
+            if ($left) { Bad "[$left] was left of a pair Users can write in" }
+        }
 
         # A FOLDER AN ADMINISTRATOR OWNS CAN STILL LET ANOTHER ACCOUNT WRITE IN IT: one made
         # on the system drive outside a profile does. Granted here to the Users group, to
@@ -575,7 +627,7 @@ try {
             }
             if (@($sddl -split '\(A;').Count -ne 4) { Bad "the default folder grants more than its three entries: $sddl" }
         }
-        if ($Fail -eq $before) { Note "elevated: another account's folder refused, and one Users can write in; a planted pair not served; the default folder held to administrators, Users read-only" }
+        if ($Fail -eq $before) { Note "elevated: another account's folder refused, and one Users can write in; a pair another account wrote or can change not served; the default folder held to administrators, Users read-only" }
     }
 
     Write-Host '== nothing is left in TEMP ==============================================='
