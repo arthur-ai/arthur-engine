@@ -9556,6 +9556,89 @@
                 }
             }
         },
+        "/api/v1/default_model_provider": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the default model provider and model.",
+                "description": "Returns the provider and model that judge evals saved with the 'default' model provider. Both are null when no default is set.",
+                "operationId": "get_default_model_provider_api_v1_default_model_provider_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultModelProvider"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set the default model provider and model.",
+                "description": "Sets the provider and model that judge evals saved with the 'default' model provider. The provider must already be configured. Evals using the default pick up a change on their next run.",
+                "operationId": "set_default_model_provider_api_v1_default_model_provider_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutDefaultModelProvider"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Default model provider set."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Clear the default model provider and model.",
+                "description": "Clears the default. Evals saved with the 'default' model provider fail until a default is set again.",
+                "operationId": "clear_default_model_provider_api_v1_default_model_provider_delete",
+                "responses": {
+                    "204": {
+                        "description": "Default model provider cleared."
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -22394,6 +22477,35 @@
                 ],
                 "title": "DatasetVersionRowResponse"
             },
+            "DefaultModelProvider": {
+                "properties": {
+                    "provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider used for evals saved with the 'default' provider, or null when unset"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "Model used for those evals, or null when unset"
+                    }
+                },
+                "type": "object",
+                "title": "DefaultModelProvider"
+            },
             "DemoTaskSignupResponse": {
                 "properties": {
                     "org_id": {
@@ -29006,6 +29118,26 @@
                 ],
                 "title": "ProvenanceSource",
                 "description": "One source's contribution to a task's provenance.\n\nProvenance holds a list of these rather than scalars beside a list of source\nclasses: with scalars, an agent corroborated by two sources has two entries in\nfound_by but one address, and nothing says which source it belongs to."
+            },
+            "PutDefaultModelProvider": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Configured provider that judges evals saved with the 'default' provider"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Model Name",
+                        "description": "Model of that provider used for those evals, e.g. 'gpt-4.1-mini'"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name"
+                ],
+                "title": "PutDefaultModelProvider"
             },
             "PutModelProviderCredentials": {
                 "properties": {

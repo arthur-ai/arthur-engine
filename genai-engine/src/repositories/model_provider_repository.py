@@ -10,16 +10,24 @@ from sqlalchemy.orm import Query, Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from clients.llm.llm_client import LLMClient, get_static_catalog
+from db_models.configuration_models import DatabaseApplicationConfiguration
 from db_models.secret_storage_models import DatabaseSecretStorage
-from schemas.enums import SecretType
+from repositories.configuration_repository import update_or_create_config
+from schemas.custom_exceptions import DefaultModelProviderNotSetException
+from schemas.enums import ApplicationConfigurations, SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
 from schemas.request_schemas import (
+    PutDefaultModelProvider,
     PutModelProviderCredentials,
     PutModelProviderEvalDefaults,
 )
-from schemas.response_schemas import ModelProviderEvalDefaults, ModelProviderResponse
+from schemas.response_schemas import (
+    DefaultModelProvider,
+    ModelProviderEvalDefaults,
+    ModelProviderResponse,
+)
 from services.prompt.provider_eval_defaults import apply_provider_eval_defaults
-from utils.constants import EMPTY_MODEL_PROVIDER
+from utils.constants import DEFAULT_MODEL_PROVIDER, EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +283,16 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> None:
+        if self.get_default_model_provider().provider == provider:
+            # Deleting it would leave the default pointing at a provider with no
+            # credentials, and every eval that uses the default would fail at run time.
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"model provider {provider} is the default model provider. "
+                    "Change or clear the default before deleting it."
+                ),
+            )
         providers = self._provider_secret_query(provider).all()
         for provider_db in providers:
             self.db_session.delete(provider_db)
@@ -387,6 +405,73 @@ class ModelProviderRepository:
             self.get_eval_defaults(provider),
             model_name,
         )
+
+    _DEFAULT_MODEL_KEYS = (
+        ApplicationConfigurations.DEFAULT_LLM_PROVIDER,
+        ApplicationConfigurations.DEFAULT_LLM_MODEL,
+    )
+
+    def _default_model_rows(self) -> list[DatabaseApplicationConfiguration]:
+        return (
+            self.db_session.query(DatabaseApplicationConfiguration)
+            .where(DatabaseApplicationConfiguration.name.in_(self._DEFAULT_MODEL_KEYS))
+            .all()
+        )
+
+    def get_default_model_provider(self) -> DefaultModelProvider:
+        values = {row.name: row.value for row in self._default_model_rows()}
+        provider = values.get(ApplicationConfigurations.DEFAULT_LLM_PROVIDER)
+        model_name = values.get(ApplicationConfigurations.DEFAULT_LLM_MODEL)
+        if not provider or not model_name:
+            return DefaultModelProvider()
+        return DefaultModelProvider(
+            provider=ModelProvider(provider),
+            model_name=model_name,
+        )
+
+    def set_default_model_provider(self, request: PutDefaultModelProvider) -> None:
+        # The default must be callable: a provider without credentials would fail
+        # every eval that uses it.
+        self._require_provider_secret(request.provider)
+        existing = self._default_model_rows()
+        self.db_session.add_all(
+            [
+                update_or_create_config(
+                    ApplicationConfigurations.DEFAULT_LLM_PROVIDER,
+                    request.provider.value,
+                    existing,
+                ),
+                update_or_create_config(
+                    ApplicationConfigurations.DEFAULT_LLM_MODEL,
+                    request.model_name,
+                    existing,
+                ),
+            ],
+        )
+        self.db_session.commit()
+
+    def clear_default_model_provider(self) -> None:
+        for row in self._default_model_rows():
+            self.db_session.delete(row)
+        self.db_session.commit()
+
+    def resolve_model(
+        self,
+        provider: ModelProvider | str,
+        model_name: str,
+    ) -> tuple[ModelProvider, str]:
+        """Return the provider and model to call. A provider of 'default' resolves to
+        the instance's default model provider; any other provider is returned as is.
+
+        Resolve before anything reads the provider or model (structured-output check,
+        provider eval defaults, prompt caching, the completion call), so that all of
+        them, and the cost recorded from the response, see the real model."""
+        if str(provider) != DEFAULT_MODEL_PROVIDER:
+            return ModelProvider(provider), model_name
+        default = self.get_default_model_provider()
+        if default.provider is None or default.model_name is None:
+            raise DefaultModelProviderNotSetException()
+        return default.provider, default.model_name
 
     def _catalog_via_client(self, provider: ModelProvider) -> List[str]:
         client = self.get_model_provider_client(provider)

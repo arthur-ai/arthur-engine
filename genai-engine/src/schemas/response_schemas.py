@@ -401,6 +401,17 @@ class ModelProviderWhitelist(BaseModel):
     )
 
 
+class DefaultModelProvider(BaseModel):
+    provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Provider used for evals saved with the 'default' provider, or null when unset",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model used for those evals, or null when unset",
+    )
+
+
 class ModelProviderEvalDefaults(BaseModel):
     provider: ModelProvider = Field(description="Provider the defaults apply to")
     reasoning_effort: Optional[ReasoningEffortEnum] = Field(

@@ -208,9 +208,20 @@ class LLMEvalsRepository(
                 f"LLM eval '{llm_eval.name}' has no model_name configured.",
             )
 
+        # An eval saved with the 'default' provider is judged by the instance's
+        # default model. Swap it in before anything below reads the provider or model.
+        provider, model_name = self.model_provider_repo.resolve_model(
+            llm_eval.model_provider,
+            llm_eval.model_name,
+        )
+        llm_eval = llm_eval.model_copy(
+            # Eval stores enum values, so keep the provider a plain string
+            update={"model_provider": provider.value, "model_name": model_name},
+        )
+
         # get the llm client
         llm_client = self.model_provider_repo.get_model_provider_client(
-            provider=llm_eval.model_provider,
+            provider=provider,
         )
 
         # NOTE: We currently don't set litellm.enable_json_schema_validation=True, which has litellm validate schemas for models that support structured outputs
@@ -247,8 +258,8 @@ class LLMEvalsRepository(
         )
         apply_eval_prompt_caching(
             completion_params,
-            provider=llm_eval.model_provider,
-            model_name=llm_eval.model_name,
+            provider=provider,
+            model_name=model_name,
             instructions=llm_eval.instructions or "",
             cache_key=eval_prompt_cache_key(task_id, eval_name, llm_eval.version),
             add_cache_breakpoint=add_cache_breakpoint,
