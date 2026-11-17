@@ -35,19 +35,19 @@
     "schedule": ["* 0-4 * * *"]
   },
   "dockerfile": {
-    "managerFilePatterns": ["(^|/)[Dd]ockerfile$", "(^|/)Dockerfile_[a-zA-Z]+$"]
+    "managerFilePatterns": ["/(^|/)[Dd]ockerfile$/", "/(^|/)Dockerfile_[a-zA-Z]+$/"]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["(^|/)[Dd]ockerfile$", "(^|/)Dockerfile_[a-zA-Z]+$"],
+      "managerFilePatterns": ["/(^|/)[Dd]ockerfile$/", "/(^|/)Dockerfile_[a-zA-Z]+$/"],
       "matchStrings": ["uv==(?<currentValue>[0-9][0-9.]*)"],
       "depNameTemplate": "uv",
       "datasourceTemplate": "pypi"
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["(^|/)[Dd]ockerfile$", "(^|/)Dockerfile_[a-zA-Z]+$"],
+      "managerFilePatterns": ["/(^|/)[Dd]ockerfile$/", "/(^|/)Dockerfile_[a-zA-Z]+$/"],
       "matchStrings": ["pip==(?<currentValue>[0-9][0-9.]*)"],
       "depNameTemplate": "pip",
       "datasourceTemplate": "pypi"
