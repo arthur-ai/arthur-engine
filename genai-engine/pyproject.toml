@@ -31,7 +31,7 @@ dependencies = [
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
   "transformers==5.13.1",
-  "authlib==1.9.5",
+  "authlib==1.9.6",
   "requests==2.34.2",
   "starlette==1.10.0",
   "pyjwt==2.15.1",
