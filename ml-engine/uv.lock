@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-14T20:00:36.765613859Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -180,7 +180,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.109"
+version = "2.4.110"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -196,9 +196,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/03/381f5561d47eae270005a0f7ffd8434c691522c086bd7bfacd489cbcc2f1/arthur_common-2.4.109.tar.gz", hash = "sha256:dc3399f7693ebcb9b17250b22272f61100bd18606b4d5021bc7507d19158f086", size = 14771376, upload-time = "2026-11-16T16:54:33.211Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/52/9c803180a9ac1294c0edc7a9d44c26d772e47b6df65b8711840305a52808/arthur_common-2.4.110.tar.gz", hash = "sha256:94d85f8dfe8f355c69c7c9965511c4e719bb6b5b5aa85f306a70f1ab733badb0", size = 14771307, upload-time = "2026-11-16T21:19:49.748Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/6d/ffe45acc779ac1f7b8bb415438ac39425bbad76ce2953c1e53e525f1f88b/arthur_common-2.4.109-py3-none-any.whl", hash = "sha256:06ad32fa6620b0e2d759e7feed2291dc451b1fa5d89d7dcf5cfe3b57a1563df4", size = 113579, upload-time = "2026-11-16T16:54:30.819Z" },
+    { url = "https://files.pythonhosted.org/packages/56/c7/2c0b8bf6170ca241c503fe0450b1404739ae85081dba50eef29b6064f077/arthur_common-2.4.110-py3-none-any.whl", hash = "sha256:00d8c66846090e14365a2d099dfa9be2f4775ddc6c345c3173696cd6baed612b", size = 113573, upload-time = "2026-11-16T21:19:47.427Z" },
 ]
 
 [[package]]
@@ -1629,7 +1629,7 @@ linters = [
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
     { name = "arthur-client", specifier = "==1.4.3029" },
-    { name = "arthur-common", specifier = "==2.4.109" },
+    { name = "arthur-common", specifier = "==2.4.110" },
     { name = "azure-ai-projects", specifier = "==2.4.0" },
     { name = "azure-identity", specifier = "==1.27.0" },
     { name = "boto3", specifier = ">=1.43,<2" },

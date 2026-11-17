@@ -11,7 +11,7 @@ dependencies = [
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
-  "fastapi==0.162.7",
+  "fastapi==0.163.0",
   "uvicorn==0.54.0",
   "pydantic==2.14.3",
   "sse-starlette==3.7.0",
@@ -82,7 +82,7 @@ dependencies = [
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.109",
+  "arthur-common==2.4.110",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
