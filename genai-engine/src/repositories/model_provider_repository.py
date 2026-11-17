@@ -155,7 +155,7 @@ class ModelProviderRepository:
         if secret is None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail=f"model provider {provider} is not configured",
+                detail=f"model provider {ModelProvider(provider).value} is not configured",
             )
         return secret
 

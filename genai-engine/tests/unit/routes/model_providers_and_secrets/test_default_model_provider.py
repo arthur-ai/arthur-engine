@@ -29,6 +29,7 @@ def test_default_model_provider_lifecycle(client: GenaiEngineTestClientBase):
         headers=headers,
     )
     assert response.status_code == 400
+    assert response.json()["detail"] == "model provider gemini is not configured"
 
     response = api.put(
         "/api/v1/model_providers/gemini",
