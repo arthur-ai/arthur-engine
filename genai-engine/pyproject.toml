@@ -20,7 +20,7 @@ dependencies = [
   "boto3==1.44.3",
   "python-dotenv==1.2.4",
   "psycopg2-binary==2.9.13",
-  # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1)
+  # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b2)
   # declares sqlalchemy<2.1.0 and skips instrumenting outside it, so DB tracing would silently
   # stop. See the sqlalchemy rule in /renovate.json.
   "sqlalchemy==2.0.57",
@@ -41,11 +41,11 @@ dependencies = [
   # Held below 9.0: litellm 1.106.2 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.9.0",
-  "opentelemetry-instrumentation-logging>=0.65b0,<0.66",
-  "opentelemetry-instrumentation>=0.65b0,<0.66",
-  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-logging>=0.65b0,<0.67",
+  "opentelemetry-instrumentation>=0.65b0,<0.67",
+  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.67",
   "opentelemetry-exporter-otlp>=1.39.1,<2",
-  "opentelemetry-instrumentation-sqlalchemy>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-sqlalchemy>=0.65b0,<0.67",
   "tiktoken==0.14.0",
   "nltk==3.10.4",
   "more-itertools==11.2.1",
@@ -86,7 +86,7 @@ dependencies = [
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
-  "opentelemetry-semantic-conventions>=0.65b0,<0.66",
+  "opentelemetry-semantic-conventions>=0.65b0,<0.67",
   "arthur-client==1.4.3029",
 ]
 
