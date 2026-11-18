@@ -8,7 +8,6 @@ from db_models import DatabaseInference
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
-from utils.constants import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import (
@@ -24,6 +23,7 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
 )
 from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.fixture

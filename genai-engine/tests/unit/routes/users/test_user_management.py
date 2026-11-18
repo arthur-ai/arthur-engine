@@ -1,6 +1,7 @@
 import pytest
 from arthur_common.models.common_schemas import UserPermission
 from arthur_common.models.enums import UserPermissionAction, UserPermissionResource
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from utils.utils import is_api_only_mode_enabled
 

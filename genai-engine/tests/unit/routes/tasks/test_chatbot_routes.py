@@ -22,13 +22,14 @@ pytestmark = pytest.mark.xdist_group("default_model_provider")
 
 @pytest.fixture
 def anthropic_default(client: GenaiEngineTestClientBase):
-    """Make Anthropic the default model provider for the test, then clear it."""
+    """Make Anthropic the default model provider for the test, then remove both."""
     headers = client.authorized_user_api_key_headers
-    client.base_client.put(
+    response = client.base_client.put(
         "/api/v1/model_providers/anthropic",
         json={"api_key": "test-key"},
         headers=headers,
     )
+    assert response.status_code == 201
     response = client.base_client.put(
         "/api/v1/default_model_provider",
         json={"provider": "anthropic", "model_name": "claude-sonnet-4-6"},
@@ -36,7 +37,9 @@ def anthropic_default(client: GenaiEngineTestClientBase):
     )
     assert response.status_code == 204
     yield
+    # the default first: the API refuses to delete the default provider's credentials
     client.base_client.delete("/api/v1/default_model_provider", headers=headers)
+    client.base_client.delete("/api/v1/model_providers/anthropic", headers=headers)
 
 
 @pytest.mark.unit_tests

@@ -1,21 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
-
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { useApiQuery } from "@/hooks/useApiQuery";
 import { PutDefaultModelProvider } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
-export const useDefaultModelProvider = () => {
-  const api = useApi()!;
+// Saving or clearing the default changes what these reads show
+const invalidateOnChange = [
+  { queryKey: queryKeys.providers.default() },
+  ...queryKeys.providers.defaultDependents().map((queryKey) => ({ queryKey })),
+];
 
-  return useQuery({
-    queryKey: queryKeys.providers.default(),
-    queryFn: async () => {
-      const response = await api.api.getDefaultModelProviderApiV1DefaultModelProviderGet();
-      return response.data;
-    },
+export const useDefaultModelProvider = () =>
+  useApiQuery<"getDefaultModelProviderApiV1DefaultModelProviderGet">({
+    method: "getDefaultModelProviderApiV1DefaultModelProviderGet",
+    args: [] as const,
   });
-};
 
 export const useSetDefaultModelProvider = () => {
   const { api } = useApi()!;
@@ -24,7 +23,7 @@ export const useSetDefaultModelProvider = () => {
     mutationFn: async (data: PutDefaultModelProvider) => {
       await api.setDefaultModelProviderApiV1DefaultModelProviderPut(data);
     },
-    invalidateQueries: [{ queryKey: queryKeys.providers.default() }],
+    invalidateQueries: invalidateOnChange,
   });
 };
 
@@ -35,6 +34,6 @@ export const useClearDefaultModelProvider = () => {
     mutationFn: async () => {
       await api.clearDefaultModelProviderApiV1DefaultModelProviderDelete();
     },
-    invalidateQueries: [{ queryKey: queryKeys.providers.default() }],
+    invalidateQueries: invalidateOnChange,
   });
 };

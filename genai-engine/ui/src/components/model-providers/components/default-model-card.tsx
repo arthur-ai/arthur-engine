@@ -17,7 +17,7 @@ type Draft = { provider: ModelProvider | null; modelName: string | null };
 
 export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProviderDisplayName }) => {
   const { enqueueSnackbar } = useSnackbar();
-  const { data: current, isLoading } = useDefaultModelProvider();
+  const { data: current, isLoading, isError, refetch } = useDefaultModelProvider();
   const { availableModels } = useAvailableModels(enabledProviders);
   const setDefault = useSetDefaultModelProvider();
   const clearDefault = useClearDefaultModelProvider();
@@ -71,6 +71,17 @@ export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProvide
 
         {isLoading ? (
           <CircularProgress size={24} />
+        ) : isError ? (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => refetch()}>
+                Retry
+              </Button>
+            }
+          >
+            Couldn&apos;t load the default model.
+          </Alert>
         ) : (
           <Stack spacing={2}>
             {!isSet && <Alert severity="info">No default model is set. Features that use the default will report an error until you set one.</Alert>}

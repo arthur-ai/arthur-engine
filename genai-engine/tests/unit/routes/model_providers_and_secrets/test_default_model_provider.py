@@ -36,37 +36,43 @@ def test_default_model_provider_lifecycle(client: GenaiEngineTestClientBase):
     assert response.status_code == 400
     assert response.json()["detail"] == "model provider gemini is not configured"
 
-    response = api.put(
-        "/api/v1/model_providers/gemini",
-        json={"api_key": "test-key"},
-        headers=headers,
-    )
-    assert response.status_code == 201
-    response = api.put(
-        "/api/v1/default_model_provider",
-        json={"provider": "gemini", "model_name": "gemini-2.5-flash"},
-        headers=headers,
-    )
-    assert response.status_code == 204
+    try:
+        response = api.put(
+            "/api/v1/model_providers/gemini",
+            json={"api_key": "test-key"},
+            headers=headers,
+        )
+        assert response.status_code == 201
+        response = api.put(
+            "/api/v1/default_model_provider",
+            json={"provider": "gemini", "model_name": "gemini-2.5-flash"},
+            headers=headers,
+        )
+        assert response.status_code == 204
 
-    response = api.get("/api/v1/default_model_provider", headers=headers)
-    assert response.json() == {
-        "provider": "gemini",
-        "model_name": "gemini-2.5-flash",
-    }
+        response = api.get("/api/v1/default_model_provider", headers=headers)
+        assert response.json() == {
+            "provider": "gemini",
+            "model_name": "gemini-2.5-flash",
+        }
 
-    # the default provider's credentials can't be deleted out from under it
-    response = api.delete("/api/v1/model_providers/gemini", headers=headers)
-    assert response.status_code == 400
-    assert "default model provider" in response.json()["detail"]
+        # the default provider's credentials can't be deleted out from under it
+        response = api.delete("/api/v1/model_providers/gemini", headers=headers)
+        assert response.status_code == 400
+        assert "default model provider" in response.json()["detail"]
 
-    response = api.delete("/api/v1/default_model_provider", headers=headers)
-    assert response.status_code == 204
-    response = api.get("/api/v1/default_model_provider", headers=headers)
-    assert response.json() == {"provider": None, "model_name": None}
+        response = api.delete("/api/v1/default_model_provider", headers=headers)
+        assert response.status_code == 204
+        response = api.get("/api/v1/default_model_provider", headers=headers)
+        assert response.json() == {"provider": None, "model_name": None}
 
-    response = api.delete("/api/v1/model_providers/gemini", headers=headers)
-    assert response.status_code == 204
+        response = api.delete("/api/v1/model_providers/gemini", headers=headers)
+        assert response.status_code == 204
+
+    finally:
+        # leave no default or Gemini credentials behind, even after a failed assertion
+        api.delete("/api/v1/default_model_provider", headers=headers)
+        api.delete("/api/v1/model_providers/gemini", headers=headers)
 
 
 @pytest.mark.unit_tests

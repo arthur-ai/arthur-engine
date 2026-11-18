@@ -286,17 +286,20 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
     ) -> None:
+        # Lock the provider's credentials before checking the default, as
+        # set_default_model_provider does, so a concurrent "make it the default"
+        # can't slip in between the check and the delete.
+        providers = self._provider_secret_query(provider).with_for_update().all()
         if self.get_default_model_provider().provider == provider:
             # Deleting it would leave the default pointing at a provider with no
-            # credentials, and every eval that uses the default would fail at run time.
+            # credentials, and every call that uses the default would fail at run time.
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=(
-                    f"model provider {provider} is the default model provider. "
-                    "Change or clear the default before deleting it."
+                    f"model provider {ModelProvider(provider).value} is the default "
+                    "model provider. Change or clear the default before deleting it."
                 ),
             )
-        providers = self._provider_secret_query(provider).all()
         for provider_db in providers:
             self.db_session.delete(provider_db)
         self.db_session.commit()
@@ -434,8 +437,14 @@ class ModelProviderRepository:
 
     def set_default_model_provider(self, request: PutDefaultModelProvider) -> None:
         # The default must be callable: a provider without credentials would fail
-        # every eval that uses it.
-        self._require_provider_secret(request.provider)
+        # every call that uses it. The row lock (held until commit) keeps a concurrent
+        # delete_model_provider_credentials from removing them after this check.
+        secret = self._provider_secret_query(request.provider).with_for_update().first()
+        if secret is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"model provider {request.provider.value} is not configured",
+            )
         existing = self._default_model_rows()
         self.db_session.add_all(
             [
