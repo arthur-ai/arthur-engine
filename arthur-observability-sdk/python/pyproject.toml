@@ -1,10 +1,10 @@
 [project]
 name = "arthur-observability-sdk"
-version = "2.1.1111"
+version = "2.1.1123"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.14"
 
 dependencies = [
   "python-dateutil>=2.8.2",
@@ -29,7 +29,7 @@ autogen = ["openinference-instrumentation-autogen"]
 autogen-agentchat = ["openinference-instrumentation-autogen-agentchat"]
 baml = ["openinference-instrumentation-baml"]
 bedrock = ["openinference-instrumentation-bedrock"]
-beeai = ["openinference-instrumentation-beeai ; python_version >= '3.11'"]
+beeai = ["openinference-instrumentation-beeai"]
 cohere = ["openinference-instrumentation-cohere"]
 crewai = ["openinference-instrumentation-crewai"]
 dspy = ["openinference-instrumentation-dspy"]
@@ -64,7 +64,7 @@ all = [
   "openinference-instrumentation-autogen-agentchat",
   "openinference-instrumentation-baml",
   "openinference-instrumentation-bedrock",
-  "openinference-instrumentation-beeai ; python_version >= '3.11'",
+  "openinference-instrumentation-beeai",
   "openinference-instrumentation-cohere",
   "openinference-instrumentation-crewai",
   "openinference-instrumentation-dspy",
@@ -128,11 +128,11 @@ known_first_party = ["arthur_observability_sdk"]
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.pytest.ini_options]
 markers = [
@@ -141,6 +141,6 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 strict = false
