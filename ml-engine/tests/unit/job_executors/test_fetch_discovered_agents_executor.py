@@ -984,8 +984,8 @@ def test_a_source_fetch_still_reads_spans(tasks_api: MagicMock) -> None:
 
 
 def test_an_agent_from_a_listing_sends_no_span_details_and_carries_activity() -> None:
-    """Sent as null, the Platform keeps the tools, sub-agents and models a full fetch
-    found; an empty list would clear them."""
+    """Left out or sent as null, depending on the client, the Platform keeps the tools,
+    sub-agents and models a full fetch found; an empty list would clear them."""
     agent = enriched_task_to_agent(_listed_task("t1"), DATA_PLANE_ID)
     assert agent is not None
 

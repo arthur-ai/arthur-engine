@@ -512,19 +512,27 @@ def _delete_traces(trace_ids: list[str]) -> None:
 def test_get_agent_tasks_reports_each_tasks_activity(client: GenaiEngineTestClientBase):
     """Trace and inference counts, and last activity as the later of the newest
     trace's end and the newest inference."""
-    _, busy = client.create_task(f"busy_{random.random()}")
-    _, traced = client.create_task(f"traced_{random.random()}")
-    _, idle = client.create_task(f"idle_{random.random()}")
-    old_trace_end = datetime.now(timezone.utc) - timedelta(hours=2)
-    newest_trace_end = datetime.now(timezone.utc) - timedelta(minutes=5)
-    trace_ids = _add_traces(
-        busy.id,
-        [
-            (old_trace_end.replace(tzinfo=None), 2),
-            (old_trace_end.replace(tzinfo=None), 3),
-        ],
-    ) + _add_traces(traced.id, [(newest_trace_end.replace(tzinfo=None), 1)])
+    tasks = []
+    trace_ids: list[str] = []
     try:
+        for name in ("busy", "traced", "idle"):
+            status_code, task = client.create_task(f"{name}_{random.random()}")
+            assert status_code == 200
+            tasks.append(task)
+        busy, traced, idle = tasks
+        old_trace_end = datetime.now(timezone.utc) - timedelta(hours=2)
+        newest_trace_end = datetime.now(timezone.utc) - timedelta(minutes=5)
+        trace_ids += _add_traces(
+            busy.id,
+            [
+                (old_trace_end.replace(tzinfo=None), 2),
+                (old_trace_end.replace(tzinfo=None), 3),
+            ],
+        )
+        trace_ids += _add_traces(
+            traced.id,
+            [(newest_trace_end.replace(tzinfo=None), 1)],
+        )
         before = datetime.now(timezone.utc).replace(microsecond=0)
         for _ in range(2):
             status_code, _ = client.create_prompt(task_id=busy.id)
@@ -548,7 +556,7 @@ def test_get_agent_tasks_reports_each_tasks_activity(client: GenaiEngineTestClie
         assert by_id[idle.id].last_activity_at is None
     finally:
         _delete_traces(trace_ids)
-        for task in (busy, traced, idle):
+        for task in tasks:
             client.delete_task(task.id)
 
 
@@ -558,10 +566,12 @@ def test_get_agent_tasks_without_span_details_reads_no_spans(
 ):
     """The span-derived lists are left null rather than read, and the span count comes
     from the trace metadata instead."""
-    _, task = client.create_task(f"listed_{random.random()}")
+    status_code, task = client.create_task(f"listed_{random.random()}")
+    assert status_code == 200
     trace_end = (datetime.now(timezone.utc) - timedelta(minutes=5)).replace(tzinfo=None)
-    trace_ids = _add_traces(task.id, [(trace_end, 3), (trace_end, 4)])
+    trace_ids: list[str] = []
     try:
+        trace_ids += _add_traces(task.id, [(trace_end, 3), (trace_end, 4)])
         status_code, enriched_tasks = client.get_agent_tasks(include_span_details=False)
 
         assert status_code == 200
