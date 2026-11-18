@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import cast
 
 from arthur_common.models.llm_model_providers import (
+    LLMTool,
     MessageRole,
     ModelProvider,
     OpenAIMessage,
@@ -25,11 +26,18 @@ from utils.constants import (
     ARTHUR_SYSTEM_TASK_NAME,
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
+    EMPTY_MODEL_NAME,
     EMPTY_MODEL_PROVIDER,
     SYSTEM_ORG_ID,
 )
 
 logger = logging.getLogger(__name__)
+
+# The model both chatbot prompts were seeded with before they used the default
+# model provider. A stored copy of it was never picked by an admin, so it moves to
+# the default.
+_OLD_CHATBOT_SEED_PROVIDER = ModelProvider.ANTHROPIC
+_OLD_CHATBOT_SEED_MODEL = "claude-sonnet-4-6"
 
 # Arbitrary fixed ID used as a PostgreSQL advisory lock key to serialize
 # system task initialization across concurrent workers/replicas.
@@ -41,91 +49,89 @@ class SystemTaskRepository:
         self.db_session = db_session
         self.agentic_prompt_repo = AgenticPromptRepository(db_session)
 
-    def _create_chatbot_prompt(self) -> None:
-        """
-        Create the chatbot system prompt if it doesn't already exist.
-        If a production-tagged prompt already exists, leave it as-is to preserve
-        user-configured model provider and model name.
-        """
-        model_provider = ModelProvider.ANTHROPIC
-        model_name = "claude-sonnet-4-6"
+    def _take_existing_model(
+        self,
+        prompt_name: str,
+    ) -> tuple[str, str]:
+        """Delete the production version of a chatbot system prompt and return the
+        model to re-create it with.
 
+        A model an admin picked is kept. Anything else (no prompt yet, the 'empty'
+        placeholder, or the old hard-coded seed) becomes 'empty', so the prompt runs
+        on the instance's default model provider."""
         try:
             existing = cast(
                 AgenticPrompt,
                 self.agentic_prompt_repo.get_llm_item_by_tag(
                     task_id=ARTHUR_SYSTEM_TASK_ID,
-                    item_name=CHATBOT_PROMPT_NAME,
+                    item_name=prompt_name,
                     tag="production",
                 ),
             )
-
-            # Preserve the user's configured model. If the stored value is the
-            # "empty" SDG sentinel (shouldn't happen for chatbot), fall back to
-            # the default above.
-            if existing.model_provider != EMPTY_MODEL_PROVIDER:
-                model_provider = ModelProvider(existing.model_provider)
-            model_name = existing.model_name
-
-            self.agentic_prompt_repo.delete_llm_item(
-                ARTHUR_SYSTEM_TASK_ID,
-                CHATBOT_PROMPT_NAME,
-            )
-            logger.info("Deleting old chatbot prompt.")
         except ValueError:
-            pass
+            return EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME
 
+        self.agentic_prompt_repo.delete_llm_item(ARTHUR_SYSTEM_TASK_ID, prompt_name)
+        logger.info(f"Deleting old {prompt_name}.")
+
+        stored = (existing.model_provider, existing.model_name)
+        if existing.model_provider == EMPTY_MODEL_PROVIDER or stored == (
+            _OLD_CHATBOT_SEED_PROVIDER,
+            _OLD_CHATBOT_SEED_MODEL,
+        ):
+            return EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME
+        return ModelProvider(existing.model_provider).value, existing.model_name
+
+    def _save_production_prompt(
+        self,
+        prompt_name: str,
+        model_provider: str,
+        model_name: str,
+        messages: list[OpenAIMessage],
+        tools: list[LLMTool],
+    ) -> None:
+        item = CreateAgenticPromptRequest(
+            # Placeholder provider: the request type only accepts real providers, so
+            # the 'empty' sentinel is set below without re-validating.
+            model_provider=ModelProvider.OPENAI,
+            model_name=model_name,
+            messages=messages,
+            tools=tools,
+            config=None,
+        )
+        item = item.model_copy(update={"model_provider": model_provider})
         prompt = self.agentic_prompt_repo.save_llm_item(
             task_id=ARTHUR_SYSTEM_TASK_ID,
-            item_name=CHATBOT_PROMPT_NAME,
-            item=CreateAgenticPromptRequest(
-                model_name=model_name,
-                model_provider=model_provider,
-                messages=[
-                    OpenAIMessage(role=MessageRole.SYSTEM, content=SYSTEM_PROMPT),
-                ],
-                tools=[SEARCH_ARTHUR_API_TOOL, CALL_ARTHUR_API_TOOL],
-                config=None,
-            ),
+            item_name=prompt_name,
+            item=item,
         )
         self.agentic_prompt_repo.add_tag_to_llm_item_version(
             task_id=ARTHUR_SYSTEM_TASK_ID,
-            item_name=CHATBOT_PROMPT_NAME,
+            item_name=prompt_name,
             item_version=str(prompt.version),
             tag="production",
+        )
+
+    def _create_chatbot_prompt(self) -> None:
+        """Re-create the chatbot system prompt with the latest text, keeping a model
+        an admin picked; otherwise it uses the default model provider."""
+        model_provider, model_name = self._take_existing_model(CHATBOT_PROMPT_NAME)
+        self._save_production_prompt(
+            CHATBOT_PROMPT_NAME,
+            model_provider,
+            model_name,
+            messages=[
+                OpenAIMessage(role=MessageRole.SYSTEM, content=SYSTEM_PROMPT),
+            ],
+            tools=[SEARCH_ARTHUR_API_TOOL, CALL_ARTHUR_API_TOOL],
         )
         logger.info("Chatbot prompt created.")
 
     def _create_chatbot_summarizer_prompt(self) -> None:
         """Create the chatbot summarizer prompt for compressing conversation history."""
-        model_provider = ModelProvider.ANTHROPIC
-        model_name = "claude-sonnet-4-6"
-
-        try:
-            existing = cast(
-                AgenticPrompt,
-                self.agentic_prompt_repo.get_llm_item_by_tag(
-                    task_id=ARTHUR_SYSTEM_TASK_ID,
-                    item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                    tag="production",
-                ),
-            )
-
-            # Preserve the user's configured model. If the stored value is the
-            # "empty" SDG sentinel (shouldn't happen for chatbot), fall back to
-            # the default above.
-            if existing.model_provider != EMPTY_MODEL_PROVIDER:
-                model_provider = ModelProvider(existing.model_provider)
-            model_name = existing.model_name
-
-            self.agentic_prompt_repo.delete_llm_item(
-                ARTHUR_SYSTEM_TASK_ID,
-                CHATBOT_SUMMARIZER_PROMPT_NAME,
-            )
-            logger.info("Deleting old chatbot summarizer prompt.")
-        except ValueError:
-            pass
-
+        model_provider, model_name = self._take_existing_model(
+            CHATBOT_SUMMARIZER_PROMPT_NAME,
+        )
         messages = [
             OpenAIMessage(
                 role=MessageRole.SYSTEM,
@@ -138,23 +144,12 @@ class SystemTaskRepository:
                 {{prev_conversation}}""",
             ),
         ]
-
-        prompt = self.agentic_prompt_repo.save_llm_item(
-            task_id=ARTHUR_SYSTEM_TASK_ID,
-            item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-            item=CreateAgenticPromptRequest(
-                model_name=model_name,
-                model_provider=model_provider,
-                messages=messages,
-                tools=[],
-                config=None,
-            ),
-        )
-        self.agentic_prompt_repo.add_tag_to_llm_item_version(
-            task_id=ARTHUR_SYSTEM_TASK_ID,
-            item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-            item_version=str(prompt.version),
-            tag="production",
+        self._save_production_prompt(
+            CHATBOT_SUMMARIZER_PROMPT_NAME,
+            model_provider,
+            model_name,
+            messages=messages,
+            tools=[],
         )
         logger.info("Chatbot summarizer prompt created.")
 

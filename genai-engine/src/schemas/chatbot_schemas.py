@@ -8,8 +8,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ChatbotConfigResponse(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    model_provider: ModelProvider
-    model_name: str
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Provider the chatbot calls. Null when it uses the default model provider and none is set.",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model the chatbot calls. Null when it uses the default model provider and none is set.",
+    )
+    uses_default_model: bool = Field(
+        default=False,
+        description="True when the chatbot follows the instance's default model provider instead of a model picked for it.",
+    )
     blacklist_endpoints: List[str] = []
     available_endpoints: List[str] = []
 

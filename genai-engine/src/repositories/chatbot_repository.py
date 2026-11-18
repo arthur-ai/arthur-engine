@@ -1,11 +1,12 @@
 import json
 import logging
-from typing import List, cast
+from typing import List, Optional, cast
 
 from arthur_common.models.llm_model_providers import ModelProvider
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from db_models import DatabaseApplicationConfiguration
 from repositories.agentic_prompts_repository import AgenticPromptRepository
@@ -16,6 +17,7 @@ from schemas.chatbot_schemas import (
     ChatbotConfigUpdateRequest,
     ChatbotRequest,
 )
+from schemas.custom_exceptions import DefaultModelProviderNotSetException
 from schemas.enums import ApplicationConfigurations
 from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.api_call_service import ApiCallService
@@ -26,6 +28,7 @@ from utils.constants import (
     ARTHUR_SYSTEM_TASK_ID,
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
+    EMPTY_MODEL_PROVIDER,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,6 +74,20 @@ class ChatbotRepository:
             row.value = value
         self.db_session.commit()
 
+    def _resolve_chatbot_model(
+        self,
+        chatbot_prompt: AgenticPrompt,
+    ) -> tuple[Optional[ModelProvider], Optional[str]]:
+        """The chatbot's model, with the 'empty' placeholder resolved to the default
+        model provider. (None, None) when it uses the default and none is set."""
+        try:
+            return self.model_provider_repo.resolve_model(
+                chatbot_prompt.model_provider,
+                chatbot_prompt.model_name,
+            )
+        except DefaultModelProviderNotSetException:
+            return None, None
+
     def stream_response(
         self,
         request: ChatbotRequest,
@@ -97,6 +114,24 @@ class ChatbotRepository:
                 tag="production",
             ),
         )
+        chatbot_model_provider, chatbot_model_name = (
+            self.model_provider_repo.resolve_model(
+                chatbot_prompt.model_provider,
+                chatbot_prompt.model_name,
+            )
+        )
+        llm_client = self.model_provider_repo.get_model_provider_client(
+            chatbot_model_provider,
+        )
+        if summarizer_prompt.model_provider == EMPTY_MODEL_PROVIDER:
+            # The summarizer runs on the chatbot's client, so it follows the
+            # chatbot's model when it uses the default.
+            summarizer_prompt = summarizer_prompt.model_copy(
+                update={
+                    "model_provider": chatbot_model_provider.value,
+                    "model_name": chatbot_model_name,
+                },
+            )
 
         blacklist = self.get_blacklist_endpoints()
         api_call_service = ApiCallService(
@@ -112,17 +147,12 @@ class ChatbotRepository:
             summarizer_prompt=summarizer_prompt,
         )
 
-        chatbot_model_provider = chatbot_prompt.require_configured_provider()
-        llm_client = self.model_provider_repo.get_model_provider_client(
-            chatbot_model_provider,
-        )
-
         prompt = chatbot_service.build_prompt(
             chatbot_prompt=chatbot_prompt,
             task_id=task_id,
             history=request.history,
             model_provider=chatbot_model_provider,
-            model_name=chatbot_prompt.model_name,
+            model_name=chatbot_model_name,
             blacklist=blacklist,
         )
 
@@ -144,9 +174,11 @@ class ChatbotRepository:
         )
         blacklist = self.get_blacklist_endpoints()
         available = get_api_index(app)
+        model_provider, model_name = self._resolve_chatbot_model(chatbot_prompt)
         return ChatbotConfigResponse(
-            model_provider=chatbot_prompt.require_configured_provider(),
-            model_name=chatbot_prompt.model_name,
+            model_provider=model_provider,
+            model_name=model_name,
+            uses_default_model=chatbot_prompt.model_provider == EMPTY_MODEL_PROVIDER,
             blacklist_endpoints=blacklist,
             available_endpoints=available,
         )
@@ -165,14 +197,22 @@ class ChatbotRepository:
             ),
         )
 
-        model_provider: ModelProvider = (
-            update.model_provider
-            if update.model_provider is not None
-            else chatbot_prompt.require_configured_provider()
-        )
-        model_name = update.model_name or chatbot_prompt.model_name
+        current_provider, current_model = self._resolve_chatbot_model(chatbot_prompt)
+        uses_default_model = chatbot_prompt.model_provider == EMPTY_MODEL_PROVIDER
+        model_provider = update.model_provider or current_provider
+        model_name = update.model_name or current_model
 
-        if (
+        if update.model_provider is None and update.model_name is None:
+            logger.info("No chatbot model change requested, skipping prompt update")
+        elif model_provider is None or model_name is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Set both model_provider and model_name: the chatbot uses the "
+                    "default model provider, and none is set."
+                ),
+            )
+        elif (
             chatbot_prompt.model_provider == model_provider
             and chatbot_prompt.model_name == model_name
         ):
@@ -180,6 +220,7 @@ class ChatbotRepository:
                 f"Chatbot model and provider are the same, skipping prompt update",
             )
         else:
+            uses_default_model = False
             new_version = self.agentic_prompt_repo.save_llm_item(
                 task_id=ARTHUR_SYSTEM_TASK_ID,
                 item_name=CHATBOT_PROMPT_NAME,
@@ -231,6 +272,7 @@ class ChatbotRepository:
         return ChatbotConfigResponse(
             model_provider=model_provider,
             model_name=model_name,
+            uses_default_model=uses_default_model,
             blacklist_endpoints=self.get_blacklist_endpoints(),
             available_endpoints=get_api_index(app),
         )

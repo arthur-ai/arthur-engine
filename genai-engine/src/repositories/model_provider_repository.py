@@ -31,6 +31,9 @@ from utils.constants import DEFAULT_MODEL_PROVIDER, EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
 
+# Stored providers that mean "use the instance's default model provider"
+_USES_DEFAULT_MODEL = (DEFAULT_MODEL_PROVIDER, EMPTY_MODEL_PROVIDER)
+
 
 class ModelProviderRepository:
     API_KEY_SECRET_FIELD = "api_key"
@@ -457,16 +460,22 @@ class ModelProviderRepository:
 
     def resolve_model(
         self,
-        provider: ModelProvider | str,
-        model_name: str,
+        provider: ModelProvider | str | None,
+        model_name: str | None,
     ) -> tuple[ModelProvider, str]:
-        """Return the provider and model to call. A provider of 'default' resolves to
-        the instance's default model provider; any other provider is returned as is.
+        """Return the provider and model to call. A provider that is unset, 'default'
+        or the 'empty' placeholder resolves to the instance's default model provider;
+        any other provider is returned as is, so an explicit model always wins.
 
         Resolve before anything reads the provider or model (structured-output check,
         provider eval defaults, prompt caching, the completion call), so that all of
         them, and the cost recorded from the response, see the real model."""
-        if str(provider) != DEFAULT_MODEL_PROVIDER:
+        if provider is not None and str(provider) not in _USES_DEFAULT_MODEL:
+            if not model_name:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail=f"No model name is set for model provider {ModelProvider(provider).value}.",
+                )
             return ModelProvider(provider), model_name
         default = self.get_default_model_provider()
         if default.provider is None or default.model_name is None:

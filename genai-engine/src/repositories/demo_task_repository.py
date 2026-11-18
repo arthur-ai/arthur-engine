@@ -74,12 +74,23 @@ class DemoTaskRepository:
         """
         Returns the demo task's model provider and model name.
 
-        Prefers Anthropic, falls back to OpenAI. get_model_provider_client
-        raises an 400 err when a provider is not configured, so we
-        catch it to fall through to the next provider.
+        Prefers the default model provider, then Anthropic, then OpenAI.
+        resolve_model and get_model_provider_client raise a 400 err when the
+        default or a provider is not configured, so we catch it to fall through
+        to the next option.
 
-        Raises a 400 err if neither provider is configured.
+        Raises a 400 err if none of them is configured.
         """
+        try:
+            provider, model_name = self.model_provider_repo.resolve_model(
+                constants.DEFAULT_MODEL_PROVIDER,
+                None,
+            )
+            self.model_provider_repo.get_model_provider_client(provider)
+            return provider, model_name
+        except HTTPException:
+            pass
+
         for provider, model_name in (
             (ModelProvider.ANTHROPIC, "claude-haiku-4-5"),
             (ModelProvider.OPENAI, "gpt-5.4-nano"),

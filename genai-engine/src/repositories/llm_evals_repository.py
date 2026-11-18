@@ -199,16 +199,7 @@ class LLMEvalsRepository(
                 f"Cannot run this llm eval because it was deleted on: {llm_eval.deleted_at}",
             )
 
-        if llm_eval.model_provider is None:
-            raise ValueError(
-                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
-            )
-        if llm_eval.model_name is None:
-            raise ValueError(
-                f"LLM eval '{llm_eval.name}' has no model_name configured.",
-            )
-
-        # An eval saved with the 'default' provider is judged by the instance's
+        # An eval with no provider, or the 'default' one, is judged by the instance's
         # default model. Swap it in before anything below reads the provider or model.
         provider, model_name = self.model_provider_repo.resolve_model(
             llm_eval.model_provider,

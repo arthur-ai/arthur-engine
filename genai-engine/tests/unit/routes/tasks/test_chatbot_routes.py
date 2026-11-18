@@ -16,6 +16,77 @@ from tests.unit.routes.tasks.helpers import (
     parse_sse_event,
 )
 
+# The chatbot runs on the default model provider, which is instance-wide state
+pytestmark = pytest.mark.xdist_group("default_model_provider")
+
+
+@pytest.fixture
+def anthropic_default(client: GenaiEngineTestClientBase):
+    """Make Anthropic the default model provider for the test, then clear it."""
+    headers = client.authorized_user_api_key_headers
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=headers,
+    )
+    response = client.base_client.put(
+        "/api/v1/default_model_provider",
+        json={"provider": "anthropic", "model_name": "claude-sonnet-4-6"},
+        headers=headers,
+    )
+    assert response.status_code == 204
+    yield
+    client.base_client.delete("/api/v1/default_model_provider", headers=headers)
+
+
+@pytest.mark.unit_tests
+def test_chatbot_without_default_model_provider(client: GenaiEngineTestClientBase):
+    headers = client.authorized_user_api_key_headers
+    client.base_client.delete("/api/v1/default_model_provider", headers=headers)
+    _, task = client.create_task("chatbot_task_no_default", is_agentic=True)
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"history": [{"role": "user", "content": "hello"}]},
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert "No default model provider is set" in response.json()["detail"]
+
+    # the config reports that the chatbot follows the default, which isn't set
+    response = client.base_client.get(
+        "/api/v1/chatbot/config", headers=client.authorized_org_admin_api_key_headers
+    )
+    assert response.status_code == 200
+    config = response.json()
+    assert config["model_provider"] is None
+    assert config["model_name"] is None
+    assert config["uses_default_model"] is True
+
+    # changing only the model name needs a provider, and there is no default to take it from
+    response = client.base_client.put(
+        "/api/v1/chatbot/config",
+        json={"model_name": "gpt-4o"},
+        headers=client.authorized_org_admin_api_key_headers,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_chatbot_config_shows_default_model(
+    client: GenaiEngineTestClientBase,
+    anthropic_default: None,
+):
+    response = client.base_client.get(
+        "/api/v1/chatbot/config",
+        headers=client.authorized_org_admin_api_key_headers,
+    )
+    assert response.status_code == 200
+    config = response.json()
+    assert config["model_provider"] == "anthropic"
+    assert config["model_name"] == "claude-sonnet-4-6"
+    assert config["uses_default_model"] is True
+
 
 @pytest.mark.unit_tests
 @patch(
@@ -41,15 +112,11 @@ def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
 @patch(
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
 )
-def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase):
+def test_chatbot_simple_response(
+    mock_stream, client: GenaiEngineTestClientBase, anthropic_default
+):
     task_name = "chatbot_task_simple_response"
     _, task = client.create_task(task_name, is_agentic=True)
-
-    client.base_client.put(
-        "/api/v1/model_providers/anthropic",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
 
     mock_stream.return_value = make_stream(
         final_response_events("Here are your results."),
@@ -74,15 +141,10 @@ def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase)
 def test_chatbot_search_tool_emits_search_complete(
     mock_stream,
     client: GenaiEngineTestClientBase,
+    anthropic_default: None,
 ):
     task_name = "chatbot_task_search_tool"
     _, task = client.create_task(task_name, is_agentic=True)
-
-    client.base_client.put(
-        "/api/v1/model_providers/anthropic",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
 
     search_tool_call = make_tool_call("tc1", "search_arthur_api", '{"query": "evals"}')
     search_response = AgenticPromptRunResponse(
@@ -116,15 +178,10 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
     mock_stream,
     mock_api_call,
     client: GenaiEngineTestClientBase,
+    anthropic_default: None,
 ):
     task_name = "chatbot_task_api_tool"
     _, task = client.create_task(task_name, is_agentic=True)
-
-    client.base_client.put(
-        "/api/v1/model_providers/anthropic",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
 
     mock_api_call.return_value = ApiCallResult(
         method="GET",
@@ -189,15 +246,10 @@ def test_chatbot_emits_history_replace_when_over_token_limit(
     mock_get_max_tokens,
     mock_acount_tokens,
     client: GenaiEngineTestClientBase,
+    anthropic_default: None,
 ):
     task_name = "chatbot_task_history_replace_over"
     _, task = client.create_task(task_name, is_agentic=True)
-
-    client.base_client.put(
-        "/api/v1/model_providers/anthropic",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
 
     mock_stream.return_value = make_stream(final_response_events("Done."))
     mock_get_max_tokens.return_value = 10

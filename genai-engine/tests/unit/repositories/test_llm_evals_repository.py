@@ -1923,10 +1923,12 @@ def test_run_llm_eval_resolves_default_provider_before_the_call(
 
 
 @pytest.mark.unit_tests
-def test_run_llm_eval_default_provider_unset_raises(llm_evals_repo):
+@pytest.mark.parametrize("stored_provider", ["default", None])
+def test_run_llm_eval_default_provider_unset_raises(llm_evals_repo, stored_provider):
+    # 'default' and an unset provider both resolve to the default, which isn't set
     stored_eval = Eval.model_construct(
         name="default_eval",
-        model_provider="default",
+        model_provider=stored_provider,
         model_name="default",
         instructions="Is it correct?",
         variables=[],

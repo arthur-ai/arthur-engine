@@ -267,11 +267,11 @@ class PutModelProviderWhitelist(BaseModel):
 
 class PutDefaultModelProvider(BaseModel):
     provider: ModelProvider = Field(
-        description="Configured provider that judges evals saved with the 'default' provider",
+        description="Configured provider used wherever no model is named",
     )
     model_name: str = Field(
         min_length=1,
-        description="Model of that provider used for those evals, e.g. 'gpt-4.1-mini'",
+        description="Model of that provider, e.g. 'gpt-4.1-mini'",
     )
 
 

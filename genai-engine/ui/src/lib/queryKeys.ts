@@ -130,6 +130,7 @@ export const queryKeys = {
   },
   providers: {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
+    default: () => ["getDefaultModelProviderApiV1DefaultModelProviderGet"] as const,
     availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
     availableModelsAll: () => ["availableModels"] as const,
     modelWhitelist: (provider: string) => ["modelWhitelist", provider] as const,
