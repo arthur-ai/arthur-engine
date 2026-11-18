@@ -26,6 +26,7 @@ from sqlalchemy.sql import exists, or_
 from sqlalchemy.sql.elements import ColumnElement
 
 from custom_types import QueryT
+from schemas.actor_schemas import Actor, created_by_columns
 from schemas.enums import EvalKind, LLMMetadataSortField
 from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
 from schemas.response_schemas import (
@@ -671,6 +672,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         item_name: str,
         item: RequestT,
         commit: bool = True,
+        created_by: Optional[Actor] = None,
     ) -> BaseModel:
         """
         Save an llm item to the database.
@@ -702,6 +704,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             "variables": variables,
             "version": version,
             "created_at": datetime.now(),
+            **created_by_columns(created_by),
             **item.model_dump(mode="python", exclude_none=True),
         }
 

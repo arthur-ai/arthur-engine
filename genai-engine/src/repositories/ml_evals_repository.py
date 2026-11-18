@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
+from schemas.actor_schemas import Actor, actor_from_columns
 from schemas.enums import EvalKind
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
 from schemas.llm_eval_schemas import Eval
@@ -60,6 +61,11 @@ class MLEvalsRepository(
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             tags=tags,
+            created_by=actor_from_columns(
+                db_item.created_by_kind,
+                db_item.created_by_id,
+                db_item.created_by_name,
+            ),
         )
 
     def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:
@@ -74,8 +80,12 @@ class MLEvalsRepository(
         task_id: str,
         eval_name: str,
         item: CreateMLEvalRequest,
+        created_by: Optional[Actor] = None,
     ) -> Eval:
-        return cast(Eval, super().save_llm_item(task_id, eval_name, item))
+        return cast(
+            Eval,
+            super().save_llm_item(task_id, eval_name, item, created_by=created_by),
+        )
 
     def get_llm_item(
         self,

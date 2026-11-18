@@ -13,6 +13,20 @@ class BaseEnum(str, Enum):
         return str(self.value)
 
 
+class ActorKind(str, Enum):
+    """Who made a change: the kind of credential the request was authenticated with."""
+
+    # A person signed in through the identity provider (JWT).
+    USER = "user"
+    # An API key. Keys are machine credentials and are not tied to a person.
+    API_KEY = "api_key"
+    # The deployment's shared admin key (GENAI_ENGINE_ADMIN_KEY).
+    MASTER_KEY = "master_key"
+    # The admin key acting for a named person, who is given in the
+    # X-Arthur-On-Behalf-Of header by the control plane that holds the key.
+    ON_BEHALF_OF_USER = "on_behalf_of_user"
+
+
 class RuleDataType(str, Enum):
     REGEX = "regex"
     KEYWORD = "keyword"

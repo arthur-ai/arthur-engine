@@ -37,7 +37,7 @@ from schemas.response_schemas import (
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform
-from utils.users import enforce_org_scope, permission_checker
+from utils.users import actor_of, enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 transform_routes = APIRouter(
@@ -164,7 +164,11 @@ def create_transform_for_task(
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.create_transform(task.id, request)
+        trace_transform = trace_transform_repo.create_transform(
+            task.id,
+            request,
+            created_by=actor_of(current_user),
+        )
         return trace_transform.to_response_model(definition=request.definition)
     except HTTPException:
         raise
@@ -189,7 +193,10 @@ def update_transform(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.update_transform(
-            transform_id, request, org_scope=org_scope
+            transform_id,
+            request,
+            org_scope=org_scope,
+            created_by=actor_of(current_user),
         )
         definition = trace_transform_repo.get_latest_definition(transform_id)
         return trace_transform.to_response_model(definition=definition)

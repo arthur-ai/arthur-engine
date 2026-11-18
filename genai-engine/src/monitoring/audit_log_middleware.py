@@ -30,7 +30,12 @@ from monitoring.ai_activity import (
     end_ai_activity,
     get_recorded_invocations,
 )
-from schemas.audit_log_schemas import ExtendedAuditLog, RouteInfo
+from schemas.audit_log_schemas import (
+    AttributedAuditLog,
+    ExtendedAuditLog,
+    RouteInfo,
+)
+from schemas.enums import ActorKind
 from utils.routes import iter_api_routes
 
 logger = logging.getLogger(__name__)
@@ -225,9 +230,18 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 
                 response_ids = await self._get_response_ids(request, response)
 
+                actor = getattr(request.state, "actor", None)
+                org_scope = getattr(request.state, "org_scope", None)
                 entry_fields = dict(
                     id=uuid.uuid4(),
                     user_id=request.state.user_id,
+                    organization_id=str(org_scope) if org_scope else None,
+                    actor_kind=actor.kind if actor else None,
+                    on_behalf_of=(
+                        actor.id
+                        if actor and actor.kind == ActorKind.ON_BEHALF_OF_USER
+                        else None
+                    ),
                     timestamp=datetime.now(timezone.utc),
                     request_method=HTTPRequestMethod(request.method.lower()),
                     request_path=request.url.path,
@@ -243,7 +257,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                         model_invocations=get_recorded_invocations(),
                     )
                 else:
-                    entry = AuditLog(**entry_fields)
+                    entry = AttributedAuditLog(**entry_fields)
 
                 AUDIT_LOGGER.info(entry.model_dump_json(exclude_none=True))
             except Exception:

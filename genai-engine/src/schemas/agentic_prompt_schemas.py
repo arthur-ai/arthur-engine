@@ -10,6 +10,7 @@ from arthur_common.models.llm_model_providers import (
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from schemas.actor_schemas import Actor
 from utils.constants import EMPTY_MODEL_PROVIDER
 
 
@@ -54,6 +55,10 @@ class AgenticPrompt(BaseModel):
     deleted_at: Optional[datetime] = Field(
         default=None,
         description="Time that this prompt was deleted",
+    )
+    created_by: Optional[Actor] = Field(
+        default=None,
+        description="Who created this version. None when it was not recorded.",
     )
 
     def has_been_deleted(self) -> bool:

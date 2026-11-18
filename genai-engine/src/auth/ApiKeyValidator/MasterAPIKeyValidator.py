@@ -4,6 +4,7 @@ from arthur_common.models.common_schemas import AuthUserRole
 
 from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
 from config import config
+from schemas.enums import ActorKind
 from schemas.internal_schemas import User
 from utils import constants
 
@@ -37,5 +38,6 @@ class MasterAPIKeyValidator(APIKeyValidator):
                 id="master-key",
                 email="",
                 roles=self.roles,
+                kind=ActorKind.MASTER_KEY,
             )
         return None

@@ -7,11 +7,11 @@ from arthur_common.models.enums import RuleScope, RuleType
 from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from db_models.base import Base, IsArchivable
+from db_models.base import Base, HasCreatedBy, IsArchivable
 from schemas.enums import RuleScoringMethod
 
 
-class DatabaseRule(Base, IsArchivable):
+class DatabaseRule(Base, IsArchivable, HasCreatedBy):
     __tablename__ = "rules"
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String)
