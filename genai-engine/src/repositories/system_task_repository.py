@@ -11,9 +11,11 @@ from arthur_common.models.llm_model_providers import (
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from db_models.configuration_models import DatabaseApplicationConfiguration
 from db_models.task_models import DatabaseTask
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.enums import ApplicationConfigurations
 from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.chatbot_prompts import (
     CALL_ARTHUR_API_TOOL,
@@ -34,8 +36,9 @@ from utils.constants import (
 logger = logging.getLogger(__name__)
 
 # The model both chatbot prompts were seeded with before they used the default
-# model provider. A stored copy of it was never picked by an admin, so it moves to
-# the default.
+# model provider. On the first boot after the upgrade a stored copy of it moves to
+# the default, since it can't be told apart from a pick; after that, a model an
+# admin picks is always kept, this one included.
 _OLD_CHATBOT_SEED_PROVIDER = ModelProvider.ANTHROPIC
 _OLD_CHATBOT_SEED_MODEL = "claude-sonnet-4-6"
 
@@ -52,13 +55,14 @@ class SystemTaskRepository:
     def _take_existing_model(
         self,
         prompt_name: str,
+        move_old_seed: bool,
     ) -> tuple[str, str]:
         """Delete the production version of a chatbot system prompt and return the
         model to re-create it with.
 
         A model an admin picked is kept. Anything else (no prompt yet, the 'empty'
-        placeholder, or the old hard-coded seed) becomes 'empty', so the prompt runs
-        on the instance's default model provider."""
+        placeholder, or the old hard-coded seed when move_old_seed is set) becomes
+        'empty', so the prompt runs on the instance's default model provider."""
         try:
             existing = cast(
                 AgenticPrompt,
@@ -75,9 +79,9 @@ class SystemTaskRepository:
         logger.info(f"Deleting old {prompt_name}.")
 
         stored = (existing.model_provider, existing.model_name)
-        if existing.model_provider == EMPTY_MODEL_PROVIDER or stored == (
-            _OLD_CHATBOT_SEED_PROVIDER,
-            _OLD_CHATBOT_SEED_MODEL,
+        if existing.model_provider == EMPTY_MODEL_PROVIDER or (
+            move_old_seed
+            and stored == (_OLD_CHATBOT_SEED_PROVIDER, _OLD_CHATBOT_SEED_MODEL)
         ):
             return EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME
         return ModelProvider(existing.model_provider).value, existing.model_name
@@ -112,10 +116,13 @@ class SystemTaskRepository:
             tag="production",
         )
 
-    def _create_chatbot_prompt(self) -> None:
+    def _create_chatbot_prompt(self, move_old_seed: bool) -> None:
         """Re-create the chatbot system prompt with the latest text, keeping a model
         an admin picked; otherwise it uses the default model provider."""
-        model_provider, model_name = self._take_existing_model(CHATBOT_PROMPT_NAME)
+        model_provider, model_name = self._take_existing_model(
+            CHATBOT_PROMPT_NAME,
+            move_old_seed,
+        )
         self._save_production_prompt(
             CHATBOT_PROMPT_NAME,
             model_provider,
@@ -127,10 +134,11 @@ class SystemTaskRepository:
         )
         logger.info("Chatbot prompt created.")
 
-    def _create_chatbot_summarizer_prompt(self) -> None:
+    def _create_chatbot_summarizer_prompt(self, move_old_seed: bool) -> None:
         """Create the chatbot summarizer prompt for compressing conversation history."""
         model_provider, model_name = self._take_existing_model(
             CHATBOT_SUMMARIZER_PROMPT_NAME,
+            move_old_seed,
         )
         messages = [
             OpenAIMessage(
@@ -172,8 +180,23 @@ class SystemTaskRepository:
             self.db_session.commit()
             logger.info("Chatbot system task created.")
 
-        self._create_chatbot_prompt()
-        self._create_chatbot_summarizer_prompt()
+        # The old hard-coded seed moves to the default once, on the first boot after
+        # the upgrade; the marker row stops it from undoing a later admin pick.
+        seed_moved_marker = self.db_session.get(
+            DatabaseApplicationConfiguration,
+            ApplicationConfigurations.CHATBOT_SEED_MOVED_TO_DEFAULT,
+        )
+        move_old_seed = seed_moved_marker is None
+        self._create_chatbot_prompt(move_old_seed)
+        self._create_chatbot_summarizer_prompt(move_old_seed)
+        if move_old_seed:
+            self.db_session.add(
+                DatabaseApplicationConfiguration(
+                    name=ApplicationConfigurations.CHATBOT_SEED_MOVED_TO_DEFAULT,
+                    value="true",
+                ),
+            )
+            self.db_session.commit()
 
     def _is_postgresql(self) -> bool:
         return (
