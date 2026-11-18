@@ -13,8 +13,10 @@
 # looks at every PEM file rather than only certifi, and does not skip pip's
 # vendored certifi (the Dockerfiles filter that one too).
 #
-# Also flags any other file that embeds the root as DER (compiled-in root stores
-# such as litellm's Rust extension or Go binaries), matched by the subject string.
+# Also flags any other file that embeds the root: as DER (compiled-in root stores
+# such as litellm's Rust extension or Go's x509 bundles), matched by the subject
+# string, or as PEM text (Go's gocertifi, Node's node_root_certs.h), matched by
+# two lines of the certificate body.
 #
 # Usage: .github/scripts/check_no_emsign_g3.sh <image>
 #   e.g. .github/scripts/check_no_emsign_g3.sh arthurplatform/genai-engine-cpu:2.1.1040
@@ -97,6 +99,26 @@ while IFS= read -r p; do
   printf 'FAIL: %s embeds emSign ECC Root CA - G3 (compiled-in root store)\n' "$p"
   FOUND=1
 done < "$WORK/embed.list"
+
+# The same root store can be compiled in as PEM text instead: Go's gocertifi
+# (linked into spicedb) and Node's node_root_certs.h keep the Mozilla bundle as
+# strings, and the DER search above cannot see base64. Match the first and a
+# middle 64-column line of the certificate body as fixed strings; they are the
+# same whether the binary stores real or escaped ("\n") line breaks. Both lines
+# must be in the file, so a Dockerfile or script that quotes only the first
+# line in order to strip the root (as ours do) does not match. A PEM bundle
+# that is simply not named *.pem / *.crt is caught here too. Same check as arthur-scope's.
+G3_PEM_LINE_1='MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBrMQswCQYDVQQG'
+G3_PEM_LINE_2='WXTsuwYc58Byr+iuL+FBVIcUqEqy6HyC5ltqtdyzdc6LBtCGI79G1Y4PPwT01xyS'
+( cd "$WORK/fs" && find . -type f ! -name '*.pem' ! -name '*.crt' -size +1k \
+    -exec grep -laF -e "$G3_PEM_LINE_1" {} + | while IFS= read -r f; do
+      if grep -qaF -e "$G3_PEM_LINE_2" "$f"; then printf '%s\n' "$f"; fi
+    done ) | sed 's|^\.||' > "$WORK/embed-pem.list" || true
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  printf 'FAIL: %s embeds emSign ECC Root CA - G3 as PEM text (compiled-in root store or unlabelled bundle)\n' "$p"
+  FOUND=1
+done < "$WORK/embed-pem.list"
 
 if [ "$FOUND" -ne 0 ]; then
   echo "ERROR: $IMAGE still trusts emSign ECC Root CA - G3 or has an unreadable bundle (SOC-222)"
