@@ -37,6 +37,10 @@ def permission_checker(permissions: frozenset[str]) -> Callable[[FunctionT], Fun
     """
 
     def auth_required(func: FunctionT) -> FunctionT:
+        # Decided once per route: does anything below this decorator check the
+        # caller's task? Only those routes accept task-scoped keys.
+        checks_task = _checks_task_scope(func)
+
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             """Function that decorates given functions. Check if user has proper permissions
@@ -60,6 +64,15 @@ def permission_checker(permissions: frozenset[str]) -> Callable[[FunctionT], Fun
                     status_code=403,
                     headers={"full_stacktrace": "false"},
                 )
+            # Fail closed: a task-scoped key may only reach routes that check the
+            # task, so a route added later without a task check cannot be used to
+            # reach other tasks.
+            if user.task_scope is not None and not checks_task:
+                raise HTTPException(
+                    status_code=403,
+                    detail="This API key is scoped to one task and cannot use this route.",
+                    headers={"full_stacktrace": "false"},
+                )
 
             if iscoroutinefunction(func):
                 return await func(*args, **kwargs)
@@ -70,6 +83,33 @@ def permission_checker(permissions: frozenset[str]) -> Callable[[FunctionT], Fun
         return cast(FunctionT, wrapper)
 
     return auth_required
+
+
+def _walk_wrapped(fn: Any) -> Any:
+    seen: set[int] = set()
+    current = fn
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        yield current
+        current = getattr(current, "__wrapped__", None)
+
+
+def _checks_task_scope(func: Any) -> bool:
+    """True when the route enforces the caller's task: the org-scope path and
+    query decorators (which also apply task scope), or `task_scope_aware`."""
+    return any(
+        getattr(fn, "_org_scope_enforced", False)
+        or getattr(fn, "_task_scope_aware", False)
+        for fn in _walk_wrapped(func)
+    )
+
+
+def task_scope_aware(func: FunctionT) -> FunctionT:
+    """Mark a route whose handler enforces `current_user.task_scope` itself, so
+    `permission_checker` admits task-scoped keys. Place it below
+    `permission_checker`."""
+    func._task_scope_aware = True  # type: ignore[attr-defined]
+    return func
 
 
 def _is_admin(user: User | None) -> bool:
@@ -139,6 +179,13 @@ def enforce_org_scope(
             task_org_id = _fetch_task_org_id(db_session, path_task_id)
             if task_org_id is None or task_org_id != str(user.org_scope):
                 # 404 rather than 403 to prevent enumeration of foreign tasks.
+                raise HTTPException(
+                    status_code=404,
+                    detail="Task not found",
+                    headers={"full_stacktrace": "false"},
+                )
+            if user.task_scope is not None and str(path_task_id) != user.task_scope:
+                # Same 404 for a task-scoped key reaching another task in its org.
                 raise HTTPException(
                     status_code=404,
                     detail="Task not found",
@@ -227,8 +274,28 @@ def enforce_query_org_scope(
                     ),
                 ).scalars()
             }
+            if user.task_scope is not None:
+                # A task-scoped key sees only its own task within the org.
+                org_task_ids &= {user.task_scope}
 
             located = _find_task_ids_holder(kwargs, query_param)
+            if located is None and user.task_scope is not None:
+                # A route that names a single task (e.g. `TraceTimeSeriesRequest.task_id`)
+                # must name the key's own task; a route naming no task at all is
+                # refused, so a task-scoped key never falls through unconstrained.
+                single = _find_task_ids_holder(kwargs, "task_id")
+                if single is None:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="This API key is scoped to one task and cannot use this route.",
+                        headers={"full_stacktrace": "false"},
+                    )
+                if str(single[2]) != user.task_scope:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Task not found",
+                        headers={"full_stacktrace": "false"},
+                    )
             if located is None:
                 # The handler doesn't accept this field — nothing to constrain.
                 return await _call(func, *args, **kwargs)

@@ -734,6 +734,7 @@ class SpanRepository:
     def create_traces(
         self,
         trace_data: bytes,
+        task_scope: Optional[str] = None,
     ) -> Tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data received on a trace ingestion endpoint and store it.
 
@@ -743,6 +744,7 @@ class SpanRepository:
             return self.trace_ingestion_service.process_trace_data(
                 trace_data,
                 count_ingest_bytes=True,
+                task_scope=task_scope,
             )
         except DecodeError as e:
             raise DecodeError("Failed to parse protobuf message.") from e

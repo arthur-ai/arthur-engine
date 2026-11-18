@@ -33,7 +33,11 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from utils.users import enforce_query_org_scope, permission_checker
+from utils.users import (
+    enforce_query_org_scope,
+    permission_checker,
+    task_scope_aware,
+)
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -461,6 +465,7 @@ def trace_query_parameters(
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
+@task_scope_aware
 def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
@@ -469,7 +474,10 @@ def receive_traces(
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
-        _, span_results = span_repo.create_traces(body)
+        _, span_results = span_repo.create_traces(
+            body,
+            task_scope=current_user.task_scope if current_user else None,
+        )
         return _create_response(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")

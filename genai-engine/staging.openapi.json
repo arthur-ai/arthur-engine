@@ -20011,6 +20011,18 @@
                         "title": "Roles",
                         "description": "Roles of the API key",
                         "default": []
+                    },
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id",
+                        "description": "The task this key is scoped to. None for keys not limited to one task."
                     }
                 },
                 "type": "object",
@@ -26778,6 +26790,19 @@
                         "default": [
                             "VALIDATION-USER"
                         ]
+                    },
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id",
+                        "description": "Scope the key to this one task. A task-scoped key can only reach routes that check the task, only for this task, and its traces always land in this task. Omit for a key that is not limited to one task."
                     }
                 },
                 "type": "object",

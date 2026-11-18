@@ -71,6 +71,7 @@ def test_validate_key_with_real_hash():
     mock_db_api_key.created_at = datetime.datetime(2026, 1, 1)
     mock_db_api_key.deactivated_at = None
     mock_db_api_key.org_id = None
+    mock_db_api_key.task_id = None
 
     # Mock the database session and query chain
     db_session = MagicMock()
@@ -113,6 +114,7 @@ def test_api_key_from_database_model_propagates_org_id_when_set():
     db_api_key.deactivated_at = None
     db_api_key.roles = ["TENANT-USER"]
     db_api_key.org_id = org_id
+    db_api_key.task_id = None
 
     api_key = ApiKey._from_database_model(db_api_key)
 
@@ -131,6 +133,7 @@ def test_api_key_from_database_model_org_id_none_for_admin_keys():
     db_api_key.deactivated_at = None
     db_api_key.roles = ["ORG_ADMIN"]
     db_api_key.org_id = None
+    db_api_key.task_id = None
 
     api_key = ApiKey._from_database_model(db_api_key)
 

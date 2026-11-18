@@ -2,8 +2,6 @@ import logging
 from uuid import UUID
 
 from arthur_common.models.enums import APIKeysRolesEnum
-from arthur_common.models.request_schemas import NewApiKeyRequest
-from arthur_common.models.response_schemas import ApiKeyResponse
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
@@ -16,6 +14,7 @@ from config.config import Config
 from dependencies import get_db_session
 from repositories.api_key_repository import ApiKeyRepository
 from routers.route_handler import GenaiEngineRoute
+from schemas.api_key_schemas import ApiKeyResponse, NewApiKeyRequest
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from utils import constants
@@ -27,6 +26,16 @@ _ADMIN_FORBIDDEN_ROLES = frozenset([constants.TENANT_USER])
 # Grants nothing since default rules were removed. Existing keys keep the role
 # name; no new key is minted with it.
 _RETIRED_ROLES = frozenset([constants.DEFAULT_RULE_ADMIN])
+
+# Roles that act across the whole org or deployment, so they cannot be limited
+# to one task. A task-scoped key may carry only the remaining roles.
+_TASK_SCOPE_FORBIDDEN_ROLES = frozenset(
+    [
+        constants.ORG_ADMIN,
+        constants.ORG_AUDITOR,
+        constants.ADMIN_KEY,
+    ],
+)
 
 api_key_validator_creators = [APIKeyValidatorCreator(APIKeyValidatorType.MASTER)]
 multi_validator = MultiMethodValidator(api_key_validator_creators)
@@ -73,11 +82,25 @@ def create_api_key(
             status_code=400,
             detail=f"Roles {sorted(retired)} no longer grant any permissions.",
         )
+    if new_api_key.task_id is not None:
+        org_wide = {
+            r.value
+            for r in (new_api_key.roles or [])
+            if r.value in _TASK_SCOPE_FORBIDDEN_ROLES
+        }
+        if org_wide:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Roles {sorted(org_wide)} cannot be scoped to a single task.",
+            )
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(
             description=new_api_key.description,
             roles=new_api_key.roles or [],
+            # An org-scoped caller can only mint keys inside its own org.
+            org_id=current_user.org_scope if current_user else None,
+            task_id=str(new_api_key.task_id) if new_api_key.task_id else None,
         )
         return api_key._to_response_model(
             message="The provided key is only available for display now. "

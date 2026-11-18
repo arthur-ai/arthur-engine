@@ -55,7 +55,11 @@ from utils.currency_display import (
     apply_currency_to_token_cost_item,
     get_display_currency,
 )
-from utils.users import enforce_query_org_scope, permission_checker
+from utils.users import (
+    enforce_query_org_scope,
+    permission_checker,
+    task_scope_aware,
+)
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -85,6 +89,7 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
+@task_scope_aware
 def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
@@ -93,7 +98,10 @@ def receive_traces(
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
-        db_spans, span_results = span_repo.create_traces(body)
+        db_spans, span_results = span_repo.create_traces(
+            body,
+            task_scope=current_user.task_scope if current_user else None,
+        )
 
         # Enqueue continuous evals for root spans
         continuous_evals_repo = ContinuousEvalsRepository(db_session)
