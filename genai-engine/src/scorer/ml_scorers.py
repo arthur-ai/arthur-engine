@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from arthur_common.models.enums import RuleResultEnum, RuleType
 
 from schemas.enums import EvalKind
+from schemas.request_schemas import ToxicityEvalConfig
 from schemas.response_schemas import EvalRunResponse
 from schemas.scorer_schemas import ScoreRequest
 from scorer.base_ml_scorer import BaseMLScorer
@@ -68,7 +69,7 @@ class ToxicityMLScorer(BaseMLScorer):
     def run(self, text: str, config: Dict[str, Any]) -> EvalRunResponse:
         # Without a threshold the scorer skips the check, which would be reported
         # as a failure; default it the way the guardrail rule does.
-        threshold = config.get("toxicity_threshold")
+        threshold = ToxicityEvalConfig.model_validate(config).toxicity_threshold
         request = ScoreRequest(
             rule_type=RuleType.TOXICITY,
             scoring_text=text,
