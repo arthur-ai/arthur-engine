@@ -151,6 +151,9 @@ class StandaloneDiscoveryAgent:
         # Held by the loop while it schedules, and by `run_now` and `scan_states`, which
         # the control server calls from its own threads.
         self._lock = threading.Lock()
+        # Held while the config file is checked and reloaded, by the loop or by
+        # `apply_config_now`, which the control server calls.
+        self._reload_lock = threading.Lock()
         self._stopping = threading.Event()
         self._runner = runner or self._run_scan
         self.health_check = health_check or HealthCheck()
@@ -200,12 +203,29 @@ class StandaloneDiscoveryAgent:
         """Reload the config file if it, or a file it reads, has changed."""
         if self._config_path is None or self._clock() < self._next_reload_check:
             return
-        self._next_reload_check = self._clock() + RELOAD_CHECK_SECONDS
-        fingerprint = config_fingerprint(self._config_path)
-        if fingerprint == self._fingerprint:
-            return
-        self._fingerprint = fingerprint
-        self.reload()
+        self._reload_if_changed()
+
+    def apply_config_now(self) -> tuple[ConfigStatus, list[ScanState]]:
+        """Reload the config file now if it has changed, and start every scan that is
+        due and has room, rather than within the next check and tick. For a dashboard
+        that has just written the file: a source it added is running, or waiting for a
+        slot, by the time this returns."""
+        if self._config_path is not None:
+            self._reload_if_changed()
+        self.tick()
+        return self.config_status(), self.scan_states()
+
+    def _reload_if_changed(self) -> None:
+        # Held so the loop's check and a control request can't both see the change
+        # and reload it twice.
+        with self._reload_lock:
+            assert self._config_path is not None
+            self._next_reload_check = self._clock() + RELOAD_CHECK_SECONDS
+            fingerprint = config_fingerprint(self._config_path)
+            if fingerprint == self._fingerprint:
+                return
+            self._fingerprint = fingerprint
+            self.reload()
 
     def reload(self) -> None:
         """Load the config file and apply its sources, or keep what is running and say

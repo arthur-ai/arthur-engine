@@ -8,6 +8,8 @@ where each scan stands. Off unless the engine is given a token.
                          if none match.
     GET  /config         the config file the engine runs: when it was loaded, why a
                          later change could not be, and what waits for a restart
+    POST /config/reload  apply the config file now if it changed, rather than at the next
+                         check, and start what is due: {"config": ..., "scans": ...}
     GET  /source-types   each vendor's form, as the Platform's source types give it
     POST /sources/test   {"source": ..., "config_name": ..., "keep_secrets_from": ...}:
                          Test Connection, with values given rather than read from the
@@ -44,7 +46,7 @@ from standalone.discovery_config import StandaloneConfigError
 from standalone.sources import source_types, try_source
 
 if TYPE_CHECKING:
-    from standalone.agent import ScanState, StandaloneDiscoveryAgent
+    from standalone.agent import ConfigStatus, ScanState, StandaloneDiscoveryAgent
 
 logger = logging.getLogger(__name__)
 
@@ -142,12 +144,14 @@ class ControlServer:
 
         @app.get("/config")
         def config() -> ResponseReturnValue:
-            status = self._agent.config_status()
+            return jsonify(_config(self._agent.config_status()))
+
+        @app.post("/config/reload")
+        def reload() -> ResponseReturnValue:
+            status, states = self._agent.apply_config_now()
             return jsonify(
-                path=status.path,
-                loaded_at=_iso(status.loaded_at),
-                error=status.error,
-                restart_required=list(status.restart_required),
+                config=_config(status),
+                scans=[_describe(s) for s in states],
             )
 
         @app.get("/source-types")
@@ -219,6 +223,15 @@ def control_from_env(agent: "StandaloneDiscoveryAgent") -> Optional[ControlServe
 
 def _field(value: Any) -> TypeGuard[str]:
     return isinstance(value, str) and 0 < len(value) <= MAX_FIELD_LENGTH
+
+
+def _config(status: "ConfigStatus") -> dict[str, Any]:
+    return {
+        "path": status.path,
+        "loaded_at": _iso(status.loaded_at),
+        "error": status.error,
+        "restart_required": list(status.restart_required),
+    }
 
 
 def _describe(state: "ScanState") -> dict[str, Any]:

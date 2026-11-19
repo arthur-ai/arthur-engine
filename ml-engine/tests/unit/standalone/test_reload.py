@@ -93,6 +93,55 @@ def test_an_added_source_is_scanned_at_once(
     assert subject.config_status().error is None
 
 
+def test_asked_to_apply_the_file_an_added_source_starts_before_it_returns(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a")))
+    clock = Clock()
+    subject = start(path, runner, clock)
+
+    path.write_text(config_text(source("a"), source("b")))
+    status, states = subject.apply_config_now()  # no time passes: no check is due
+
+    assert runner.started == ["a", "b"]
+    assert status.error is None
+    assert {(s.source_name, s.status) for s in states} == {
+        ("a", "running"),
+        ("b", "running"),
+    }
+
+
+def test_asked_to_apply_an_unchanged_file_reloads_nothing(
+    tmp_path: Path, runner: HoldingRunner, caplog: pytest.LogCaptureFixture
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a")))
+    clock = Clock()
+    subject = start(path, runner, clock)
+    loaded_at = subject.config_status().loaded_at
+
+    subject.apply_config_now()
+
+    assert subject.config_status().loaded_at == loaded_at
+    assert "Reloaded" not in caplog.text
+
+
+def test_asked_to_apply_a_file_it_cannot_use_says_why(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a")))
+    clock = Clock()
+    subject = start(path, runner, clock)
+
+    path.write_text(config_text(source("a"), source("a")))
+    status, states = subject.apply_config_now()
+
+    assert "used more than once" in (status.error or "")
+    assert [s.source_name for s in states] == ["a"]
+
+
 def test_a_changed_source_runs_again_with_the_change(
     tmp_path: Path, runner: HoldingRunner
 ) -> None:

@@ -1279,6 +1279,11 @@ Every request needs `Authorization: Bearer <token>`.
 - `GET /config` gives the config file the engine runs: `path`, `loaded_at`, `error`
   (why the file as it is now couldn't be used, or `null`) and `restart_required` (the
   sections changed that wait for a restart).
+- `POST /config/reload` applies the config file now if it has changed, rather than at
+  the engine's next check (every 5 s), and starts every scan that is due and has a free
+  slot. It answers with `config` (as `GET /config` gives it) and `scans` (as `GET /scans`
+  does), so a dashboard that has just added a source sees it `running`, or `waiting` for
+  a slot. A file the engine can't use is reported in `config.error`, as on a check.
 - `GET /source-types` gives each vendor's form, from the Platform's discovery source
   types: its fields with their descriptions, which are secret and which are optional.
   `scripts/snapshot_discovery_source_types.py` refreshes the snapshot it serves.
