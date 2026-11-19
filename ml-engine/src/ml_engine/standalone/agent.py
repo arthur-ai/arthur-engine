@@ -12,6 +12,15 @@ A SCAN CAN BE ASKED FOR AHEAD OF ITS TIME. `run_now` makes a pair due at once, a
 asked-for scan is an ordinary run: it waits for room like any other, a pair already
 running is not started again, and its next run is one interval after it starts.
 
+THE CONFIG FILE IS WATCHED. Every few seconds the loop checks it, and the files its
+`{file: path}` references read, for a change. A changed file is loaded and validated
+whole, as at startup; one that cannot be used is logged and reported to the control API,
+and the engine keeps scanning with what it had. Sources are applied at once: a new
+(source, config) pair is due now, a changed one is due now unless it is running (its
+next run uses the change), and a removed one is told to stop. A change to `schedule`,
+`destination` or `emit_scan_outcomes` needs a restart, and is reported as such rather
+than half-applied.
+
 SCANS RUN AS DAEMON THREADS, as a light job does under `JobAgent`. A scan is I/O
 against a vendor and a destination, and a daemon thread is one the process can exit
 past: on shutdown each scan is told to stop at its connector's next safe point and
@@ -25,12 +34,19 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import FrameType
 from typing import Callable, Literal, Optional
 
 from health_check import MLEngineHealthCheck as HealthCheck
 from standalone.control import ControlServer, control_from_env
-from standalone.discovery_config import ResolvedScan, StandaloneDiscoveryConfig
+from standalone.discovery_config import (
+    ResolvedScan,
+    StandaloneConfigError,
+    StandaloneDiscoveryConfig,
+    config_fingerprint,
+    load_config,
+)
 from standalone.scan import run_scan, scan_logger
 from standalone.sinks.common import Sink
 
@@ -41,6 +57,11 @@ logger = logging.getLogger(__name__)
 TICK_SECONDS = 1.0
 # How long shutdown waits for running scans, matching JobAgent's.
 SHUTDOWN_GRACE_SECONDS = 15.0
+# How often the loop looks for a changed config file: soon enough that a source added
+# from a dashboard is scanned within seconds, cheap enough to do forever.
+RELOAD_CHECK_SECONDS = 5.0
+# What a reloaded config cannot change without a restart.
+RESTART_ONLY = ("schedule", "destination", "emit_scan_outcomes")
 
 # Runs one scan to completion and never raises: (scan, its logger, should_stop).
 ScanRunner = Callable[[ResolvedScan, logging.Logger, Callable[[], bool]], object]
@@ -75,6 +96,18 @@ ScanStatus = Literal["running", "stopping", "waiting", "scheduled"]
 
 
 @dataclass(frozen=True)
+class ConfigStatus:
+    """The config the engine runs, as the control server reports it."""
+
+    path: Optional[str]
+    loaded_at: datetime
+    # Why the file as it is now could not be used, or None if it is what is running.
+    error: Optional[str] = None
+    # Sections changed in the file that take effect only when the engine restarts.
+    restart_required: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ScanState:
     """Where one (source, config) pair stands in the schedule, as `run_now` and the
     control server report it."""
@@ -105,8 +138,10 @@ class StandaloneDiscoveryAgent:
         health_check: Optional[HealthCheck] = None,
         control: Optional[ControlServer] = None,
         wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        config_path: Optional[Path] = None,
     ) -> None:
         self._config = config
+        self._config_path = config_path
         self._sink = sink
         self._interval = config.schedule.interval.total_seconds()
         self._capacity = config.schedule.max_concurrent_scans
@@ -116,6 +151,9 @@ class StandaloneDiscoveryAgent:
         # Held by the loop while it schedules, and by `run_now` and `scan_states`, which
         # the control server calls from its own threads.
         self._lock = threading.Lock()
+        # Held while the config file is checked and reloaded, by the loop or by
+        # `apply_config_now`, which the control server calls.
+        self._reload_lock = threading.Lock()
         self._stopping = threading.Event()
         self._runner = runner or self._run_scan
         self.health_check = health_check or HealthCheck()
@@ -126,6 +164,15 @@ class StandaloneDiscoveryAgent:
             _Slot(scan=scan, logger=scan_logger(scan, sink), next_due=first_due)
             for scan in config.scans()
         ]
+        # Pairs removed from the config while running, kept until shutdown so it can
+        # wait for them as for any other.
+        self._retired: list[_Slot] = []
+        self._fingerprint = config_fingerprint(config_path) if config_path else ""
+        self._next_reload_check = now + RELOAD_CHECK_SECONDS
+        self._config_status = ConfigStatus(
+            path=str(config_path) if config_path else None,
+            loaded_at=wall_clock(),
+        )
 
     def run(self) -> None:
         """Scan on schedule until SIGTERM or SIGINT, then drain and return."""
@@ -141,6 +188,7 @@ class StandaloneDiscoveryAgent:
         )
         while not self._stopping.is_set():
             try:
+                self.check_config()
                 self.tick()
             except Exception:
                 # One bad iteration must not end the engine, as in JobAgent's loop.
@@ -150,6 +198,141 @@ class StandaloneDiscoveryAgent:
             self.health_check.liveness_ping()
             self._stopping.wait(TICK_SECONDS)
         self._drain()
+
+    def check_config(self) -> None:
+        """Reload the config file if it, or a file it reads, has changed."""
+        if self._config_path is None or self._clock() < self._next_reload_check:
+            return
+        self._reload_if_changed()
+
+    def apply_config_now(self) -> tuple[ConfigStatus, list[ScanState]]:
+        """Reload the config file now if it has changed, and start every scan that is
+        due and has room, rather than within the next check and tick. For a dashboard
+        that has just written the file: a source it added is running, or waiting for a
+        slot, by the time this returns."""
+        if self._config_path is not None:
+            self._reload_if_changed()
+        self.tick()
+        return self.config_status(), self.scan_states()
+
+    def _reload_if_changed(self) -> None:
+        # Held so the loop's check and a control request can't both see the change
+        # and reload it twice.
+        with self._reload_lock:
+            assert self._config_path is not None
+            self._next_reload_check = self._clock() + RELOAD_CHECK_SECONDS
+            fingerprint = config_fingerprint(self._config_path)
+            if fingerprint == self._fingerprint:
+                return
+            self._fingerprint = fingerprint
+            self.reload()
+
+    def reload(self) -> None:
+        """Load the config file and apply its sources, or keep what is running and say
+        why not."""
+        assert self._config_path is not None
+        loaded_at = self._config_status.loaded_at
+        try:
+            config = load_config(self._config_path)
+        except StandaloneConfigError as e:
+            logger.error(
+                f"{e}\nStill scanning with the config loaded at "
+                f"{loaded_at.isoformat()}.",
+            )
+            self._set_status(error=str(e))
+            return
+        if config is None:
+            message = (
+                f"Discovery config {self._config_path} says enabled: false, which "
+                f"takes effect when the engine restarts"
+            )
+            logger.warning(message)
+            self._set_status(error=message)
+            return
+        restart = tuple(
+            name
+            for name in RESTART_ONLY
+            if getattr(config, name) != getattr(self._config, name)
+        )
+        if restart:
+            logger.warning(
+                f"Discovery config {self._config_path} changed {', '.join(restart)}, "
+                f"which take(s) effect when the engine restarts; its sources are "
+                f"applied now",
+            )
+        self._apply_sources(config)
+        self._config_status = ConfigStatus(
+            path=str(self._config_path),
+            loaded_at=self._wall_clock(),
+            restart_required=restart,
+        )
+
+    def config_status(self) -> ConfigStatus:
+        return self._config_status
+
+    def configured_scans(self) -> list[ResolvedScan]:
+        with self._lock:
+            return [slot.scan for slot in self._slots]
+
+    def _set_status(self, error: Optional[str]) -> None:
+        current = self._config_status
+        self._config_status = ConfigStatus(
+            path=current.path,
+            loaded_at=current.loaded_at,
+            error=error,
+            restart_required=current.restart_required,
+        )
+
+    def _apply_sources(self, config: StandaloneDiscoveryConfig) -> None:
+        with self._lock:
+            now = self._clock()
+            old = {s.scan.discovery_source_config_id: s for s in self._slots}
+            slots: list[_Slot] = []
+            added, changed = [], []
+            for scan in config.scans():
+                name = f"{scan.source_name}/{scan.config.name}"
+                slot = old.pop(scan.discovery_source_config_id, None)
+                if slot is None:
+                    slot = _Slot(
+                        scan=scan,
+                        logger=scan_logger(scan, self._sink),
+                        next_due=now,
+                    )
+                    added.append(name)
+                elif slot.scan != scan:
+                    slot.scan = scan
+                    slot.logger = scan_logger(scan, self._sink)
+                    if not slot.alive():
+                        slot.next_due = min(slot.next_due, now)
+                    changed.append(name)
+                slots.append(slot)
+            removed = list(old.values())
+            for slot in removed:
+                if slot.alive():
+                    slot.stop.set()
+                    self._retired.append(slot)
+            self._slots = slots
+            # Only the sources change; the rest waits for a restart.
+            self._config = config.model_copy(
+                update={name: getattr(self._config, name) for name in RESTART_ONLY},
+            )
+        gone = [f"{s.scan.source_name}/{s.scan.config.name}" for s in removed]
+        logger.info(
+            (
+                f"Reloaded {self._config_path}: "
+                + "; ".join(
+                    f"{label} {', '.join(names)}"
+                    for label, names in (
+                        ("added", added),
+                        ("changed", changed),
+                        ("removed", gone),
+                    )
+                    if names
+                )
+                if added or changed or gone
+                else f"Reloaded {self._config_path}: no source changed"
+            ),
+        )
 
     def request_stop(self) -> None:
         """Start a graceful shutdown: no new scans, and running ones told to stop."""
@@ -299,12 +482,12 @@ class StandaloneDiscoveryAgent:
             # Nothing can be asked for once no new scans will start.
             self.control.stop()
         deadline = self._clock() + grace_seconds
-        for slot in self._slots:
+        for slot in [*self._slots, *self._retired]:
             if slot.thread is not None:
                 slot.thread.join(max(deadline - self._clock(), 0.0))
         abandoned = [
             f"{s.scan.source_name}/{s.scan.config.name}"
-            for s in self._slots
+            for s in [*self._slots, *self._retired]
             if s.alive()
         ]
         if abandoned:

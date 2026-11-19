@@ -7,7 +7,8 @@ from typing import Any, Iterator, Optional
 import pytest
 import requests
 
-from standalone.agent import ScanState
+from standalone import control
+from standalone.agent import ConfigStatus, ScanState
 from standalone.control import ControlServer, control_from_env
 
 TOKEN = "t" * 40
@@ -29,6 +30,22 @@ def state(status: str = "waiting", config_name: str = "c") -> ScanState:
 class FakeAgent:
     def __init__(self) -> None:
         self.asked: list[tuple[str, Optional[str]]] = []
+        self.applied = 0
+
+    def config_status(self) -> ConfigStatus:
+        return ConfigStatus(
+            path="/etc/deckard/discovery.yaml",
+            loaded_at=STARTED,
+            error="Discovery config is invalid",
+            restart_required=("schedule",),
+        )
+
+    def configured_scans(self) -> list[Any]:
+        return []
+
+    def apply_config_now(self) -> tuple[ConfigStatus, list[ScanState]]:
+        self.applied += 1
+        return self.config_status(), [state("running")]
 
     def scan_states(self) -> list[ScanState]:
         return [state("scheduled")]
@@ -130,9 +147,11 @@ def test_every_route_needs_the_token(
         f"{base}/scans/run", headers=headers, json={"source_id": "src-1"}, timeout=5
     )
 
-    assert (listed.status_code, ran.status_code) == (401, 401)
+    applied = requests.post(f"{base}/config/reload", headers=headers, timeout=5)
+
+    assert (listed.status_code, ran.status_code, applied.status_code) == (401, 401, 401)
     assert "src-1" not in listed.text
-    assert fake.asked == []
+    assert fake.asked == [] and fake.applied == 0
 
 
 def test_off_without_a_token(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -214,3 +233,58 @@ def test_a_token_and_a_token_file_are_refused_together(
 
     with pytest.raises(SystemExit, match="not both"):
         control_from_env(FakeAgent())  # type: ignore[arg-type]
+
+
+def test_reports_the_config_it_runs(base: str) -> None:
+    response = requests.get(f"{base}/config", headers=AUTH, timeout=5)
+
+    assert response.json() == {
+        "path": "/etc/deckard/discovery.yaml",
+        "loaded_at": "2026-01-01T12:00:00Z",
+        "error": "Discovery config is invalid",
+        "restart_required": ["schedule"],
+    }
+
+
+def test_applies_the_config_now(base: str, fake: FakeAgent) -> None:
+    response = requests.post(f"{base}/config/reload", headers=AUTH, timeout=5)
+
+    assert response.status_code == 200
+    assert fake.applied == 1
+    body = response.json()
+    assert body["config"]["error"] == "Discovery config is invalid"
+    assert [s["status"] for s in body["scans"]] == ["running"]
+
+
+def test_serves_each_vendors_form(base: str) -> None:
+    response = requests.get(f"{base}/source-types", headers=AUTH, timeout=5)
+
+    vendors = {entry["vendor"] for entry in response.json()["source_types"]}
+    assert {"wiz", "jamf_pro", "local"} <= vendors
+
+
+def test_tests_a_source(base: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[Any] = []
+
+    def fake(
+        raw: Any, config_name: Any, configured: Any, keep: Any, validate_only: bool
+    ) -> Any:
+        seen.append((raw, config_name, keep, validate_only))
+        return {"outcome": "succeeded"}
+
+    monkeypatch.setattr(control, "try_source", fake)
+    body = {"source": {"name": "w"}, "config_name": "c", "keep_secrets_from": "w"}
+
+    response = requests.post(f"{base}/sources/test", headers=AUTH, json=body, timeout=5)
+
+    assert response.status_code == 200 and response.json() == {"outcome": "succeeded"}
+    assert seen == [({"name": "w"}, "c", "w", False)]
+
+
+def test_a_source_that_cannot_be_tested_says_why(base: str) -> None:
+    body = {"source": {"name": "w", "vendor": "no-such-vendor"}}
+
+    response = requests.post(f"{base}/sources/test", headers=AUTH, json=body, timeout=5)
+
+    assert response.status_code == 400
+    assert "is not a discovery vendor" in response.json()["error"]

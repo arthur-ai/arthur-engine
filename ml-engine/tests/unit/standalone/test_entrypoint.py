@@ -28,6 +28,7 @@ class Started:
         self.engines: list[str] = []
         self.config: Any = None
         self.sink: Any = None
+        self.config_path: Any = None
 
 
 @pytest.fixture
@@ -39,9 +40,10 @@ def started(monkeypatch: pytest.MonkeyPatch) -> Started:
             record.engines.append("platform")
 
     class FakeStandaloneAgent:
-        def __init__(self, config: Any, sink: Any) -> None:
+        def __init__(self, config: Any, sink: Any, config_path: Any) -> None:
             record.config = config
             record.sink = sink
+            record.config_path = config_path
 
         def run(self) -> None:
             record.engines.append("standalone")
@@ -80,6 +82,8 @@ def test_an_enabled_config_runs_standalone(
     assert started.config.sources[0].name == "vertex"
     # Built once from the config's destination, before the agent starts.
     assert isinstance(started.sink, WebhookSink)
+    # And watches the file it was started from.
+    assert started.config_path == tmp_path / "discovery.yaml"
 
 
 def test_a_disabled_config_polls_the_platform(
