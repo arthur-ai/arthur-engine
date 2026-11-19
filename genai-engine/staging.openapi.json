@@ -26204,7 +26204,8 @@
                     "bedrock",
                     "vertex_ai",
                     "hosted_vllm",
-                    "azure"
+                    "azure",
+                    "scaledown"
                 ],
                 "title": "ModelProvider"
             },
