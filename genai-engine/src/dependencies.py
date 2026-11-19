@@ -62,6 +62,8 @@ from scorer import (
     ToxicityScorer,
     UserQueryRelevanceScorer,
 )
+from scorer.checks.pii.classifier import get_pii_classifier
+from scorer.checks.pii.classifier_v1 import get_pii_classifier_v1
 from scorer.score import ScorerClient
 from utils import constants
 from utils.model_load import (
@@ -164,9 +166,9 @@ def get_scorer_client() -> ScorerClient:
     global SINGLETON_SCORER_CLIENT
     if not SINGLETON_SCORER_CLIENT:
         if USE_PII_MODEL_V2:
-            pii_data_classifier = BinaryPIIDataClassifier()
+            pii_data_classifier = get_pii_classifier()
         else:
-            pii_data_classifier = BinaryPIIDataClassifierV1()
+            pii_data_classifier = get_pii_classifier_v1()
 
         SINGLETON_SCORER_CLIENT = ScorerClient(
             {

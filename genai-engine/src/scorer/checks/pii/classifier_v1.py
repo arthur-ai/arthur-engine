@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from presidio_analyzer import AnalyzerEngine
@@ -140,3 +141,21 @@ class BinaryPIIDataClassifierV1(RuleScorer):
             prompt_tokens=0,
             completion_tokens=0,
         )
+
+
+_PII_CLASSIFIER_V1: BinaryPIIDataClassifierV1 | None = None
+_PII_CLASSIFIER_V1_LOCK = threading.Lock()
+
+
+def get_pii_classifier_v1() -> BinaryPIIDataClassifierV1:
+    """Return this process's BinaryPIIDataClassifierV1, building it on first use.
+
+    Construction builds a Presidio AnalyzerEngine, which loads its own spaCy
+    pipeline, so callers must share one instance rather than build their own.
+    """
+    global _PII_CLASSIFIER_V1
+    if _PII_CLASSIFIER_V1 is None:
+        with _PII_CLASSIFIER_V1_LOCK:
+            if _PII_CLASSIFIER_V1 is None:
+                _PII_CLASSIFIER_V1 = BinaryPIIDataClassifierV1()
+    return _PII_CLASSIFIER_V1

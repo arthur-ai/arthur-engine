@@ -7,6 +7,7 @@ using both Presidio and GLiNER models.
 
 import logging
 import re
+import threading
 
 import spacy
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
@@ -54,7 +55,7 @@ class BinaryPIIDataClassifier:
     DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
     def __init__(self) -> None:
-        """Initialize the PII classifier as a per-process singleton."""
+        """Build the classifier; share one per process via get_pii_classifier()."""
         self.model = get_gliner_model()
         self.tokenizer = get_gliner_tokenizer()
         self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
@@ -262,3 +263,21 @@ class BinaryPIIDataClassifier:
                     )
 
         return datetime_spans
+
+
+_PII_CLASSIFIER: BinaryPIIDataClassifier | None = None
+_PII_CLASSIFIER_LOCK = threading.Lock()
+
+
+def get_pii_classifier() -> BinaryPIIDataClassifier:
+    """Return this process's BinaryPIIDataClassifier, building it on first use.
+
+    Construction loads a spaCy pipeline that is not released when the classifier
+    is dropped, so callers must share one instance rather than build their own.
+    """
+    global _PII_CLASSIFIER
+    if _PII_CLASSIFIER is None:
+        with _PII_CLASSIFIER_LOCK:
+            if _PII_CLASSIFIER is None:
+                _PII_CLASSIFIER = BinaryPIIDataClassifier()
+    return _PII_CLASSIFIER
