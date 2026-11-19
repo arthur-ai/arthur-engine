@@ -8,8 +8,10 @@ from typing import Callable
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import requests
+import spacy
 import torch
 from bert_score import BERTScorer
+from date_spacy import find_dates  # noqa: F401 - Import registers the component
 from gliner import GLiNER, GLiNERConfig
 from huggingface_hub import hf_hub_download
 from huggingface_hub.constants import ENDPOINT as DEFAULT_HUGGINGFACE_CO_URL
@@ -112,6 +114,7 @@ RELEVANCE_RERANKER: TextClassificationPipeline | None = None
 PII_GLINER_MODEL = None
 PII_GLINER_TOKENIZER: PreTrainedTokenizerBase | None = None
 PII_PRESIDIO_ANALYZER = None
+PII_DATE_NLP: spacy.language.Language | None = None
 
 
 def log_model_loading(
@@ -717,3 +720,25 @@ def get_presidio_analyzer() -> AnalyzerEngine | None:
     if PII_PRESIDIO_ANALYZER is None:
         PII_PRESIDIO_ANALYZER = AnalyzerEngine()
     return PII_PRESIDIO_ANALYZER
+
+
+@log_model_loading("pii date spacy pipeline")
+def get_pii_date_nlp() -> spacy.language.Language | None:
+    """spaCy pipeline with date_spacy, used by the PII classifier to find dates.
+
+    Shared per process: loading en_core_web_lg takes ~0.6 GB that is not released
+    when a classifier is dropped, so it must not be loaded per classifier.
+    """
+    if skip_model_loading():
+        logger.info(
+            "Skipping pii date spacy pipeline - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
+    global PII_DATE_NLP
+    if PII_DATE_NLP is None:
+        # A minimal pipeline without NER, to avoid entity conflicts. add_pipe runs
+        # once here, on the pipeline every classifier shares.
+        date_nlp = spacy.load("en_core_web_lg", exclude=["ner"])
+        date_nlp.add_pipe("find_dates")
+        PII_DATE_NLP = date_nlp
+    return PII_DATE_NLP

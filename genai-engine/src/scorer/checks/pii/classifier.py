@@ -7,11 +7,8 @@ using both Presidio and GLiNER models.
 
 import logging
 import re
-import threading
 
-import spacy
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
-from date_spacy import find_dates  # noqa: F401 - Import registers the component
 
 from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import (
@@ -34,6 +31,7 @@ from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from utils.model_load import (
     get_gliner_model,
     get_gliner_tokenizer,
+    get_pii_date_nlp,
     get_presidio_analyzer,
 )
 
@@ -55,16 +53,14 @@ class BinaryPIIDataClassifier:
     DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
     def __init__(self) -> None:
-        """Build the classifier; share one per process via get_pii_classifier()."""
+        """Initialize the PII classifier; the models it uses are per-process singletons."""
         self.model = get_gliner_model()
         self.tokenizer = get_gliner_tokenizer()
         self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
         self.analyzer = get_presidio_analyzer()
 
-        # Initialize spaCy with date_spacy for datetime detection
-        # Create a minimal pipeline without NER to avoid entity conflicts
-        self.date_nlp = spacy.load("en_core_web_lg", exclude=["ner"])
-        self.date_nlp.add_pipe("find_dates")
+        # spaCy with date_spacy for datetime detection (None when models are skipped)
+        self.date_nlp = get_pii_date_nlp()
 
         # Get all entity values from enum
         entities = PIIEntityTypes.values()
@@ -96,9 +92,9 @@ class BinaryPIIDataClassifier:
         text = sanitize(request.scoring_text or "")
         disabled_entities = set(request.disabled_pii_entities or [])
         allow_list = request.allow_list or []
-        confidence_threshold = (
-            request.pii_confidence_threshold or self.DEFAULT_CONFIDENCE_THRESHOLD
-        )
+        confidence_threshold = request.pii_confidence_threshold
+        if confidence_threshold is None:
+            confidence_threshold = self.DEFAULT_CONFIDENCE_THRESHOLD
 
         # Process with Presidio
         all_spans = process_presidio(
@@ -188,9 +184,10 @@ class BinaryPIIDataClassifier:
 
         datetime_spans: list[DateTimeSpan] = []
 
-        # Phase 1: spaCy NER (intelligent, context-aware detection)
-        doc = self.date_nlp(text)
-        for ent in doc.ents:
+        # Phase 1: spaCy NER (intelligent, context-aware detection); skipped when
+        # the model is not loaded, like the other PII models
+        entities = self.date_nlp(text).ents if self.date_nlp is not None else ()
+        for ent in entities:
             if ent.label_ == "DATE":
                 # Check if the entity has a parsed date
                 parsed_date = ent._.date if hasattr(ent._, "date") else None
@@ -263,21 +260,3 @@ class BinaryPIIDataClassifier:
                     )
 
         return datetime_spans
-
-
-_PII_CLASSIFIER: BinaryPIIDataClassifier | None = None
-_PII_CLASSIFIER_LOCK = threading.Lock()
-
-
-def get_pii_classifier() -> BinaryPIIDataClassifier:
-    """Return this process's BinaryPIIDataClassifier, building it on first use.
-
-    Construction loads a spaCy pipeline that is not released when the classifier
-    is dropped, so callers must share one instance rather than build their own.
-    """
-    global _PII_CLASSIFIER
-    if _PII_CLASSIFIER is None:
-        with _PII_CLASSIFIER_LOCK:
-            if _PII_CLASSIFIER is None:
-                _PII_CLASSIFIER = BinaryPIIDataClassifier()
-    return _PII_CLASSIFIER

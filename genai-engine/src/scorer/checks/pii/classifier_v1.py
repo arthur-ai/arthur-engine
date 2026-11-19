@@ -1,5 +1,4 @@
 import logging
-import threading
 
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from presidio_analyzer import AnalyzerEngine
@@ -11,7 +10,6 @@ from schemas.scorer_schemas import (
     ScorerPIIEntitySpan,
     ScorerRuleDetails,
 )
-from scorer.checks.pii.classifier import get_gliner_model, get_gliner_tokenizer
 from scorer.checks.pii.pii_utils import (
     filter_by_allow_list,
     postprocess_spans,
@@ -21,6 +19,11 @@ from scorer.checks.pii.pii_utils import (
 from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from scorer.checks.pii.validations import is_name
 from scorer.scorer import RuleScorer
+from utils.model_load import (
+    get_gliner_model,
+    get_gliner_tokenizer,
+    get_presidio_analyzer,
+)
 
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
@@ -28,7 +31,7 @@ logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 class BinaryPIIDataClassifierV1(RuleScorer):
     def __init__(self) -> None:
         """Initialized the binary classifier for PII Data"""
-        self.analyzer: AnalyzerEngine = AnalyzerEngine()
+        self.analyzer: AnalyzerEngine | None = get_presidio_analyzer()
         self.default_confidence_threshold: float = 0.5
         self.gliner_model = get_gliner_model()
         self.gliner_tokenizer = get_gliner_tokenizer()
@@ -141,21 +144,3 @@ class BinaryPIIDataClassifierV1(RuleScorer):
             prompt_tokens=0,
             completion_tokens=0,
         )
-
-
-_PII_CLASSIFIER_V1: BinaryPIIDataClassifierV1 | None = None
-_PII_CLASSIFIER_V1_LOCK = threading.Lock()
-
-
-def get_pii_classifier_v1() -> BinaryPIIDataClassifierV1:
-    """Return this process's BinaryPIIDataClassifierV1, building it on first use.
-
-    Construction builds a Presidio AnalyzerEngine, which loads its own spaCy
-    pipeline, so callers must share one instance rather than build their own.
-    """
-    global _PII_CLASSIFIER_V1
-    if _PII_CLASSIFIER_V1 is None:
-        with _PII_CLASSIFIER_V1_LOCK:
-            if _PII_CLASSIFIER_V1 is None:
-                _PII_CLASSIFIER_V1 = BinaryPIIDataClassifierV1()
-    return _PII_CLASSIFIER_V1

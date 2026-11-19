@@ -242,6 +242,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     model_load.get_prompt_injection_tokenizer()
     model_load.get_toxicity_model()
     model_load.get_toxicity_tokenizer()
+    # Before the continuous eval threads start, so they never race the first load.
+    model_load.get_pii_date_nlp()
 
     # Initialize continuous eval queue service
     try:

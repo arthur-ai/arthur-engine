@@ -9,8 +9,8 @@ from schemas.request_schemas import ToxicityEvalConfig
 from schemas.response_schemas import EvalRunResponse
 from schemas.scorer_schemas import ScoreRequest
 from scorer.base_ml_scorer import BaseMLScorer
-from scorer.checks.pii.classifier import get_pii_classifier
-from scorer.checks.pii.classifier_v1 import get_pii_classifier_v1
+from scorer.checks.pii.classifier import BinaryPIIDataClassifier
+from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
 from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClassifier
 from scorer.checks.toxicity.toxicity import ToxicityScorer
 from utils.constants import DEFAULT_TOXICITY_RULE_THRESHOLD
@@ -96,14 +96,13 @@ class PromptInjectionMLScorer(BaseMLScorer):
 def get_ml_scorer(eval_type: str) -> Optional[BaseMLScorer]:
     """Return a BaseMLScorer for the given eval_type, or None if unknown.
 
-    Underlying models are cached by model_load.py, and the PII classifiers (which
-    load spaCy pipelines of their own) are shared per process; the scorer wrappers
-    are lightweight.
+    Every model a scorer uses, including the PII classifiers' spaCy pipelines, is a
+    per-process singleton in model_load.py, so building a scorer per eval is cheap.
     """
     if eval_type == EvalKind.PII.value:
-        return PIIScorerV2(get_pii_classifier())
+        return PIIScorerV2(BinaryPIIDataClassifier())
     elif eval_type == EvalKind.PII_V1.value:
-        return PIIScorerV1(get_pii_classifier_v1())
+        return PIIScorerV1(BinaryPIIDataClassifierV1())
     elif eval_type == EvalKind.TOXICITY.value:
         return ToxicityMLScorer(
             ToxicityScorer(
