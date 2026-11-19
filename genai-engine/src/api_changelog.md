@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/18/2026
+- **CHANGE** for **URL**: /api/v1/chatbot/config  added the new optional request property `use_default_model`
+
 # 11/17/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_name` became optional for the status `200`
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_provider` became optional for the status `200`

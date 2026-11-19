@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ChatbotConfigResponse(BaseModel):
@@ -29,7 +29,22 @@ class ChatbotConfigUpdateRequest(BaseModel):
 
     model_provider: Optional[ModelProvider] = None
     model_name: Optional[str] = None
+    use_default_model: Optional[bool] = Field(
+        default=None,
+        description=(
+            "True moves the chatbot back to the instance's default model provider. "
+            "Can't be combined with model_provider or model_name."
+        ),
+    )
     blacklist_endpoints: Optional[List[str]] = None
+
+    @model_validator(mode="after")
+    def validate_one_model_choice(self) -> "ChatbotConfigUpdateRequest":
+        if self.use_default_model and (self.model_provider or self.model_name):
+            raise ValueError(
+                "Set either use_default_model or model_provider and model_name, not both.",
+            )
+        return self
 
 
 class SearchArthurApiArgs(BaseModel):

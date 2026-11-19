@@ -23,6 +23,8 @@ const baseProps = {
   },
 };
 
+const RETENTION_DAYS = [90];
+
 const openModelSelect = () => {
   fireEvent.mouseDown(screen.getByLabelText("Model Name"));
 };
@@ -44,5 +46,44 @@ describe("UserSettingsModal", () => {
     openModelSelect();
 
     expect(screen.getAllByRole("option", { name: "gpt-4o" })).toHaveLength(1);
+  });
+
+  it("shows the default model choice for a chatbot that follows the default", () => {
+    const onSave = vi.fn();
+    render(
+      <UserSettingsModal
+        {...baseProps}
+        onSave={onSave}
+        defaultModelLabel="openai · gpt-4.1-mini"
+        initialSettings={{ ...baseProps.initialSettings, chatbotUseDefaultModel: true }}
+      />
+    );
+
+    expect(screen.getByText("Default model · openai · gpt-4.1-mini")).toBeTruthy();
+    expect(screen.queryByLabelText("Model Name")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ chatbotUseDefaultModel: true }));
+  });
+
+  it("leaves the default when a provider is picked", () => {
+    const onSave = vi.fn();
+    render(
+      <UserSettingsModal
+        {...baseProps}
+        onSave={onSave}
+        availableModelsMap={new Map([["openai", ["gpt-4o"]]])}
+        // a stable array: the default [] is a new one each render, which re-runs the
+        // reset-on-open effect and would undo the pick
+        allowedTraceRetentionDays={RETENTION_DAYS}
+        initialSettings={{ ...baseProps.initialSettings, chatbotUseDefaultModel: true }}
+      />
+    );
+
+    fireEvent.mouseDown(screen.getByLabelText("Model Provider"));
+    fireEvent.click(screen.getByRole("option", { name: "openai" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ chatbotUseDefaultModel: false, chatbotModelProvider: "openai" }));
   });
 });

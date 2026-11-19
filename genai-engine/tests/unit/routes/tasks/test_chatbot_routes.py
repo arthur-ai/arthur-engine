@@ -5,15 +5,25 @@ import pytest
 from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
 from fastapi import HTTPException
 
+from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallResult
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 from tests.unit.routes.tasks.helpers import (
     final_response_events,
     make_stream,
     make_token_count_response,
     make_tool_call,
     parse_sse_event,
+)
+from utils.constants import (
+    ARTHUR_SYSTEM_TASK_ID,
+    CHATBOT_SUMMARIZER_PROMPT_NAME,
+    EMPTY_MODEL_NAME,
+    EMPTY_MODEL_PROVIDER,
 )
 
 # The chatbot runs on the default model provider, which is instance-wide state
@@ -89,6 +99,89 @@ def test_chatbot_config_shows_default_model(
     assert config["model_provider"] == "anthropic"
     assert config["model_name"] == "claude-sonnet-4-6"
     assert config["uses_default_model"] is True
+
+
+def _put_chatbot_config(client: GenaiEngineTestClientBase, body: dict):
+    return client.base_client.put(
+        "/api/v1/chatbot/config",
+        json=body,
+        headers=client.authorized_org_admin_api_key_headers,
+    )
+
+
+def _summarizer_model(client: GenaiEngineTestClientBase) -> tuple:
+    db = override_get_db_session()
+    try:
+        prompt = AgenticPromptRepository(db).get_llm_item_by_tag(
+            task_id=ARTHUR_SYSTEM_TASK_ID,
+            item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
+            tag="production",
+        )
+        return prompt.model_provider, prompt.model_name
+    finally:
+        db.close()
+
+
+@pytest.mark.unit_tests
+def test_chatbot_config_save_of_shown_default_keeps_following_it(
+    client: GenaiEngineTestClientBase,
+    anthropic_default: None,
+):
+    # A settings form that sends everything back sends the default's model with an
+    # unrelated change; that must not pin the chatbot to today's default.
+    config = client.base_client.get(
+        "/api/v1/chatbot/config",
+        headers=client.authorized_org_admin_api_key_headers,
+    ).json()
+    response = _put_chatbot_config(
+        client,
+        {
+            "model_provider": config["model_provider"],
+            "model_name": config["model_name"],
+            "blacklist_endpoints": config["blacklist_endpoints"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["uses_default_model"] is True
+    assert _summarizer_model(client) == (EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME)
+
+
+@pytest.mark.unit_tests
+def test_chatbot_config_moves_back_to_default_model(
+    client: GenaiEngineTestClientBase,
+    anthropic_default: None,
+):
+    try:
+        response = _put_chatbot_config(
+            client,
+            {"model_provider": "openai", "model_name": "gpt-4o"},
+        )
+        assert response.status_code == 200
+        assert response.json()["uses_default_model"] is False
+        assert _summarizer_model(client) == ("openai", "gpt-4o")
+
+        response = _put_chatbot_config(client, {"use_default_model": True})
+        assert response.status_code == 200
+        config = response.json()
+        assert config["uses_default_model"] is True
+        assert config["model_provider"] == "anthropic"
+        assert config["model_name"] == "claude-sonnet-4-6"
+        assert _summarizer_model(client) == (EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME)
+    finally:
+        # back to the default for the other tests
+        _put_chatbot_config(client, {"use_default_model": True})
+
+
+@pytest.mark.unit_tests
+def test_chatbot_config_rejects_default_with_a_model(
+    client: GenaiEngineTestClientBase,
+):
+    response = _put_chatbot_config(
+        client,
+        {"use_default_model": True, "model_provider": "openai", "model_name": "gpt-4o"},
+    )
+    assert response.status_code == 400
+    assert "use_default_model" in response.text
 
 
 @pytest.mark.unit_tests

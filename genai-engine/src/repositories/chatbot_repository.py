@@ -28,6 +28,7 @@ from utils.constants import (
     ARTHUR_SYSTEM_TASK_ID,
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
+    EMPTY_MODEL_NAME,
     EMPTY_MODEL_PROVIDER,
 )
 
@@ -183,6 +184,39 @@ class ChatbotRepository:
             available_endpoints=available,
         )
 
+    def _save_chatbot_prompts(self, model_provider: str, model_name: str) -> None:
+        """Save a new production version of both chatbot prompts on the given model.
+        The 'empty' placeholder makes them follow the default model provider."""
+        for prompt_name in (CHATBOT_PROMPT_NAME, CHATBOT_SUMMARIZER_PROMPT_NAME):
+            prompt = cast(
+                AgenticPrompt,
+                self.agentic_prompt_repo.get_llm_item_by_tag(
+                    task_id=ARTHUR_SYSTEM_TASK_ID,
+                    item_name=prompt_name,
+                    tag="production",
+                ),
+            )
+            item = CreateAgenticPromptRequest(
+                messages=prompt.messages,
+                model_name=model_name,
+                # Placeholder provider: the request type only accepts real providers,
+                # so the actual one (possibly 'empty') is set below.
+                model_provider=ModelProvider.OPENAI,
+                tools=prompt.tools,
+                config=prompt.config,  # type: ignore[arg-type]
+            ).model_copy(update={"model_provider": model_provider})
+            new_version = self.agentic_prompt_repo.save_llm_item(
+                task_id=ARTHUR_SYSTEM_TASK_ID,
+                item_name=prompt_name,
+                item=item,
+            )
+            self.agentic_prompt_repo.add_tag_to_llm_item_version(
+                task_id=ARTHUR_SYSTEM_TASK_ID,
+                item_name=prompt_name,
+                item_version=str(new_version.version),
+                tag="production",
+            )
+
     def update_chatbot_config(
         self,
         update: ChatbotConfigUpdateRequest,
@@ -202,7 +236,23 @@ class ChatbotRepository:
         model_provider = update.model_provider or current_provider
         model_name = update.model_name or current_model
 
-        if update.model_provider is None and update.model_name is None:
+        if update.use_default_model:
+            if uses_default_model:
+                logger.info(
+                    "Chatbot already uses the default model, skipping prompt update"
+                )
+            else:
+                self._save_chatbot_prompts(EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME)
+                uses_default_model = True
+                model_provider, model_name = self._resolve_chatbot_model(
+                    chatbot_prompt.model_copy(
+                        update={
+                            "model_provider": EMPTY_MODEL_PROVIDER,
+                            "model_name": EMPTY_MODEL_NAME,
+                        },
+                    ),
+                )
+        elif update.model_provider is None and update.model_name is None:
             logger.info("No chatbot model change requested, skipping prompt update")
         elif model_provider is None or model_name is None:
             raise HTTPException(
@@ -211,6 +261,15 @@ class ChatbotRepository:
                     "Set both model_provider and model_name: the chatbot uses the "
                     "default model provider, and none is set."
                 ),
+            )
+        elif uses_default_model and (model_provider, model_name) == (
+            current_provider,
+            current_model,
+        ):
+            # A client that sends the whole form back sends the default's model too;
+            # that is not a pick, so the chatbot keeps following the default.
+            logger.info(
+                "Requested model is the current default, chatbot keeps using the default",
             )
         elif (
             chatbot_prompt.model_provider == model_provider
@@ -221,50 +280,7 @@ class ChatbotRepository:
             )
         else:
             uses_default_model = False
-            new_version = self.agentic_prompt_repo.save_llm_item(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                item=CreateAgenticPromptRequest(
-                    messages=chatbot_prompt.messages,
-                    model_name=model_name,
-                    model_provider=model_provider,
-                    tools=chatbot_prompt.tools,
-                    config=chatbot_prompt.config,  # type: ignore[arg-type]
-                ),
-            )
-
-            self.agentic_prompt_repo.add_tag_to_llm_item_version(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                item_version=str(new_version.version),
-                tag="production",
-            )
-
-            summarizer_prompt = cast(
-                AgenticPrompt,
-                self.agentic_prompt_repo.get_llm_item_by_tag(
-                    task_id=ARTHUR_SYSTEM_TASK_ID,
-                    item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                    tag="production",
-                ),
-            )
-            new_summarizer_version = self.agentic_prompt_repo.save_llm_item(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                item=CreateAgenticPromptRequest(
-                    messages=summarizer_prompt.messages,
-                    model_name=model_name,
-                    model_provider=model_provider,
-                    tools=summarizer_prompt.tools,
-                    config=summarizer_prompt.config,  # type: ignore[arg-type]
-                ),
-            )
-            self.agentic_prompt_repo.add_tag_to_llm_item_version(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                item_version=str(new_summarizer_version.version),
-                tag="production",
-            )
+            self._save_chatbot_prompts(ModelProvider(model_provider).value, model_name)
 
         if update.blacklist_endpoints is not None:
             self.set_blacklist_endpoints(update.blacklist_endpoints)

@@ -53,6 +53,8 @@ function MethodChip({ method, compact = false }: { method: string; compact?: boo
 }
 
 const TITLE_ID = "user-settings-dialog-title";
+// Model Provider choice that makes the chatbot follow the default model provider
+const DEFAULT_MODEL_OPTION = "__default__";
 const DESCRIPTION_ID = "user-settings-dialog-description";
 
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
@@ -65,6 +67,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   timezoneOptions = DEFAULT_TIMEZONE_OPTIONS,
   enabledProviders = [],
   availableModelsMap = new Map(),
+  defaultModelLabel = null,
   availableEndpoints = [],
   chatbotEnabled = false,
   traceRetentionEnabled = false,
@@ -87,6 +90,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [enableChatbot, setEnableChatbot] = useState<boolean>(resolvedEnableChatbot);
   const [chatbotProvider, setChatbotProvider] = useState<ModelProvider | "">(initialSettings?.chatbotModelProvider ?? "");
   const [chatbotModelName, setChatbotModelName] = useState<string>(initialSettings?.chatbotModelName ?? "");
+  const [chatbotUseDefault, setChatbotUseDefault] = useState<boolean>(initialSettings?.chatbotUseDefaultModel ?? false);
   const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>(initialSettings?.blacklistEndpoints ?? []);
   const [blacklistSearch, setBlacklistSearch] = useState("");
   const retentionDefault = initialTraceRetentionDays ?? allowedTraceRetentionDays[0];
@@ -99,6 +103,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setEnableChatbot(initialSettings?.enableChatbot ?? true);
       setChatbotProvider(initialSettings?.chatbotModelProvider ?? "");
       setChatbotModelName(initialSettings?.chatbotModelName ?? "");
+      setChatbotUseDefault(initialSettings?.chatbotUseDefaultModel ?? false);
       setBlacklistEndpoints(initialSettings?.blacklistEndpoints ?? []);
       setBlacklistSearch("");
       setTraceRetentionDays(initialTraceRetentionDays ?? allowedTraceRetentionDays[0]);
@@ -110,6 +115,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     initialSettings?.enableChatbot,
     initialSettings?.chatbotModelProvider,
     initialSettings?.chatbotModelName,
+    initialSettings?.chatbotUseDefaultModel,
     initialSettings?.blacklistEndpoints,
     initialTraceRetentionDays,
     allowedTraceRetentionDays,
@@ -130,8 +136,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   };
 
   const handleProviderChange = (event: SelectChangeEvent<string>) => {
-    const newProvider = event.target.value as ModelProvider | "";
-    setChatbotProvider(newProvider);
+    const choice = event.target.value;
+    setChatbotUseDefault(choice === DEFAULT_MODEL_OPTION);
+    setChatbotProvider(choice === DEFAULT_MODEL_OPTION ? "" : (choice as ModelProvider | ""));
     setChatbotModelName("");
   };
 
@@ -147,6 +154,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       enableChatbot,
       chatbotModelProvider: chatbotProvider,
       chatbotModelName,
+      chatbotUseDefaultModel: chatbotUseDefault,
       blacklistEndpoints,
     });
   };
@@ -238,7 +246,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <>
                 <FormControl fullWidth size="small" disabled={isLoading} sx={{ mt: 2 }}>
                   <InputLabel id="chatbot-provider-label">Model Provider</InputLabel>
-                  <Select labelId="chatbot-provider-label" label="Model Provider" value={chatbotProvider} onChange={handleProviderChange}>
+                  <Select
+                    labelId="chatbot-provider-label"
+                    label="Model Provider"
+                    value={chatbotUseDefault ? DEFAULT_MODEL_OPTION : chatbotProvider}
+                    onChange={handleProviderChange}
+                  >
+                    <MenuItem value={DEFAULT_MODEL_OPTION}>
+                      {defaultModelLabel ? `Default model · ${defaultModelLabel}` : "Default model (none set)"}
+                    </MenuItem>
                     {enabledProviders.map((provider) => (
                       <MenuItem key={provider} value={provider}>
                         {provider}
@@ -246,21 +262,27 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl fullWidth size="small" disabled={isLoading || !chatbotProvider} sx={{ mt: 2 }}>
-                  <InputLabel id="chatbot-model-label">Model Name</InputLabel>
-                  <Select labelId="chatbot-model-label" label="Model Name" value={chatbotModelName} onChange={handleModelNameChange}>
-                    {staleChatbotModel && (
-                      <MenuItem key={staleChatbotModel} value={staleChatbotModel}>
-                        {staleChatbotModel}
-                      </MenuItem>
-                    )}
-                    {chatbotModels.map((model: string) => (
-                      <MenuItem key={model} value={model}>
-                        {model}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                {chatbotUseDefault ? (
+                  <Typography variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary" }}>
+                    Follows the default model set on the Model Providers page.
+                  </Typography>
+                ) : (
+                  <FormControl fullWidth size="small" disabled={isLoading || !chatbotProvider} sx={{ mt: 2 }}>
+                    <InputLabel id="chatbot-model-label">Model Name</InputLabel>
+                    <Select labelId="chatbot-model-label" label="Model Name" value={chatbotModelName} onChange={handleModelNameChange}>
+                      {staleChatbotModel && (
+                        <MenuItem key={staleChatbotModel} value={staleChatbotModel}>
+                          {staleChatbotModel}
+                        </MenuItem>
+                      )}
+                      {chatbotModels.map((model: string) => (
+                        <MenuItem key={model} value={model}>
+                          {model}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
               </>
             )}
             {availableEndpoints.length > 0 && (

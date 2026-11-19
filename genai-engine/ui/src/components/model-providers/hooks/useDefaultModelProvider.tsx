@@ -10,10 +10,11 @@ const invalidateOnChange = [
   ...queryKeys.providers.defaultDependents().map((queryKey) => ({ queryKey })),
 ];
 
-export const useDefaultModelProvider = () =>
+export const useDefaultModelProvider = (enabled = true) =>
   useApiQuery<"getDefaultModelProviderApiV1DefaultModelProviderGet">({
     method: "getDefaultModelProviderApiV1DefaultModelProviderGet",
     args: [] as const,
+    enabled,
   });
 
 export const useSetDefaultModelProvider = () => {

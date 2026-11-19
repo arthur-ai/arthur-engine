@@ -1481,6 +1481,11 @@ export interface ChatbotConfigUpdateRequest {
   /** Model Name */
   model_name?: string | null;
   model_provider?: ModelProvider | null;
+  /**
+   * Use Default Model
+   * True moves the chatbot back to the instance's default model provider. Can't be combined with model_provider or model_name.
+   */
+  use_default_model?: boolean | null;
 }
 
 /** ChatbotRequest */

@@ -20784,6 +20784,18 @@
                         ],
                         "title": "Model Name"
                     },
+                    "use_default_model": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Use Default Model",
+                        "description": "True moves the chatbot back to the instance's default model provider. Can't be combined with model_provider or model_name."
+                    },
                     "blacklist_endpoints": {
                         "anyOf": [
                             {

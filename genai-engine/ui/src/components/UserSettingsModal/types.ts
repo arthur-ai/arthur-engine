@@ -7,6 +7,8 @@ export interface UserSettings {
   enableChatbot?: boolean;
   chatbotModelProvider?: ModelProvider | "";
   chatbotModelName?: string;
+  /** True when the chatbot follows the default model provider instead of a picked model. */
+  chatbotUseDefaultModel?: boolean;
   blacklistEndpoints?: string[];
 }
 
@@ -32,6 +34,8 @@ export interface UserSettingsModalProps {
   enabledProviders?: ModelProvider[];
   /** Map of provider to available model names. */
   availableModelsMap?: Map<ModelProvider, string[]>;
+  /** The default model provider and model, e.g. "openai · gpt-4.1-mini"; null when none is set. */
+  defaultModelLabel?: string | null;
   /** All available chatbot endpoints for the blacklist selector. */
   availableEndpoints?: string[];
   /** Whether trace retention configuration is available. Controls visibility of the Application section. */

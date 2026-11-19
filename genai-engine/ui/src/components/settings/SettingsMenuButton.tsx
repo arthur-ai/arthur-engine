@@ -11,6 +11,7 @@ import { useNavigate } from "react-router";
 
 import { ThemeToggle } from "../common/ThemeToggle";
 
+import { useDefaultModelProvider } from "@/components/model-providers/hooks/useDefaultModelProvider";
 import { UserSettingsModal } from "@/components/UserSettingsModal";
 import type { UserSettings } from "@/components/UserSettingsModal/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -60,6 +61,9 @@ export const SettingsMenuButton: React.FC = () => {
 
   const chatbotModelProvider: ModelProvider | "" = chatbotConfigQuery.data?.model_provider ?? "";
   const chatbotModelName: string = chatbotConfigQuery.data?.model_name ?? "";
+  const chatbotUsesDefault = chatbotConfigQuery.data?.uses_default_model ?? false;
+  const { data: defaultModel } = useDefaultModelProvider(userSettingsModalOpen && !isTenant);
+  const defaultModelLabel = defaultModel?.provider && defaultModel?.model_name ? `${defaultModel.provider} · ${defaultModel.model_name}` : null;
   const blacklistEndpoints: string[] = chatbotConfigQuery.data?.blacklist_endpoints ?? [];
   const availableEndpoints: string[] = chatbotConfigQuery.data?.available_endpoints ?? [];
 
@@ -78,16 +82,22 @@ export const SettingsMenuButton: React.FC = () => {
 
     setIsSavingSettings(true);
     try {
-      const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
-      const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
+      const backToDefault = !!settings.chatbotUseDefaultModel && !chatbotUsesDefault;
+      // Only a model the admin actually picked is sent: sending the shown model back on
+      // every save would pin a chatbot that follows the default to today's default.
+      const pickedModel =
+        !settings.chatbotUseDefaultModel &&
+        !!settings.chatbotModelProvider &&
+        !!settings.chatbotModelName &&
+        (chatbotUsesDefault || settings.chatbotModelProvider !== chatbotModelProvider || settings.chatbotModelName !== chatbotModelName);
       const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
 
-      if (api && (providerChanged || modelChanged || blacklistChanged)) {
+      if (api && (backToDefault || pickedModel || blacklistChanged)) {
         try {
           await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
-            model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
-            model_name: settings.chatbotModelName || chatbotModelName,
-            blacklist_endpoints: settings.blacklistEndpoints,
+            ...(backToDefault && { use_default_model: true }),
+            ...(pickedModel && { model_provider: settings.chatbotModelProvider as ModelProvider, model_name: settings.chatbotModelName }),
+            ...(blacklistChanged && { blacklist_endpoints: settings.blacklistEndpoints }),
           });
           await queryClient.invalidateQueries({ queryKey: CHATBOT_CONFIG_QUERY_KEY });
         } catch (err) {
@@ -195,11 +205,13 @@ export const SettingsMenuButton: React.FC = () => {
           enableChatbot,
           chatbotModelProvider,
           chatbotModelName,
+          chatbotUseDefaultModel: chatbotUsesDefault,
           blacklistEndpoints,
         }}
         chatbotEnabled={serverChatbotEnabled}
         enabledProviders={enabledProviders}
         availableModelsMap={availableModelsMap}
+        defaultModelLabel={defaultModelLabel}
         availableEndpoints={availableEndpoints}
         traceRetentionEnabled={!appConfigError && !!appConfig}
         initialTraceRetentionDays={appConfig?.trace_retention_days}
