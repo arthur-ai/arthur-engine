@@ -20,7 +20,6 @@ from sqlalchemy.exc import IntegrityError
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.llm_evals_repository import LLMEvalsRepository
-from schemas.custom_exceptions import DefaultModelProviderNotSetException
 from schemas.enums import LLMMetadataSortField
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
@@ -31,7 +30,6 @@ from schemas.request_schemas import (
     LLMRequestConfigSettings,
 )
 from schemas.response_schemas import (
-    DefaultModelProvider,
     EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
@@ -1864,85 +1862,3 @@ def test_create_eval_passes_reasoning_settings_for_unknown_models():
         instructions="Is {{answer}} correct?",
         config={"reasoning_effort": "none"},
     )
-
-
-@pytest.mark.unit_tests
-@patch("clients.llm.llm_client.completion_cost", return_value=0.0004)
-@patch("clients.llm.llm_client.litellm.completion")
-def test_run_llm_eval_resolves_default_provider_before_the_call(
-    mock_completion,
-    mock_completion_cost,
-    llm_evals_repo,
-):
-    # An eval stored with the 'default' provider. model_construct skips validation,
-    # standing in for the arthur-common Eval once it accepts 'default'.
-    stored_eval = Eval.model_construct(
-        name="default_eval",
-        model_provider="default",
-        model_name="default",
-        instructions="Is {{answer}} correct? " + CACHEABLE_EVAL_RUBRIC,
-        variables=["answer"],
-        config=None,
-        version=1,
-        created_at=datetime.now(),
-        deleted_at=None,
-    )
-    llm_evals_repo.get_llm_item = MagicMock(return_value=stored_eval)
-    llm_evals_repo.model_provider_repo.get_default_model_provider = MagicMock(
-        return_value=DefaultModelProvider(
-            provider=ModelProvider.OPENAI,
-            model_name="gpt-4o",
-        ),
-    )
-    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
-        return_value=LLMClient(provider=ModelProvider.OPENAI, api_key="api_key"),
-    )
-    mock_response = MagicMock(spec=ModelResponse)
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {"content": '{"reason": "ok", "score": 1}'}
-    mock_completion.return_value = mock_response
-
-    result = llm_evals_repo.run_llm_eval(
-        "task",
-        "default_eval",
-        org_id=DEFAULT_ORG_ID,
-        completion_request=BaseCompletionRequest(
-            variables=[VariableTemplateValue(name="answer", value="Paris")],
-        ),
-    )
-
-    # the client, the model on the wire, and provider-specific caching all see the
-    # resolved provider, so the recorded cost is the real model's
-    llm_evals_repo.model_provider_repo.get_model_provider_client.assert_called_once_with(
-        provider=ModelProvider.OPENAI,
-    )
-    request = mock_completion.call_args.kwargs
-    assert request["model"] == "openai/gpt-4o"
-    assert "prompt_cache_key" in request
-    assert result.cost == "0.000400"
-
-
-@pytest.mark.unit_tests
-@pytest.mark.parametrize("stored_provider", ["default", None])
-def test_run_llm_eval_default_provider_unset_raises(llm_evals_repo, stored_provider):
-    # 'default' and an unset provider both resolve to the default, which isn't set
-    stored_eval = Eval.model_construct(
-        name="default_eval",
-        model_provider=stored_provider,
-        model_name="default",
-        instructions="Is it correct?",
-        variables=[],
-        config=None,
-        version=1,
-        created_at=datetime.now(),
-        deleted_at=None,
-    )
-    llm_evals_repo.get_llm_item = MagicMock(return_value=stored_eval)
-    llm_evals_repo.model_provider_repo.get_default_model_provider = MagicMock(
-        return_value=DefaultModelProvider(),
-    )
-    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock()
-
-    with pytest.raises(DefaultModelProviderNotSetException):
-        llm_evals_repo.run_llm_eval("task", "default_eval", org_id=DEFAULT_ORG_ID)
-    llm_evals_repo.model_provider_repo.get_model_provider_client.assert_not_called()

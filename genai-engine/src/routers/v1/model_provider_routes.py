@@ -347,8 +347,8 @@ def get_model_reasoning_options(
     summary="Get the default model provider and model.",
     description=(
         "Returns the provider and model used wherever no model is named: Arthur's "
-        "own features (synthetic data, the chatbot, the demo task) and evals saved "
-        "with the 'default' provider. Both are null when no default is set."
+        "own features, such as synthetic data and the chatbot. Evals keep the model "
+        "they were saved with. Both are null when no default is set."
     ),
     tags=["Model Providers"],
     response_model=DefaultModelProvider,
@@ -367,7 +367,7 @@ def get_default_model_provider(
     description=(
         "Sets the provider and model used wherever no model is named. The provider "
         "must already be configured. Everything using the default picks up a change "
-        "on its next call; a model named on an eval or prompt always wins."
+        "on its next call; a model picked for a feature always wins."
     ),
     tags=["Model Providers"],
     status_code=HTTP_204_NO_CONTENT,
@@ -387,7 +387,7 @@ def set_default_model_provider(
     "/default_model_provider",
     summary="Clear the default model provider and model.",
     description=(
-        "Clears the default. Features and evals that use the default fail with a "
+        "Clears the default. Features that use the default fail with a "
         "'no default model provider' error until a default is set again."
     ),
     tags=["Model Providers"],

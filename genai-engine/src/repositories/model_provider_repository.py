@@ -27,12 +27,9 @@ from schemas.response_schemas import (
     ModelProviderResponse,
 )
 from services.prompt.provider_eval_defaults import apply_provider_eval_defaults
-from utils.constants import DEFAULT_MODEL_PROVIDER, EMPTY_MODEL_PROVIDER
+from utils.constants import EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
-
-# Stored providers that mean "use the instance's default model provider"
-_USES_DEFAULT_MODEL = (DEFAULT_MODEL_PROVIDER, EMPTY_MODEL_PROVIDER)
 
 
 class ModelProviderRepository:
@@ -472,14 +469,14 @@ class ModelProviderRepository:
         provider: ModelProvider | str | None,
         model_name: str | None,
     ) -> tuple[ModelProvider, str]:
-        """Return the provider and model to call. A provider that is unset, 'default'
-        or the 'empty' placeholder resolves to the instance's default model provider;
-        any other provider is returned as is, so an explicit model always wins.
+        """Return the provider and model to call. An unset provider or the 'empty'
+        placeholder resolves to the instance's default model provider; any other
+        provider is returned as is, so an explicit model always wins.
 
-        Resolve before anything reads the provider or model (structured-output check,
-        provider eval defaults, prompt caching, the completion call), so that all of
-        them, and the cost recorded from the response, see the real model."""
-        if provider is not None and str(provider) not in _USES_DEFAULT_MODEL:
+        Resolve before anything reads the provider or model (the client, prompt
+        caching, the completion call), so that all of them, and the cost recorded
+        from the response, see the real model."""
+        if provider is not None and str(provider) != EMPTY_MODEL_PROVIDER:
             if not model_name:
                 raise HTTPException(
                     status_code=HTTP_400_BAD_REQUEST,

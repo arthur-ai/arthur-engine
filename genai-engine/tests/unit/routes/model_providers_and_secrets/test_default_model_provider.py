@@ -2,7 +2,6 @@ import pytest
 from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 
-from repositories.demo_task_repository import DemoTaskRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.custom_exceptions import DefaultModelProviderNotSetException
 from schemas.request_schemas import PutDefaultModelProvider
@@ -91,11 +90,11 @@ def test_resolve_model():
         repo.resolve_model(ModelProvider.OPENAI, None)
     assert exc.value.status_code == 400
 
-    # 'default', the 'empty' placeholder and an unset provider all use the default;
+    # the 'empty' placeholder and an unset provider both use the default;
     # with nothing set they fail with its own exception type
-    for stored in ("default", "empty", None):
+    for stored in ("empty", None):
         with pytest.raises(DefaultModelProviderNotSetException):
-            repo.resolve_model(stored, "default")
+            repo.resolve_model(stored, None)
 
     repo.set_model_provider_credentials(ModelProvider.ANTHROPIC)
     try:
@@ -105,7 +104,7 @@ def test_resolve_model():
                 model_name="claude-haiku-4-5",
             ),
         )
-        for stored in ("default", "empty", None):
+        for stored in ("empty", None):
             assert repo.resolve_model(stored, None) == (
                 ModelProvider.ANTHROPIC,
                 "claude-haiku-4-5",
@@ -154,34 +153,3 @@ def test_synthetic_data_prompt_status_reports_the_default(
     finally:
         api.delete("/api/v1/default_model_provider", headers=headers)
         api.delete("/api/v1/model_providers/openai", headers=headers)
-
-
-@pytest.mark.unit_tests
-def test_demo_task_prefers_the_default_model_provider():
-    db = override_get_db_session()
-    repo = ModelProviderRepository(db)
-    demo = DemoTaskRepository(db)
-    repo.clear_default_model_provider()
-    repo.set_model_provider_credentials(ModelProvider.ANTHROPIC)
-    repo.set_model_provider_credentials(ModelProvider.OPENAI)
-    try:
-        # no default: today's preference, Anthropic first
-        assert demo._get_model_provider_and_name() == (
-            ModelProvider.ANTHROPIC,
-            "claude-haiku-4-5",
-        )
-        repo.set_default_model_provider(
-            PutDefaultModelProvider(
-                provider=ModelProvider.OPENAI,
-                model_name="gpt-4.1-mini",
-            ),
-        )
-        assert demo._get_model_provider_and_name() == (
-            ModelProvider.OPENAI,
-            "gpt-4.1-mini",
-        )
-    finally:
-        repo.clear_default_model_provider()
-        repo.delete_model_provider_credentials(ModelProvider.ANTHROPIC)
-        repo.delete_model_provider_credentials(ModelProvider.OPENAI)
-        db.close()

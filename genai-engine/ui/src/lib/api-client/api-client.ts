@@ -16058,7 +16058,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Clears the default. Features and evals that use the default fail with a 'no default model provider' error until a default is set again.
+     * @description Clears the default. Features that use the default fail with a 'no default model provider' error until a default is set again.
      *
      * @tags Model Providers
      * @name ClearDefaultModelProviderApiV1DefaultModelProviderDelete
@@ -16075,7 +16075,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Returns the provider and model used wherever no model is named: Arthur's own features (synthetic data, the chatbot, the demo task) and evals saved with the 'default' provider. Both are null when no default is set.
+     * @description Returns the provider and model used wherever no model is named: Arthur's own features, such as synthetic data and the chatbot. Evals keep the model they were saved with. Both are null when no default is set.
      *
      * @tags Model Providers
      * @name GetDefaultModelProviderApiV1DefaultModelProviderGet
@@ -16093,7 +16093,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Sets the provider and model used wherever no model is named. The provider must already be configured. Everything using the default picks up a change on its next call; a model named on an eval or prompt always wins.
+     * @description Sets the provider and model used wherever no model is named. The provider must already be configured. Everything using the default picks up a change on its next call; a model picked for a feature always wins.
      *
      * @tags Model Providers
      * @name SetDefaultModelProviderApiV1DefaultModelProviderPut

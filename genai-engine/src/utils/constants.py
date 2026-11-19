@@ -468,10 +468,6 @@ PRODUCTION_TAG = "production"
 EMPTY_MODEL_PROVIDER = "empty"
 EMPTY_MODEL_NAME = "empty"
 
-# Default model provider sentinel — an eval saved with this provider is judged by
-# the instance's default model, looked up when the eval runs
-DEFAULT_MODEL_PROVIDER = "default"
-
 ##################################################################
 
 # Agent Experiment constants

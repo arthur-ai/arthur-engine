@@ -65,8 +65,8 @@ export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProvide
           Default model
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5, mb: 2 }}>
-          Used wherever no model is named: synthetic data, the chatbot, the demo task, and evals saved with the default. A model named on an eval or
-          prompt always wins.
+          Used wherever no model is named: synthetic data and the chatbot. A model picked for a feature always wins, and evals keep the model they
+          were saved with.
         </Typography>
 
         {isLoading ? (
