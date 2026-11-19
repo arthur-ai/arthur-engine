@@ -1,16 +1,27 @@
 """An HTTP API for asking the standalone engine to scan a source now, and for seeing
 where each scan stands. Off unless the engine is given a token.
 
-    GET  /scans       every (source, config) pair: running, waiting, or when it is next due
-    POST /scans/run   {"source_id": ..., "config_name": ...}: make the source's pairs --
-                      or the one named -- due now. 202 with where each stands, 404 if
-                      none match.
+    GET  /scans          every (source, config) pair: running, waiting, or when it is
+                         next due
+    POST /scans/run      {"source_id": ..., "config_name": ...}: make the source's pairs
+                         -- or the one named -- due now. 202 with where each stands, 404
+                         if none match.
+    GET  /config         the config file the engine runs: when it was loaded, why a
+                         later change could not be, and what waits for a restart
+    GET  /source-types   each vendor's form, as the Platform's source types give it
+    POST /sources/test   {"source": ..., "config_name": ..., "keep_secrets_from": ...}:
+                         Test Connection, with values given rather than read from the
+                         config. With "validate_only": true, only checks it as
+                         the config file's loader would. See `standalone.sources`.
 
-Both need `Authorization: Bearer <token>`, the token given as ML_ENGINE_CONTROL_TOKEN or
-in the file ML_ENGINE_CONTROL_TOKEN_FILE names. The API can only bring a
-configured scan forward: it takes no config, no credentials and no destination, so the
-worst a caller holding the token can do is scan the configured sources more often than
-the schedule would, and a pair already running is never started twice.
+Every route needs `Authorization: Bearer <token>`, the token given as ML_ENGINE_CONTROL_TOKEN or
+in the file ML_ENGINE_CONTROL_TOKEN_FILE names. The API changes nothing
+configured: a scan it asks for is a configured one brought forward, and a test runs a
+connector against credentials the caller sends -- or, asked for by source name, the
+configured source's own, which is what lets a form that edits a source test it without
+reading its secrets back. That last is the one way a caller holding the token can have
+a configured secret sent somewhere it chooses, so treat the token as you would those
+secrets. Sources are added by writing the config file, which the engine watches.
 
 IT LISTENS ON EVERY INTERFACE. Its caller is a dashboard in another container, so
 loopback would not reach it; the token is what keeps anyone else out. Publish the port
@@ -29,6 +40,9 @@ from flask import Flask, jsonify, request
 from flask.typing import ResponseReturnValue
 from werkzeug.serving import BaseWSGIServer, make_server
 
+from standalone.discovery_config import StandaloneConfigError
+from standalone.sources import source_types, try_source
+
 if TYPE_CHECKING:
     from standalone.agent import ScanState, StandaloneDiscoveryAgent
 
@@ -42,8 +56,8 @@ DEFAULT_PORT = 7494
 DEFAULT_HOST = "0.0.0.0"
 # Long enough that it cannot be guessed; `openssl rand -hex 32` gives 64.
 MIN_TOKEN_LENGTH = 32
-# A request body is two short strings.
-MAX_BODY_BYTES = 4096
+# A source with a service account key in it is a few KB; nothing sent here is larger.
+MAX_BODY_BYTES = 256 * 1024
 # Source IDs are UUIDs and config names are short; anything longer is not one.
 MAX_FIELD_LENGTH = 200
 
@@ -125,6 +139,43 @@ class ControlServer:
             if not states:
                 return jsonify(error="no configured scan matches"), 404
             return jsonify(scans=[_describe(s) for s in states]), 202
+
+        @app.get("/config")
+        def config() -> ResponseReturnValue:
+            status = self._agent.config_status()
+            return jsonify(
+                path=status.path,
+                loaded_at=_iso(status.loaded_at),
+                error=status.error,
+                restart_required=list(status.restart_required),
+            )
+
+        @app.get("/source-types")
+        def types() -> ResponseReturnValue:
+            return jsonify(source_types=source_types())
+
+        @app.post("/sources/test")
+        def test() -> ResponseReturnValue:
+            body = request.get_json(silent=True)
+            if not isinstance(body, dict):
+                return jsonify(error="the body must be a JSON object"), 400
+            config_name = body.get("config_name")
+            keep = body.get("keep_secrets_from")
+            if config_name is not None and not _field(config_name):
+                return jsonify(error="config_name must be a non-empty string"), 400
+            if keep is not None and not _field(keep):
+                return jsonify(error="keep_secrets_from must be a source name"), 400
+            try:
+                result = try_source(
+                    body.get("source"),
+                    config_name,
+                    self._agent.configured_scans(),
+                    keep,
+                    validate_only=body.get("validate_only") is True,
+                )
+            except StandaloneConfigError as e:
+                return jsonify(error=str(e)), 400
+            return jsonify(result)
 
         return app
 

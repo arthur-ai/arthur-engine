@@ -369,7 +369,7 @@ def main() -> None:
         if config is not None:
             # Built once, here, and shared by every scan the agent runs.
             sink = config.destination.build_sink(logging.getLogger("standalone.sink"))
-            StandaloneDiscoveryAgent(config, sink).run()
+            StandaloneDiscoveryAgent(config, sink, config_path=path).run()
             return
         logger.info(f"Standalone discovery is disabled in {path}; polling the Platform")
     JobAgent().run()

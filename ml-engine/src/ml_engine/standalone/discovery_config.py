@@ -30,6 +30,7 @@ was wrong, never what was in it: pydantic's default message quotes the input, an
 input to a credential field is the credential.
 """
 
+import hashlib
 import logging
 import math
 import os
@@ -284,32 +285,7 @@ class StandaloneDiscoveryConfig(StrictModel):
 
     def scans(self) -> list[ResolvedScan]:
         """Every (source, config) pair, split into what the connector reads."""
-        resolved = []
-        for source in self.sources:
-            secret_keys = sensitive_fields(source.vendor) or frozenset()
-            source_fields = {
-                f.key: f.value for f in source.fields if f.key not in secret_keys
-            }
-            credentials: dict[str, Optional[str]] = {
-                f.key: f.value for f in source.fields if f.key in secret_keys
-            }
-            for config in source.configs:
-                resolved.append(
-                    ResolvedScan(
-                        source_name=source.name,
-                        discovery_source_config_id=_id(
-                            config.discovery_source_id,
-                            config.name,
-                        ),
-                        config=config.model_copy(
-                            update={"source_fields": source_fields},
-                        ),
-                        lookback_hours=math.ceil(config.lookback_window_seconds / 3600),
-                        source_fields=source_fields,
-                        credentials=credentials,
-                    ),
-                )
-        return resolved
+        return [scan for source in self.sources for scan in resolve_source(source)]
 
     def configs_with_gaps(self) -> list[str]:
         """`source/config` for each config whose window is shorter than the interval.
@@ -325,6 +301,73 @@ class StandaloneDiscoveryConfig(StrictModel):
             for config in source.configs
             if 0 < config.lookback_window_seconds < interval
         ]
+
+
+def resolve_source(source: StandaloneSource) -> list[ResolvedScan]:
+    """One source's (source, config) pairs, its fields split into what the connector
+    reads as settings and what it reads as credentials."""
+    secret_keys = sensitive_fields(source.vendor) or frozenset()
+    source_fields = {f.key: f.value for f in source.fields if f.key not in secret_keys}
+    credentials: dict[str, Optional[str]] = {
+        f.key: f.value for f in source.fields if f.key in secret_keys
+    }
+    return [
+        ResolvedScan(
+            source_name=source.name,
+            discovery_source_config_id=_id(config.discovery_source_id, config.name),
+            config=config.model_copy(update={"source_fields": source_fields}),
+            lookback_hours=math.ceil(config.lookback_window_seconds / 3600),
+            source_fields=source_fields,
+            credentials=credentials,
+        )
+        for config in source.configs
+    ]
+
+
+def source_from_values(raw: Any) -> StandaloneSource:
+    """A source given as values, not as config text: nothing in it is a `${NAME}` or a
+    `{file: path}` reference, so a caller can name only credentials it already holds.
+    Raises StandaloneConfigError naming what is wrong, never a value."""
+    try:
+        source: StandaloneSource = StandaloneSource.model_validate(raw)
+    except ValidationError as e:
+        raise StandaloneConfigError(f"The source is invalid:\n{_describe(e)}") from None
+    return source
+
+
+def config_fingerprint(path: Path) -> str:
+    """A digest of the config file and every file its `{file: path}` references read,
+    so a changed secret file counts as a changed config even when the config text is
+    the same. Never raises: what cannot be read is left out, for `load_config` to
+    report when it is loaded.
+    """
+    digest = hashlib.sha256()
+    try:
+        text = path.read_bytes()
+    except OSError:
+        return ""
+    digest.update(text)
+    try:
+        raw = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return digest.hexdigest()
+    sources = raw.get("sources") if isinstance(raw, dict) else None
+    for source in sources if isinstance(sources, list) else []:
+        if not isinstance(source, dict):
+            continue
+        entries = [*(source.get("fields") or []), *(source.get("configs") or [])]
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            for value in (entry.get("value"), entry.get("query")):
+                if isinstance(value, dict) and isinstance(value.get("file"), str):
+                    referenced = path.parent / value["file"]
+                    digest.update(referenced.as_posix().encode())
+                    try:
+                        digest.update(referenced.read_bytes())
+                    except OSError:
+                        digest.update(b"\0unreadable")
+    return digest.hexdigest()
 
 
 def standalone_config_path() -> Optional[Path]:
