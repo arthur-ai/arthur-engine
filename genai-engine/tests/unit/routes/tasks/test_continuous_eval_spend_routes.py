@@ -420,6 +420,26 @@ def test_spend_estimate_scales_by_the_filter_match_share(
         assert not_paid.filter_traces_checked == 8
         assert not_paid.filter_match_share == pytest.approx(5 / 8)
 
+        # The eval's own filter scales its estimate the same way. Runs the filter
+        # skipped have no cost, so the average alone would ignore the filter.
+        status_code, _ = client.update_continuous_eval(
+            str(continuous_eval.id),
+            {"trace_filter": json.loads(paid_only)},
+        )
+        assert status_code == 200
+        _add_run(
+            continuous_eval.id,
+            trace_ids[3],
+            ContinuousEvalRunStatus.SKIPPED,
+            None,
+            now - timedelta(hours=1),
+        )
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert status_code == 200
+        assert spend.estimate.filter_traces_checked == 8
+        assert spend.estimate.filter_match_share == pytest.approx(2 / 8)
+        assert spend.estimate.estimated_daily_cost == pytest.approx(0.08 * 2 / 8)
+
         status_code, _ = client.estimate_continuous_eval_spend(
             task.id,
             llm_eval.name,

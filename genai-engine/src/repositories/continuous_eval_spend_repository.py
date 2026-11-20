@@ -67,18 +67,28 @@ class ContinuousEvalSpendRepository:
             .one()
         )
 
+        estimate = self._build_estimate(
+            task_id=continuous_eval.task_id,
+            sample_rate=continuous_eval.sample_rate,
+            run_count=row.run_count,
+            average_run_cost=row.average_run_cost,
+            window_start=window_start,
+            now=now,
+        )
+        # Traces the filter skips never reach the judge, and their runs carry no
+        # cost, so the average says nothing about them: price the filter as its share.
+        self._apply_filter_share(
+            estimate,
+            continuous_eval.task_id,
+            window_start,
+            now,
+            continuous_eval.trace_filter,
+        )
         return ContinuousEvalSpendResponse(
             continuous_eval_id=continuous_eval.id,
             last_24h_run_count=row.day_run_count,
             last_24h_cost=float(row.day_cost),
-            estimate=self._build_estimate(
-                task_id=continuous_eval.task_id,
-                sample_rate=continuous_eval.sample_rate,
-                run_count=row.run_count,
-                average_run_cost=row.average_run_cost,
-                window_start=window_start,
-                now=now,
-            ),
+            estimate=estimate,
         )
 
     def estimate_daily_spend_for_llm_eval(
@@ -119,9 +129,21 @@ class ContinuousEvalSpendRepository:
             window_start=window_start,
             now=now,
         )
-        if not trace_filter:
-            return estimate
+        self._apply_filter_share(estimate, task_id, window_start, now, trace_filter)
+        return estimate
 
+    def _apply_filter_share(
+        self,
+        estimate: ContinuousEvalDailySpendEstimate,
+        task_id: str,
+        window_start: datetime,
+        now: datetime,
+        trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+    ) -> None:
+        """Scale the estimate by the share of the task's recent traces the filter
+        matches, and report that share. No filter leaves the estimate as it is."""
+        if not trace_filter:
+            return
         matched, checked = self._count_filter_matches(
             task_id,
             window_start,
@@ -133,7 +155,6 @@ class ContinuousEvalSpendRepository:
         estimate.filter_traces_checked = checked
         if estimate.estimated_daily_cost is not None and share is not None:
             estimate.estimated_daily_cost *= share
-        return estimate
 
     def _count_filter_matches(
         self,
