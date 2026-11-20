@@ -78,6 +78,11 @@ class ApplicationConfigurationResponse(BaseModel):
     max_llm_rules_per_task_count: int
     trace_retention_days: int
     allowed_trace_retention_days: tuple[int, ...] = ()
+    insights_generation_enabled: bool = Field(
+        default=False,
+        description="Whether insights are generated for this instance. Off by default. "
+        "Insights run on the default model provider.",
+    )
 
 
 class DisplaySettingsResponse(BaseModel):
@@ -398,6 +403,17 @@ class ModelProviderWhitelist(BaseModel):
     )
     catalog: List[str] = Field(
         description="Every model the provider offers, ignoring the whitelist",
+    )
+
+
+class DefaultModelProvider(BaseModel):
+    provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Provider used wherever no model is named, or null when unset",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model of that provider, or null when unset",
     )
 
 
@@ -1033,7 +1049,13 @@ class SyntheticDataPromptStatus(BaseModel):
     )
     is_placeholder: bool = Field(
         ...,
-        description="True when the prompt uses the empty placeholder model",
+        description="True when the prompt uses the empty placeholder model and no "
+        "default model provider is set",
+    )
+    uses_default_model: bool = Field(
+        default=False,
+        description="True when the prompt uses the empty placeholder, so the model "
+        "shown is the instance's default model provider",
     )
 
 

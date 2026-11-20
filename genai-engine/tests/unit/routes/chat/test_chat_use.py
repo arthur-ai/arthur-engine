@@ -2,6 +2,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+
 from chat.embedding import EmbeddingModel
 from repositories.embedding_repository import EmbeddingRepository
 from schemas.internal_schemas import Embedding

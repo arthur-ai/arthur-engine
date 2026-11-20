@@ -1,13 +1,11 @@
-import type { ModelProvider } from "@/lib/api-client/api-client";
-
 export interface UserSettings {
   timezone?: string;
   use24Hour?: boolean;
   traceRetentionDays?: number;
   enableChatbot?: boolean;
-  chatbotModelProvider?: ModelProvider | "";
-  chatbotModelName?: string;
   blacklistEndpoints?: string[];
+  /** Instance-wide insights switch; only set when it changed. */
+  insightsGenerationEnabled?: boolean;
 }
 
 export interface TimezoneOption {
@@ -28,10 +26,10 @@ export interface UserSettingsModalProps {
   timezoneOptions?: TimezoneOption[];
   /** Whether the server has chatbot enabled. Controls visibility of the AI Assistant section. */
   chatbotEnabled?: boolean;
-  /** Available model providers for chatbot config. */
-  enabledProviders?: ModelProvider[];
-  /** Map of provider to available model names. */
-  availableModelsMap?: Map<ModelProvider, string[]>;
+  /** The default model provider and model, e.g. "openai · gpt-4.1-mini"; null when none is set. */
+  defaultModelLabel?: string | null;
+  /** Opens the Model Providers page, where the default model is set. */
+  onOpenModelProviders?: () => void;
   /** All available chatbot endpoints for the blacklist selector. */
   availableEndpoints?: string[];
   /** Whether trace retention configuration is available. Controls visibility of the Application section. */
@@ -40,6 +38,10 @@ export interface UserSettingsModalProps {
   initialTraceRetentionDays?: number;
   /** Allowed retention day values from the server. When empty, the retention selector is hidden. */
   allowedTraceRetentionDays?: number[];
+  /** Whether the instance-wide insights switch can be shown (the application configuration loaded). */
+  insightsGenerationAvailable?: boolean;
+  /** Current instance-wide insights setting from the server. */
+  initialInsightsGenerationEnabled?: boolean;
   /** Whether the application configuration is still loading. */
   isLoadingTraceRetention?: boolean;
   /** True for org-scoped tenant users; hides global-config subsections (chatbot, trace retention). */

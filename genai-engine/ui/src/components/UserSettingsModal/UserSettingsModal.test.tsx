@@ -12,37 +12,85 @@ const baseProps = {
   onClose: vi.fn(),
   onSave: vi.fn(),
   chatbotEnabled: true,
-  enabledProviders: ["openai" as const],
   initialSettings: {
     timezone: "UTC",
     use24Hour: false,
     enableChatbot: true,
-    chatbotModelProvider: "openai" as const,
-    chatbotModelName: "gpt-4o",
     blacklistEndpoints: [],
   },
 };
 
-const openModelSelect = () => {
-  fireEvent.mouseDown(screen.getByLabelText("Model Name"));
-};
+// A stable array: the default [] is a new one each render, which re-runs the
+// reset-on-open effect and would undo a change made in the test.
+const RETENTION_DAYS = [90];
 
 describe("UserSettingsModal", () => {
-  it("keeps a model that is no longer whitelisted selectable, shown as-is", () => {
-    render(<UserSettingsModal {...baseProps} availableModelsMap={new Map([["openai", ["gpt-5"]]])} />);
+  it("shows the default model with no model picker", () => {
+    const onOpenModelProviders = vi.fn();
+    render(<UserSettingsModal {...baseProps} defaultModelLabel="openai · gpt-4.1-mini" onOpenModelProviders={onOpenModelProviders} />);
 
-    openModelSelect();
+    expect(screen.getByText("openai · gpt-4.1-mini")).toBeTruthy();
+    expect(screen.queryByLabelText("Model Provider")).toBeNull();
+    expect(screen.queryByLabelText("Model Name")).toBeNull();
 
-    const stale = screen.getByRole("option", { name: "gpt-4o" });
-    expect(stale.getAttribute("aria-disabled")).toBeNull();
-    expect(screen.queryByText(/no longer listed/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(onOpenModelProviders).toHaveBeenCalled();
   });
 
-  it("does not duplicate a model that is still whitelisted", () => {
-    render(<UserSettingsModal {...baseProps} availableModelsMap={new Map([["openai", ["gpt-4o", "gpt-5"]]])} />);
+  it("warns when no default model is set and links to Model Providers", () => {
+    const onOpenModelProviders = vi.fn();
+    render(<UserSettingsModal {...baseProps} defaultModelLabel={null} onOpenModelProviders={onOpenModelProviders} />);
 
-    openModelSelect();
+    expect(screen.getByText(/No default model is set/)).toBeTruthy();
 
-    expect(screen.getAllByRole("option", { name: "gpt-4o" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Set default" }));
+    expect(onOpenModelProviders).toHaveBeenCalled();
+  });
+
+  it("saves the AI Assistant toggle", () => {
+    const onSave = vi.fn();
+    render(<UserSettingsModal {...baseProps} onSave={onSave} defaultModelLabel="openai · gpt-4.1-mini" allowedTraceRetentionDays={RETENTION_DAYS} />);
+
+    fireEvent.click(screen.getByLabelText("Enable AI Assistant"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ enableChatbot: false }));
+  });
+
+  it("saves the insights switch only when it changed", () => {
+    const onSave = vi.fn();
+    render(
+      <UserSettingsModal
+        {...baseProps}
+        onSave={onSave}
+        insightsGenerationAvailable
+        initialInsightsGenerationEnabled={false}
+        allowedTraceRetentionDays={RETENTION_DAYS}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: undefined }));
+
+    fireEvent.click(screen.getByLabelText("Generate insights"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: true }));
+  });
+
+  it("keeps an insights change when no retention options are passed", () => {
+    const onSave = vi.fn();
+    render(<UserSettingsModal {...baseProps} onSave={onSave} insightsGenerationAvailable initialInsightsGenerationEnabled={false} />);
+
+    fireEvent.click(screen.getByLabelText("Generate insights"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: true }));
+  });
+
+  it("shows the insights switch when the AI Assistant is off on the server", () => {
+    render(<UserSettingsModal {...baseProps} chatbotEnabled={false} insightsGenerationAvailable defaultModelLabel={null} />);
+
+    expect(screen.getByLabelText("Generate insights")).toBeTruthy();
+    expect(screen.queryByLabelText("Enable AI Assistant")).toBeNull();
+    expect(screen.getByText(/No default model is set/)).toBeTruthy();
   });
 });

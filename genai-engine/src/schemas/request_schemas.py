@@ -94,6 +94,11 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
     ] = None
     max_llm_rules_per_task_count: Optional[int] = None
     trace_retention_days: Optional[int] = None
+    insights_generation_enabled: Optional[bool] = Field(
+        default=None,
+        description="Turns insights generation on or off for the whole instance. "
+        "Insights run on the default model provider.",
+    )
 
     @model_validator(mode="after")
     def validate_trace_retention_days(self) -> "ApplicationConfigurationUpdateRequest":
@@ -262,6 +267,16 @@ class PutModelProviderWhitelist(BaseModel):
             "Models to expose for this provider. Null exposes all models. "
             "An empty list is rejected — it would hide every model."
         ),
+    )
+
+
+class PutDefaultModelProvider(BaseModel):
+    provider: ModelProvider = Field(
+        description="Configured provider used wherever no model is named",
+    )
+    model_name: str = Field(
+        min_length=1,
+        description="Model of that provider, e.g. 'gpt-4.1-mini'",
     )
 
 

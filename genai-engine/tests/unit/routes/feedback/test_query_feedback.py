@@ -17,9 +17,9 @@ from db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
-from utils.constants import DEFAULT_ORG_ID
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.feedback import FEEDBACK_DB_SESSION
+from utils.constants import DEFAULT_ORG_ID
 
 NUM_INFERENCES_IN_FEEDBACK_TEST = 3
 

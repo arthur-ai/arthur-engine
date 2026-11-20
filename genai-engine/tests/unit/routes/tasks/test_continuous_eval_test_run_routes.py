@@ -21,7 +21,9 @@ from tests.clients.base_test_client import (
 )
 from utils.constants import DEFAULT_ORG_ID
 
-MOCK_QUEUE_PATH = "repositories.continuous_eval_test_run_repository.get_continuous_eval_queue_service"
+MOCK_QUEUE_PATH = (
+    "repositories.continuous_eval_test_run_repository.get_continuous_eval_queue_service"
+)
 
 
 def create_test_transform(client, task_id):
@@ -199,7 +201,10 @@ def test_create_test_run_success(mock_queue, client: GenaiEngineTestClientBase):
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -239,7 +244,9 @@ def test_create_test_run_success(mock_queue, client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 @patch(MOCK_QUEUE_PATH)
-def test_create_test_run_deduplicates_trace_ids(mock_queue, client: GenaiEngineTestClientBase):
+def test_create_test_run_deduplicates_trace_ids(
+    mock_queue, client: GenaiEngineTestClientBase
+):
     mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that duplicate trace IDs are deduplicated."""
     status_code, task = client.create_task(
@@ -256,7 +263,10 @@ def test_create_test_run_deduplicates_trace_ids(mock_queue, client: GenaiEngineT
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -280,7 +290,9 @@ def test_create_test_run_deduplicates_trace_ids(mock_queue, client: GenaiEngineT
 
 @pytest.mark.unit_tests
 @patch(MOCK_QUEUE_PATH)
-def test_create_test_run_invalid_trace_ids(mock_queue, client: GenaiEngineTestClientBase):
+def test_create_test_run_invalid_trace_ids(
+    mock_queue, client: GenaiEngineTestClientBase
+):
     mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that creating a test run with nonexistent trace IDs returns 404."""
     status_code, task = client.create_task(
@@ -297,7 +309,10 @@ def test_create_test_run_invalid_trace_ids(mock_queue, client: GenaiEngineTestCl
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -354,7 +369,10 @@ def test_create_test_run_empty_trace_ids(mock_queue, client: GenaiEngineTestClie
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -391,7 +409,10 @@ def test_get_test_run(mock_queue, client: GenaiEngineTestClientBase):
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -444,7 +465,10 @@ def test_list_test_runs(mock_queue, client: GenaiEngineTestClientBase):
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -502,7 +526,10 @@ def test_delete_test_run(mock_queue, client: GenaiEngineTestClientBase):
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -571,7 +598,10 @@ def test_test_run_annotations_excluded_from_production_results(
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -626,7 +656,10 @@ def test_test_run_annotations_excluded_from_trace_list(
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 
@@ -678,7 +711,10 @@ def test_test_run_annotations_excluded_from_single_trace(
         assert status_code == 200
 
         status_code, continuous_eval = create_test_continuous_eval(
-            client, task.id, llm_eval, transform,
+            client,
+            task.id,
+            llm_eval,
+            transform,
         )
         assert status_code == 200
 

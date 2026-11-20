@@ -8,8 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ChatbotConfigResponse(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    model_provider: ModelProvider
-    model_name: str
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Provider the chatbot calls: the instance's default model provider. Null when none is set.",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model the chatbot calls: the instance's default model. Null when none is set.",
+    )
     blacklist_endpoints: List[str] = []
     available_endpoints: List[str] = []
 
@@ -17,8 +23,14 @@ class ChatbotConfigResponse(BaseModel):
 class ChatbotConfigUpdateRequest(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    model_provider: Optional[ModelProvider] = None
-    model_name: Optional[str] = None
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="No longer accepted: the chatbot uses the default model provider. Sending it returns 400.",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="No longer accepted: the chatbot uses the default model provider. Sending it returns 400.",
+    )
     blacklist_endpoints: Optional[List[str]] = None
 
 

@@ -1,11 +1,12 @@
 import json
 import logging
-from typing import List, cast
+from typing import List, Optional, cast
 
 from arthur_common.models.llm_model_providers import ModelProvider
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from db_models import DatabaseApplicationConfiguration
 from repositories.agentic_prompts_repository import AgenticPromptRepository
@@ -16,8 +17,8 @@ from schemas.chatbot_schemas import (
     ChatbotConfigUpdateRequest,
     ChatbotRequest,
 )
+from schemas.custom_exceptions import DefaultModelProviderNotSetException
 from schemas.enums import ApplicationConfigurations
-from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.api_call_service import ApiCallService
 from services.chatbot.chatbot_prompts import get_api_index
 from services.chatbot.chatbot_service import ChatbotService
@@ -71,6 +72,14 @@ class ChatbotRepository:
             row.value = value
         self.db_session.commit()
 
+    def _default_model(self) -> tuple[Optional[ModelProvider], Optional[str]]:
+        """The instance's default model provider, which the chatbot always uses.
+        (None, None) when none is set."""
+        try:
+            return self.model_provider_repo.resolve_model(None, None)
+        except DefaultModelProviderNotSetException:
+            return None, None
+
     def stream_response(
         self,
         request: ChatbotRequest,
@@ -97,6 +106,20 @@ class ChatbotRepository:
                 tag="production",
             ),
         )
+        # The chatbot and its summarizer always run on the default model provider;
+        # the model stored on their prompts is not used.
+        chatbot_model_provider, chatbot_model_name = (
+            self.model_provider_repo.resolve_model(None, None)
+        )
+        llm_client = self.model_provider_repo.get_model_provider_client(
+            chatbot_model_provider,
+        )
+        summarizer_prompt = summarizer_prompt.model_copy(
+            update={
+                "model_provider": chatbot_model_provider.value,
+                "model_name": chatbot_model_name,
+            },
+        )
 
         blacklist = self.get_blacklist_endpoints()
         api_call_service = ApiCallService(
@@ -112,17 +135,12 @@ class ChatbotRepository:
             summarizer_prompt=summarizer_prompt,
         )
 
-        chatbot_model_provider = chatbot_prompt.require_configured_provider()
-        llm_client = self.model_provider_repo.get_model_provider_client(
-            chatbot_model_provider,
-        )
-
         prompt = chatbot_service.build_prompt(
             chatbot_prompt=chatbot_prompt,
             task_id=task_id,
             history=request.history,
             model_provider=chatbot_model_provider,
-            model_name=chatbot_prompt.model_name,
+            model_name=chatbot_model_name,
             blacklist=blacklist,
         )
 
@@ -134,21 +152,12 @@ class ChatbotRepository:
         )
 
     def get_chatbot_config(self, app: FastAPI) -> ChatbotConfigResponse:
-        chatbot_prompt = cast(
-            AgenticPrompt,
-            self.agentic_prompt_repo.get_llm_item_by_tag(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                tag="production",
-            ),
-        )
-        blacklist = self.get_blacklist_endpoints()
-        available = get_api_index(app)
+        model_provider, model_name = self._default_model()
         return ChatbotConfigResponse(
-            model_provider=chatbot_prompt.require_configured_provider(),
-            model_name=chatbot_prompt.model_name,
-            blacklist_endpoints=blacklist,
-            available_endpoints=available,
+            model_provider=model_provider,
+            model_name=model_name,
+            blacklist_endpoints=self.get_blacklist_endpoints(),
+            available_endpoints=get_api_index(app),
         )
 
     def update_chatbot_config(
@@ -156,81 +165,14 @@ class ChatbotRepository:
         update: ChatbotConfigUpdateRequest,
         app: FastAPI,
     ) -> ChatbotConfigResponse:
-        chatbot_prompt = cast(
-            AgenticPrompt,
-            self.agentic_prompt_repo.get_llm_item_by_tag(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                tag="production",
-            ),
-        )
-
-        model_provider: ModelProvider = (
-            update.model_provider
-            if update.model_provider is not None
-            else chatbot_prompt.require_configured_provider()
-        )
-        model_name = update.model_name or chatbot_prompt.model_name
-
-        if (
-            chatbot_prompt.model_provider == model_provider
-            and chatbot_prompt.model_name == model_name
-        ):
-            logger.info(
-                f"Chatbot model and provider are the same, skipping prompt update",
-            )
-        else:
-            new_version = self.agentic_prompt_repo.save_llm_item(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                item=CreateAgenticPromptRequest(
-                    messages=chatbot_prompt.messages,
-                    model_name=model_name,
-                    model_provider=model_provider,
-                    tools=chatbot_prompt.tools,
-                    config=chatbot_prompt.config,  # type: ignore[arg-type]
+        if update.model_provider is not None or update.model_name is not None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=(
+                    "The chatbot uses the default model provider. Set the model on "
+                    "the Model Providers page instead."
                 ),
             )
-
-            self.agentic_prompt_repo.add_tag_to_llm_item_version(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                item_version=str(new_version.version),
-                tag="production",
-            )
-
-            summarizer_prompt = cast(
-                AgenticPrompt,
-                self.agentic_prompt_repo.get_llm_item_by_tag(
-                    task_id=ARTHUR_SYSTEM_TASK_ID,
-                    item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                    tag="production",
-                ),
-            )
-            new_summarizer_version = self.agentic_prompt_repo.save_llm_item(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                item=CreateAgenticPromptRequest(
-                    messages=summarizer_prompt.messages,
-                    model_name=model_name,
-                    model_provider=model_provider,
-                    tools=summarizer_prompt.tools,
-                    config=summarizer_prompt.config,  # type: ignore[arg-type]
-                ),
-            )
-            self.agentic_prompt_repo.add_tag_to_llm_item_version(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-                item_version=str(new_summarizer_version.version),
-                tag="production",
-            )
-
         if update.blacklist_endpoints is not None:
             self.set_blacklist_endpoints(update.blacklist_endpoints)
-
-        return ChatbotConfigResponse(
-            model_provider=model_provider,
-            model_name=model_name,
-            blacklist_endpoints=self.get_blacklist_endpoints(),
-            available_endpoints=get_api_index(app),
-        )
+        return self.get_chatbot_config(app)

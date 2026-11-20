@@ -11,14 +11,13 @@ import { useNavigate } from "react-router";
 
 import { ThemeToggle } from "../common/ThemeToggle";
 
+import { useDefaultModelProvider } from "@/components/model-providers/hooks/useDefaultModelProvider";
 import { UserSettingsModal } from "@/components/UserSettingsModal";
 import type { UserSettings } from "@/components/UserSettingsModal/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useApplicationConfiguration } from "@/hooks/useApplicationConfiguration";
-import { useAvailableModels, useModelProviders } from "@/hooks/useModelProviders";
-import type { ModelProvider } from "@/lib/api-client/api-client";
 
 const CHATBOT_CONFIG_QUERY_KEY = ["getChatbotConfigApiV1ChatbotConfigGet"] as const;
 
@@ -28,8 +27,6 @@ export const SettingsMenuButton: React.FC = () => {
   const queryClient = useQueryClient();
   const { logout, isTenant } = useAuth();
   const { timezone, use24Hour, setTimezone, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
-  const { providers: enabledProviders } = useModelProviders();
-  const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
   const {
     data: appConfig,
     isLoading: isLoadingAppConfig,
@@ -58,8 +55,8 @@ export const SettingsMenuButton: React.FC = () => {
     },
   });
 
-  const chatbotModelProvider: ModelProvider | "" = chatbotConfigQuery.data?.model_provider ?? "";
-  const chatbotModelName: string = chatbotConfigQuery.data?.model_name ?? "";
+  const { data: defaultModel } = useDefaultModelProvider(userSettingsModalOpen && !isTenant);
+  const defaultModelLabel = defaultModel?.provider && defaultModel?.model_name ? `${defaultModel.provider} · ${defaultModel.model_name}` : null;
   const blacklistEndpoints: string[] = chatbotConfigQuery.data?.blacklist_endpoints ?? [];
   const availableEndpoints: string[] = chatbotConfigQuery.data?.available_endpoints ?? [];
 
@@ -78,17 +75,11 @@ export const SettingsMenuButton: React.FC = () => {
 
     setIsSavingSettings(true);
     try {
-      const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
-      const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
       const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
 
-      if (api && (providerChanged || modelChanged || blacklistChanged)) {
+      if (api && blacklistChanged) {
         try {
-          await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
-            model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
-            model_name: settings.chatbotModelName || chatbotModelName,
-            blacklist_endpoints: settings.blacklistEndpoints,
-          });
+          await api.api.updateChatbotConfigApiV1ChatbotConfigPut({ blacklist_endpoints: settings.blacklistEndpoints });
           await queryClient.invalidateQueries({ queryKey: CHATBOT_CONFIG_QUERY_KEY });
         } catch (err) {
           const message = err instanceof Error ? err.message : "Failed to update chatbot settings";
@@ -96,9 +87,12 @@ export const SettingsMenuButton: React.FC = () => {
         }
       }
 
-      if (settings.traceRetentionDays !== undefined) {
+      if (settings.traceRetentionDays !== undefined || settings.insightsGenerationEnabled !== undefined) {
         try {
-          await updateConfiguration({ trace_retention_days: settings.traceRetentionDays });
+          await updateConfiguration({
+            trace_retention_days: settings.traceRetentionDays,
+            insights_generation_enabled: settings.insightsGenerationEnabled,
+          });
           enqueueSnackbar("Application configuration updated", { variant: "success" });
         } catch (err) {
           const message = err instanceof Error ? err.message : "Failed to update configuration";
@@ -193,18 +187,21 @@ export const SettingsMenuButton: React.FC = () => {
           timezone,
           use24Hour,
           enableChatbot,
-          chatbotModelProvider,
-          chatbotModelName,
           blacklistEndpoints,
         }}
         chatbotEnabled={serverChatbotEnabled}
-        enabledProviders={enabledProviders}
-        availableModelsMap={availableModelsMap}
+        defaultModelLabel={defaultModelLabel}
+        onOpenModelProviders={() => {
+          setUserSettingsModalOpen(false);
+          navigate("/settings/model-providers");
+        }}
         availableEndpoints={availableEndpoints}
         traceRetentionEnabled={!appConfigError && !!appConfig}
         initialTraceRetentionDays={appConfig?.trace_retention_days}
         allowedTraceRetentionDays={appConfig?.allowed_trace_retention_days}
         isLoadingTraceRetention={isLoadingAppConfig}
+        insightsGenerationAvailable={!appConfigError && !!appConfig}
+        initialInsightsGenerationEnabled={appConfig?.insights_generation_enabled ?? false}
         isSaving={isSavingSettings}
         onSave={handleSettingsSave}
       />

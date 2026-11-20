@@ -1,8 +1,9 @@
 from typing import Generator
 
 import pytest
-from repositories.inference_repository import InferenceRepository
 from arthur_common.models.response_schemas import ConversationBaseResponse
+
+from repositories.inference_repository import InferenceRepository
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
