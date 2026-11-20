@@ -1,9 +1,10 @@
 import random
 import uuid
+from concurrent.futures import Future
 from contextlib import contextmanager
 from copy import deepcopy
 from typing import Generator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from arthur_common.models.response_schemas import TaskResponse
@@ -127,3 +128,42 @@ def setup_db_session_context_mock(mock_db_session_context: MagicMock) -> None:
     # db_session_context is a context manager function, so when called it should return a context manager
     # Use side_effect to return a new context manager each time it's called
     mock_db_session_context.side_effect = lambda: mock_db_session_context_func()
+
+
+class _InlineExecutor:
+    """A ThreadPoolExecutor stand-in that runs each submitted call on the calling thread.
+
+    The unit-test database is a single in-memory SQLite connection shared by every
+    session (StaticPool with check_same_thread=False), so the experiment executors'
+    worker threads and their progress-tracking loop would otherwise interleave
+    transactions on that one connection. The resulting sqlite errors are swallowed by
+    the executors' own except blocks, which leaves the experiment RUNNING with no
+    progress and the test polling until it times out.
+    """
+
+    def __init__(self, max_workers: int | None = None, *args, **kwargs) -> None:
+        pass
+
+    def __enter__(self) -> "_InlineExecutor":
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        pass
+
+    def submit(self, fn, /, *args, **kwargs) -> Future:
+        future: Future = Future()
+        try:
+            future.set_result(fn(*args, **kwargs))
+        except BaseException as e:  # as_completed() re-raises it from future.result()
+            future.set_exception(e)
+        return future
+
+    def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def run_experiment_test_cases_inline() -> Generator[None, None, None]:
+    """Keep experiment execution on one thread so it cannot race on the shared test DB connection."""
+    with patch("services.experiment_executor.ThreadPoolExecutor", _InlineExecutor):
+        yield

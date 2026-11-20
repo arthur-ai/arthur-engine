@@ -199,6 +199,80 @@ def test_only_device_id_is_required_of_the_machine(tmp_path: pathlib.Path) -> No
     assert record.creation_source.observations.host_name is None
 
 
+# --- A Windows machine ---------------------------------------------------------------
+
+WINDOWS_ID = "4C4C4544-0042-3510-8051-B4C04F4B4E32"
+WINDSURF_KEY = "{5A8B7D94-9B5F-4D1F-93FC-5609F7159349}_is1"
+CLAUDE_DESKTOP = r"C:\Program Files\WindowsApps\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc"
+# Rows as upstream's discovery-windows.sql writes them: a package family name, an Uninstall
+# key named by its last segment, a home dot-directory, and the containers marker, which is
+# the composed query's only scan row and so the only date the payload carries.
+WINDOWS_ROWS = [
+    row(
+        "msix",
+        "Claude_pzs8sxrjxfjjc",
+        ver="3.6556.2.0",
+        loc=CLAUDE_DESKTOP,
+        extra="Anthropic",
+    ),
+    row(
+        "uninstall",
+        WINDSURF_KEY,
+        ver="1.12.21",
+        loc="HKEY_USERS\\S-1-5-21-1004336348-1177238915-682003330-1001\\Software\\"
+        "Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + WINDSURF_KEY,
+        extra="Windsurf",
+    ),
+    row("file", "C:\\Users\\nadia\\.claude\\", loc="C:\\Users\\nadia\\.claude\\"),
+    row(
+        "scan",
+        "containers",
+        ver=str(SCAN_AT),
+        loc="\\\\.\\pipe\\docker_engine",
+        extra="unreadable:docker",
+    ),
+]
+
+
+def test_a_windows_machine_is_read_with_its_platform(tmp_path: pathlib.Path) -> None:
+    """Upstream's Windows query against the shipped catalog: the MSIX and Uninstall routes
+    exist only there, and the containers marker is enough to date the scan."""
+    out = folder(
+        tmp_path,
+        WINDOWS_ROWS,
+        machine={
+            "device_id": WINDOWS_ID,
+            "hostname": "NADIA-LAPTOP",
+            "platform": "windows",
+            "os_version": "Microsoft Windows 11 Pro 10.0.26100",
+        },
+    )
+
+    records = {r.external_id: r for r in scan(out, query="")}
+
+    assert set(records) == {
+        f"{WINDOWS_ID}:claude-desktop",
+        f"{WINDOWS_ID}:windsurf",
+        f"{WINDOWS_ID}:claude-code",
+    }
+    for record in records.values():
+        assert record.platform is Platform.WINDOWS
+        assert record.last_seen == SCANNED
+        assert record.creation_source.observations.host_name == "NADIA-LAPTOP"
+        assert (
+            record.creation_source.observations.os_version
+            == "Microsoft Windows 11 Pro 10.0.26100"
+        )
+    desktop = records[f"{WINDOWS_ID}:claude-desktop"].creation_source.observations
+    assert (desktop.install_path, desktop.version) == (CLAUDE_DESKTOP, "3.6556.2.0")
+    # An Uninstall key's loc is a registry key, which is not a path on disk.
+    windsurf = records[f"{WINDOWS_ID}:windsurf"].creation_source.observations
+    assert (windsurf.install_path, windsurf.version) == (None, "1.12.21")
+    # A Windows home folder is written as ~ too, so the path names no user.
+    code = records[f"{WINDOWS_ID}:claude-code"].creation_source.observations
+    assert code.install_path == "~\\.claude\\"
+
+
 # --- Staleness -----------------------------------------------------------------------
 
 
@@ -324,8 +398,8 @@ def test_an_oversized_payload_is_refused_without_reading_it_all(
         ({"hostname": "h"}, "has no device_id"),
         ({"device_id": "  "}, "has no device_id"),
         ({"device_id": 7}, "device_id must be a string"),
-        ({"device_id": "d", "platform": "macos"}, "darwin or linux"),
-        ({"device_id": "d", "platform": "windows"}, "darwin or linux"),
+        ({"device_id": "d", "platform": "macos"}, "darwin, linux or windows"),
+        ({"device_id": "d", "platform": "win32"}, "darwin, linux or windows"),
     ],
 )
 def test_a_machine_file_that_does_not_name_the_machine_fails_the_scan(
@@ -348,9 +422,11 @@ def test_a_machine_file_that_does_not_name_the_machine_fails_the_scan(
 @pytest.mark.skipif(not ENDPOINT_TREE.is_dir(), reason="endpoint tree not present")
 def test_the_collector_still_publishes_the_file_this_reads() -> None:
     """The file name is the collector's. A collector that stops publishing it, or
-    renames it, leaves every local scan reading an empty folder."""
+    renames it, leaves every local scan reading an empty folder. Both drivers: the
+    Windows one has no other reader than this source."""
     driver = (ENDPOINT_TREE / "tools" / "build-collector.py").read_text()
     assert "for f in inventory.json status.txt inventory.ea; do" in driver
+    assert "$published = @('inventory.json', 'status.txt')" in driver
 
 
 def _osqueryi() -> bool:

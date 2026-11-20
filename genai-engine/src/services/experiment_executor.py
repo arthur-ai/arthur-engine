@@ -316,6 +316,10 @@ class BaseExperimentExecutor(ABC):
                 exc_info=True,
             )
             try:
+                # A failed flush or commit leaves the session unusable until it is
+                # rolled back; without this the FAILED mark below fails too and the
+                # experiment stays RUNNING forever.
+                db_session.rollback()
                 experiment = self._get_database_experiment(experiment_id, db_session)
                 if experiment:
                     self._update_experiment_status(
@@ -430,6 +434,8 @@ class BaseExperimentExecutor(ABC):
                 exc_info=True,
             )
             try:
+                # Same as above: roll back first so the FAILED mark can be committed.
+                db_session.rollback()
                 test_case = self._get_db_test_case(test_case_id, db_session)
                 if test_case:
                     self._update_test_case_status(

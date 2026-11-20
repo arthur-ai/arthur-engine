@@ -34,6 +34,8 @@ from discovery.cloud.aws_bedrock.connector import VENDOR as AWS_BEDROCK_VENDOR
 from discovery.cloud.aws_bedrock.connector import BedrockConnector
 from discovery.cloud.aws_containers.connector import VENDOR as AWS_CONTAINERS_VENDOR
 from discovery.cloud.aws_containers.connector import AwsContainersConnector
+from discovery.cloud.azure_ai_foundry.connector import VENDOR as AZURE_AI_FOUNDRY_VENDOR
+from discovery.cloud.azure_ai_foundry.connector import AzureAIFoundryConnector
 from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
@@ -77,6 +79,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
         AWS_CONTAINERS_VENDOR: AwsContainersConnector,
         GCP_VERTEX_VENDOR: VertexAgentEngineConnector,
         GCP_CONTAINERS_VENDOR: GcpContainersConnector,
+        AZURE_AI_FOUNDRY_VENDOR: AzureAIFoundryConnector,
         WIZ_VENDOR: WizConnector,
         SPLUNK_VENDOR: SplunkConnector,
         ELASTIC_SECURITY_VENDOR: ElasticSecurityConnector,
@@ -132,6 +135,8 @@ __all__ = [
     "GCP_VERTEX_VENDOR",
     "GcpContainersConnector",
     "GCP_CONTAINERS_VENDOR",
+    "AzureAIFoundryConnector",
+    "AZURE_AI_FOUNDRY_VENDOR",
     "WizConnector",
     "WIZ_VENDOR",
     "SplunkConnector",
