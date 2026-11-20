@@ -1069,7 +1069,7 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     """Projected daily cost of a continuous eval at the task's recent traffic.
 
     estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
-    (* filter_match_share, when a trace filter was given)
+    (* filter_match_share, when the eval has a trace filter or one was given)
     """
 
     window_days: int = Field(
@@ -1100,9 +1100,9 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     filter_match_share: Optional[float] = Field(
         default=None,
         description=(
-            "Share of the task's recent traces that match the given trace filter, "
-            "checked over up to filter_traces_checked of the latest traces in the "
-            "window. Null when no trace filter was given."
+            "Share of the task's recent traces that match the eval's trace filter, or "
+            "the one given for a new eval, checked over up to filter_traces_checked of "
+            "the latest traces in the window. Null when there is no trace filter."
         ),
     )
     filter_traces_checked: Optional[int] = Field(
