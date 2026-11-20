@@ -32,7 +32,10 @@ class HoldFirstChunkerCall:
                 return
             self._taken = True
         self.held.set()
-        self.release.wait(timeout=5)
+        if not self.release.wait(timeout=5):
+            # Never let the held call finish on its own: that would end the overlap
+            # and let a shared-tokenizer regression pass.
+            raise AssertionError("the held chunker call was never released")
 
 
 class FakeFastTokenizer:
@@ -171,12 +174,16 @@ def _score_during_a_chunker_call(score, gate: HoldFirstChunkerCall) -> list[Exce
         except Exception as e:
             errors.append(e)
 
-    first = threading.Thread(target=record)
+    first = threading.Thread(target=record, daemon=True)
     first.start()
-    assert gate.held.wait(timeout=5), "the first chunker call never started"
-    record()
-    gate.release.set()
-    first.join(timeout=5)
+    try:
+        assert gate.held.wait(timeout=5), "the first chunker call never started"
+        record()
+    finally:
+        gate.release.set()
+        first.join(timeout=5)
+    # Both calls must have finished before the caller restores its patches
+    assert not first.is_alive(), "the first score() did not finish"
     return errors
 
 
@@ -198,6 +205,7 @@ def test_prompt_injection_chunker_and_pipeline_run_concurrently_without_errors()
     classifier.injection_label = "INJECTION"
     request = ScoreRequest(rule_type=RuleType.PROMPT_INJECTION, user_prompt="hello")
 
+    results = []
     with (
         patch(
             "scorer.checks.prompt_injection.classifier.SlidingWindowChunkIterator",
@@ -209,9 +217,13 @@ def test_prompt_injection_chunker_and_pipeline_run_concurrently_without_errors()
             create=True,
         ),
     ):
-        errors = _score_during_a_chunker_call(lambda: classifier.score(request), gate)
+        errors = _score_during_a_chunker_call(
+            lambda: results.append(classifier.score(request).result),
+            gate,
+        )
 
     assert errors == []
+    assert results == [RuleResultEnum.PASS, RuleResultEnum.PASS]
     assert pipeline_tokenizer.truncation is True
     assert chunking_tokenizer.truncation is False
 
@@ -252,4 +264,4 @@ def test_toxicity_chunker_and_pipeline_run_concurrently_without_errors():
         )
 
     assert errors == []
-    assert set(results) == {RuleResultEnum.PASS}
+    assert results == [RuleResultEnum.PASS, RuleResultEnum.PASS]
