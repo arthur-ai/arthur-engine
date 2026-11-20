@@ -23,7 +23,6 @@ from scorer.checks.toxicity.toxicity_profanity.profanity import detect_profanity
 from scorer.scorer import RuleScorer
 from utils import constants
 from utils.model_load import (
-    TOXICITY_TOKENIZER_LOCK,
     get_harmful_request_classifier,
     get_profanity_classifier,
     get_toxicity_classifier,
@@ -106,13 +105,13 @@ class ToxicityScorer(RuleScorer):
             raise ValueError(
                 "Toxicity tokenizer is not available.",
             )
-        with TOXICITY_TOKENIZER_LOCK:
-            chunk_iterator = ChunkIterator(
-                text,
-                self.toxicity_tokenizer,
-                chunk_size,
-            )
-            return [chunk for chunk in chunk_iterator]
+        chunk_iterator = ChunkIterator(
+            text,
+            self.toxicity_tokenizer,
+            chunk_size,
+        )
+
+        return [chunk for chunk in chunk_iterator]
 
     def split_text_into_sections(self, text: str) -> list[str]:
         """Splits text into sections to localize where toxic text is identified
@@ -212,7 +211,7 @@ class ToxicityScorer(RuleScorer):
             # note: a flaw in the model was identified Mar 18 2024
             # it was fine-tuned as a classifier on almost 0 examples of text < 20 chars
             # so for now, we apply repetition padding to the input sequences
-            with torch.no_grad(), TOXICITY_TOKENIZER_LOCK:
+            with torch.no_grad():
                 # why we ignore assignment type error?
                 # return type in the transformers library is typed wrongly
                 # it returns list nested in list of dicts with label and score keys

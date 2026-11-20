@@ -1,6 +1,5 @@
 import json
 import os
-import threading
 from functools import wraps
 from multiprocessing import get_context
 from typing import Callable
@@ -116,15 +115,6 @@ PII_GLINER_MODEL = None
 PII_GLINER_TOKENIZER: PreTrainedTokenizerBase | None = None
 PII_PRESIDIO_ANALYZER = None
 PII_DATE_NLP: spacy.language.Language | None = None
-
-# A Hugging Face fast tokenizer changes its truncation setting in place whenever a call
-# asks for a different one than the call before. The text chunkers call these
-# tokenizers without truncation and the classifier pipelines call them with it, so
-# two threads using one at once (continuous-eval workers, guardrail requests) fail
-# with "RuntimeError: Already borrowed". Hold the lock around every call that uses
-# the tokenizer. The PII tokenizer is only used by its chunker, with one setting.
-PROMPT_INJECTION_TOKENIZER_LOCK = threading.Lock()
-TOXICITY_TOKENIZER_LOCK = threading.Lock()
 
 
 def log_model_loading(
