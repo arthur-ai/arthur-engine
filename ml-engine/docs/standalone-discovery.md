@@ -12,6 +12,7 @@ to a SIEM, a webhook or a CSV file. In this mode it talks to no Arthur Platform 
 - [What the destination receives](#what-the-destination-receives)
 - [Running it](#running-it)
 - [How scans are scheduled](#how-scans-are-scheduled)
+- [Asking for a scan now](#asking-for-a-scan-now)
 
 ## Turning it on
 
@@ -1290,3 +1291,38 @@ The health check on port `7492` (`GET /health`) works as it does in Platform mod
   engine waits up to 15 seconds before exiting. A scan still running then is abandoned
   without an outcome. Give the container more than that to stop — Docker's default is
   10 seconds, so use `--stop-timeout 30` or `stop_grace_period: 30s`.
+
+## Asking for a scan now
+
+Give the engine a token and it serves a small API for bringing a scan
+forward, for a dashboard's "Scan now" button. Without it there is no such API.
+
+| Variable | Default | |
+|---|---|---|
+| `ML_ENGINE_CONTROL_TOKEN` | unset: off | At least 32 characters; `openssl rand -hex 32` makes one |
+| `ML_ENGINE_CONTROL_TOKEN_FILE` | unset | A file holding the token instead, such as a mounted secret |
+| `ML_ENGINE_CONTROL_PORT` | `7494` | |
+| `ML_ENGINE_CONTROL_HOST` | `0.0.0.0` | Every interface, so another container can reach it |
+
+Every request needs `Authorization: Bearer <token>`.
+
+- `GET /scans` lists every (source, config) pair: `source_id` (the `source.id` in its
+  events), `source_name`, `vendor`, `config_name`, `status`, `last_started_at` and
+  `next_due_at`. `status` is `running`, `waiting` (due, waiting for a free
+  `max_concurrent_scans` slot), `scheduled`, or `stopping` (past `scan_timeout`, told to
+  stop, not ended yet).
+- `POST /scans/run` with `{"source_id": "...", "config_name": "..."}` makes the source's
+  pairs -- or only the one named -- due now, and answers `202` with each one's status.
+  `404` means no configured scan matches.
+
+An asked-for scan is an ordinary run. It waits for a free slot, a pair already running is
+not started again (its status says `running`), and its next scheduled run is one
+`interval` after it starts. The API takes no config, credentials or destination, so the
+token lets its holder scan the configured sources more often, and nothing else. Publish
+the port only to what needs it.
+
+```bash
+curl -s -H "Authorization: Bearer $ML_ENGINE_CONTROL_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"source_id": "..."}' \
+  http://localhost:7494/scans/run
+```

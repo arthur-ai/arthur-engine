@@ -357,3 +357,69 @@ def test_scan_loggers_scrub_the_sinks_secrets(
         loggers[0].info(f"sending with {SINK_SECRET}")
 
     assert SINK_SECRET not in caplog.text and "[redacted]" in caplog.text
+
+
+def test_a_scan_asked_for_starts_at_the_next_tick(runner: HoldingRunner) -> None:
+    clock = Clock()
+    subject = agent(runner, clock, run_on_start=False)
+    source_id = subject._slots[1].scan.config.discovery_source_id
+
+    states = subject.run_now(source_id)
+
+    assert [(s.source_name, s.status) for s in states] == [("vertex-1", "waiting")]
+    subject.tick()
+    assert runner.started == ["vertex-1"]
+    # Its next run is one interval after this one, not the original schedule.
+    assert subject._slots[1].next_due == clock.now + INTERVAL
+
+
+def test_a_running_scan_asked_for_again_is_not_doubled_up(
+    runner: HoldingRunner,
+) -> None:
+    subject = agent(runner, Clock(), sources=1)
+    subject.tick()
+    source_id = subject._slots[0].scan.config.discovery_source_id
+
+    states = subject.run_now(source_id, "c")
+    subject.tick()
+
+    assert [s.status for s in states] == ["running"]
+    assert runner.started == ["vertex-0"]
+
+
+def test_a_scan_asked_for_by_a_name_that_is_not_configured_matches_nothing(
+    runner: HoldingRunner,
+) -> None:
+    subject = agent(runner, Clock(), sources=1)
+    source_id = subject._slots[0].scan.config.discovery_source_id
+
+    assert subject.run_now(source_id, "no-such-config") == []
+    assert subject.run_now("no-such-source") == []
+
+
+def test_scan_states_say_when_each_scan_last_started_and_is_next_due(
+    runner: HoldingRunner,
+) -> None:
+    from datetime import datetime, timezone
+
+    clock = Clock()
+    wall = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    subject = StandaloneDiscoveryAgent(
+        config(sources=1),
+        FakeSink(),
+        runner=runner,
+        clock=clock,
+        health_check=FakeHealthCheck(),  # type: ignore[arg-type]
+        wall_clock=lambda: wall,
+    )
+    subject.tick()
+    (running,) = subject.scan_states()
+    assert running.status == "running"
+    assert running.last_started_at == wall and running.next_due_at is None
+    assert running.vendor == "gcp_vertex" and running.config_name == "c"
+
+    runner.release("vertex-0")
+    wait_until_idle(subject)
+    (done,) = subject.scan_states()
+    assert done.status == "scheduled"
+    assert (done.next_due_at - wall).total_seconds() == INTERVAL  # type: ignore[operator]
