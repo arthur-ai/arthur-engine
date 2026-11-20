@@ -172,19 +172,24 @@ def _read_spans(
     spans: Sequence[TransformableSpan],
     attribute_path: str,
     max_chars: int,
-) -> Any:
-    """One matching span: its value, as before. Several: every value in tree order,
-    each headed by its span id so a judge can say which call it means (the first
-    attempt of a retried tool call failing, the last succeeding), joined within
-    max_chars. None when no span has the attribute."""
+) -> tuple[Any, list[str]]:
+    """The value and the ids of the spans it was read from.
+
+    One matching span: its value, as before. Several: the value of every match that
+    has the attribute, in tree order, each headed by its span id so a judge can say
+    which call it means (the first attempt of a retried tool call failing, the last
+    succeeding), joined within max_chars. None when no span has the attribute."""
     if len(spans) == 1:
-        return _read_span(spans[0], attribute_path)
+        value = _read_span(spans[0], attribute_path)
+        return value, [] if value is None else [spans[0].span_id]
     values = []
     for span in spans:
         value = _read_span(span, attribute_path)
         if value is not None:
             values.append((span.span_id, stringify_value(value)))
-    return _join_values(values, max_chars) if values else None
+    if not values:
+        return None, []
+    return _join_values(values, max_chars), [span_id for span_id, _ in values]
 
 
 def execute_transform_on_spans(
@@ -194,8 +199,8 @@ def execute_transform_on_spans(
     """Execute a transform on a trace's flat span list, returns raw extracted values.
 
     A span variable reads attribute_path from every span named span_name, in tree
-    order (several matches are joined within max_chars); a whole-trace variable (source='trace') is the trace serialized as
-    judge-ready text within its max_chars.
+    order, joining several matches within max_chars; a whole-trace variable
+    (source='trace') is the trace serialized as judge-ready text within max_chars.
 
     Args:
         spans: Every span of one trace, in any order
@@ -238,6 +243,7 @@ def execute_transform_on_spans(
 
         is_missing = False
         value: Any
+        read_span_ids: list[str] = []
         if not matching_spans:
             # No matching span found, use fallback
             if fallback is None:
@@ -246,7 +252,7 @@ def execute_transform_on_spans(
             else:
                 value = fallback
         else:
-            value = _read_spans(
+            value, read_span_ids = _read_spans(
                 matching_spans,
                 attribute_path,
                 max_chars=var_def.max_chars or DEFAULT_MAX_CHARS,
@@ -270,7 +276,7 @@ def execute_transform_on_spans(
         variable_spans.append(
             TransformVariableSpans(
                 variable_name=variable_name,
-                span_ids=[span.span_id for span in matching_spans],
+                span_ids=read_span_ids,
             ),
         )
 

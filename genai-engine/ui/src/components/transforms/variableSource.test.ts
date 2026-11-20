@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { describeSpansRead, isWholeTrace, validateMaxChars } from "./variableSource";
+import { MIN_TRACE_MAX_CHARS, describeSpansRead, isWholeTrace, validateMaxChars } from "./variableSource";
 
-import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
+import { buildTransformFromColumns, validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
 
 const search = { source: "span" as const, span_name: "search", attribute_path: "attributes.output.value" };
 const wholeTrace = { source: "trace" as const, span_name: "", attribute_path: "" };
@@ -40,7 +40,7 @@ describe("validateMaxChars", () => {
   });
 
   it("rejects values under the floor and non-integers", () => {
-    expect(validateMaxChars("1999")).toMatch(/at least 2,000/);
+    expect(validateMaxChars("1999")).toContain(`at least ${MIN_TRACE_MAX_CHARS.toLocaleString()}`);
     expect(validateMaxChars("5000.5")).toMatch(/whole number/);
     expect(validateMaxChars("lots")).toMatch(/whole number/);
   });
@@ -68,5 +68,30 @@ describe("validateTransform", () => {
     expect(validateTransform({ variables: [{ variable_name: "trace", ...wholeTrace, max_chars: 1000 }] })).toEqual([
       "Variable trace: max_chars must be at least 2000",
     ]);
+  });
+});
+
+describe("buildTransformFromColumns", () => {
+  it("keeps a whole-trace column as a trace variable and drops an unresolved span column", () => {
+    expect(
+      buildTransformFromColumns([
+        {
+          name: "trace",
+          value: "TRACE v1 spans=4",
+          path: "whole trace · 4 spans",
+          span_name: "",
+          attribute_path: "",
+          source: "trace",
+          max_chars: 5000,
+        },
+        { name: "unresolved", value: "", path: "", span_name: "", attribute_path: "" },
+        { name: "search_output", value: "...", path: "search × 3, in trace order", span_name: "search", attribute_path: "attributes.output.value" },
+      ])
+    ).toEqual({
+      variables: [
+        { variable_name: "trace", source: "trace", span_name: "", attribute_path: "", max_chars: 5000, fallback: null },
+        { variable_name: "search_output", span_name: "search", attribute_path: "attributes.output.value", max_chars: undefined, fallback: null },
+      ],
+    });
   });
 });

@@ -362,3 +362,45 @@ def test_extraction_route_reads_the_whole_trace_including_a_cycle(
     finally:
         delete_traces(task.id)
         client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+def test_matches_without_the_attribute_are_left_out_and_not_listed():
+    no_output = [
+        RETRY_TRACE[0],
+        ("search-1", "root", "TOOL", "search", 1, "timeout after 30s", "Error"),
+        ("search-2", "root", "TOOL", "search", 2, "3 flights found", "Ok"),
+    ]
+    rows = spans(no_output)
+    del rows[1].raw_data["attributes"]["output"]  # search-1 recorded no output
+    result = execute_transform_on_spans(rows, definition(SEARCH_OUTPUT))
+    assert result.variables[0].value == "[span search-2]\n3 flights found"
+    assert result.variable_spans[0].span_ids == ["search-2"]
+
+
+@pytest.mark.unit_tests
+def test_a_trace_with_no_valid_spans_is_not_found(client: GenaiEngineTestClientBase):
+    status_code, task = client.create_task(name="no_valid_spans", is_agentic=True)
+    assert status_code == 200
+    try:
+        trace_id = add_trace(task.id)
+        db_session = override_get_db_session()
+        for row in db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.trace_id == trace_id,
+        ):
+            row.raw_data = {**row.raw_data, "arthur_span_version": "unknown"}
+        db_session.commit()
+        status_code, transform = client.create_transform(
+            task_id=task.id,
+            name="whole trace",
+            definition={"variables": [WHOLE_TRACE]},
+        )
+        assert status_code == 200
+        status_code, _ = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=trace_id,
+        )
+        assert status_code == 404
+    finally:
+        delete_traces(task.id)
+        client.delete_task(task.id)

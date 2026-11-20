@@ -86,13 +86,26 @@ export const TransformSelector = withFieldGroup({
           // A whole-trace value, or one read from several spans: say which spans,
           // since there is no single span and path to point at.
           const spanIds = spanIdsByName.get(columnName) ?? [];
-          if (isWholeTrace(variableDef) || spanIds.length > 1) {
+          if (isWholeTrace(variableDef)) {
             return {
               name: columnName,
               value: executedValuesByName.get(columnName) ?? "",
               path: describeSpansRead(variableDef, spanIds),
               span_name: "",
               attribute_path: "",
+              source: "trace" as const,
+              max_chars: variableDef.max_chars,
+            };
+          }
+          if (spanIds.length > 1) {
+            // Several matches are all read, so the variable's span and path stay valid
+            return {
+              name: columnName,
+              value: executedValuesByName.get(columnName) ?? "",
+              path: describeSpansRead(variableDef, spanIds),
+              span_name: variableDef.span_name,
+              attribute_path: variableDef.attribute_path,
+              max_chars: variableDef.max_chars,
             };
           }
 
@@ -120,6 +133,7 @@ export const TransformSelector = withFieldGroup({
             path: validatedPath,
             span_name: validatedSpanName,
             attribute_path: validatedAttributePath,
+            max_chars: variableDef.max_chars,
           };
         });
 

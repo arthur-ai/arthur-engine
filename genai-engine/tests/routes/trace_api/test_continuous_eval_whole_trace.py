@@ -50,6 +50,14 @@ def test_one_judge_call_sees_every_attempt_of_a_retry(
     mock_completion.return_value = mock_response
 
     initialize_continuous_eval_queue_service(num_workers=1, override_execution_delay=0)
+    try:
+        _run_whole_trace_eval(client, mock_completion)
+    finally:
+        shutdown_continuous_eval_queue_service()
+        cleanup_model_provider(client)
+
+
+def _run_whole_trace_eval(client: GenaiEngineTestClientBase, mock_completion) -> None:
     queue_service = get_continuous_eval_queue_service()
     status_code, task = client.create_task(name="whole_trace_eval", is_agentic=True)
     assert status_code == 200
@@ -126,5 +134,3 @@ def test_one_judge_call_sees_every_attempt_of_a_retry(
             delete_mock_annotation(annotation.id)
         delete_traces(task.id)
         client.delete_task(task.id)
-        shutdown_continuous_eval_queue_service()
-        cleanup_model_provider(client)

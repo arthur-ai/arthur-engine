@@ -920,8 +920,8 @@ class TransformExtractionResponseList(BaseModel):
         default_factory=list,
         description=(
             "For each variable, the ids of the spans its value was read from, in "
-            "tree order: every matching span, or every span of the trace for a "
-            "whole-trace variable. Empty when no span matched."
+            "tree order: every matching span that has the attribute, or every span "
+            "of the trace for a whole-trace variable. Empty when none was read."
         ),
     )
 

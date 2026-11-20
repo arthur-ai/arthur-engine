@@ -255,7 +255,8 @@ class SpanRepository:
         spans, _ = self.span_query_service.query_spans_from_db(trace_ids=[trace_id])
         if not spans:
             return None
-        return self.span_query_service.validate_spans(spans)
+        # A trace whose stored spans all fail validation is treated as not found.
+        return self.span_query_service.validate_spans(spans) or None
 
     def get_trace_overview_for_tasks(
         self,
