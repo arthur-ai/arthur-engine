@@ -12,6 +12,7 @@ from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
 from utils.model_load import (
+    get_prompt_injection_chunking_tokenizer,
     get_prompt_injection_classifier,
     get_prompt_injection_model,
     get_prompt_injection_tokenizer,
@@ -38,14 +39,17 @@ class BinaryPromptInjectionClassifier(RuleScorer):
         self.injection_label = "INJECTION"
 
     def chunk_text(self, text: str) -> list[str]:
-        if not self.tokenizer:
+        # The chunker has its own tokenizer object, separate from the pipeline's, so
+        # neither ever changes truncation setting under another thread.
+        chunking_tokenizer = get_prompt_injection_chunking_tokenizer()
+        if not self.tokenizer or chunking_tokenizer is None:
             # Raising an error to avoid silent failures
             raise ValueError(
                 "Tokenizer is not available",
             )
         chunk_iterator = SlidingWindowChunkIterator(
             text=text,
-            tokenizer=self.tokenizer,
+            tokenizer=chunking_tokenizer,
             chunk_size=MAX_LENGTH,
             stride=MAX_LENGTH // 2,
         )
