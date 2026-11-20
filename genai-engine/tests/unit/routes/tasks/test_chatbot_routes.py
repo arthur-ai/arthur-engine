@@ -183,7 +183,12 @@ def test_chatbot_calls_default_not_stored_model(
         detail="model provider anthropic is not configured",
     ),
 )
-def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
+def test_chatbot_no_provider_configured(
+    mock_get_client,
+    client: GenaiEngineTestClientBase,
+    anthropic_default,
+):
+    """With a default set, a provider client that can't be built returns its error."""
     task_name = "chatbot_task_no_provider"
     _, task = client.create_task(task_name, is_agentic=True)
 
@@ -193,6 +198,8 @@ def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
+    assert response.json()["detail"] == "model provider anthropic is not configured"
+    mock_get_client.assert_called_once()
 
 
 @pytest.mark.unit_tests

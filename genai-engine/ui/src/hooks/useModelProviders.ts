@@ -37,7 +37,7 @@ export function useAvailableModels(enabledProviders: ModelProvider[]) {
   const api = useApi();
 
   // eslint-disable-next-line @tanstack/query/exhaustive-deps
-  const { data, error, isLoading } = useQuery<Map<ModelProvider, string[]>>({
+  const { data, error, isLoading, refetch } = useQuery<{ models: Map<ModelProvider, string[]>; failed: ModelProvider[] }>({
     queryKey: queryKeys.providers.availableModels(enabledProviders),
     queryFn: async () => {
       if (!api) throw new Error("API client not initialized");
@@ -46,10 +46,10 @@ export function useAvailableModels(enabledProviders: ModelProvider[]) {
         enabledProviders.map(async (provider) => {
           try {
             const response = await api.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(provider);
-            return { provider, models: response.data.available_models };
+            return { provider, models: response.data.available_models, failed: false };
           } catch (error) {
             console.error(`Failed to fetch models for provider ${provider}:`, error);
-            return { provider, models: [] as string[] };
+            return { provider, models: [] as string[], failed: true };
           }
         })
       );
@@ -58,7 +58,7 @@ export function useAvailableModels(enabledProviders: ModelProvider[]) {
       results.forEach(({ provider, models }) => {
         modelsMap.set(provider, models);
       });
-      return modelsMap;
+      return { models: modelsMap, failed: results.filter((r) => r.failed).map((r) => r.provider) };
     },
     enabled: !!api && enabledProviders.length > 0,
     staleTime: 60000,
@@ -66,7 +66,10 @@ export function useAvailableModels(enabledProviders: ModelProvider[]) {
   });
 
   return {
-    availableModels: data ?? new Map<ModelProvider, string[]>(),
+    availableModels: data?.models ?? new Map<ModelProvider, string[]>(),
+    /** Providers whose model list failed to load, as opposed to loading empty. */
+    failedProviders: data?.failed ?? [],
+    refetchAvailableModels: refetch,
     error,
     isLoading,
   };

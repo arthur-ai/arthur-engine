@@ -18,7 +18,7 @@ type Draft = { provider: ModelProvider | null; modelName: string | null };
 export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProviderDisplayName }) => {
   const { enqueueSnackbar } = useSnackbar();
   const { data: current, isLoading, isError, refetch } = useDefaultModelProvider();
-  const { availableModels } = useAvailableModels(enabledProviders);
+  const { availableModels, failedProviders, refetchAvailableModels } = useAvailableModels(enabledProviders);
   const setDefault = useSetDefaultModelProvider();
   const clearDefault = useClearDefaultModelProvider();
 
@@ -28,6 +28,7 @@ export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProvide
   const provider = draft ? draft.provider : (current?.provider ?? null);
   const modelName = draft ? draft.modelName : (current?.model_name ?? null);
   const models = provider ? (availableModels.get(provider) ?? []) : [];
+  const modelsFailed = !!provider && failedProviders.includes(provider);
   const isSet = !!current?.provider && !!current?.model_name;
   const isDirty = draft !== null && (draft.provider !== (current?.provider ?? null) || draft.modelName !== (current?.model_name ?? null));
   const isBusy = setDefault.isPending || clearDefault.isPending;
@@ -113,6 +114,18 @@ export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProvide
                   renderInput={(params) => <TextField {...params} variant="filled" label="Model" />}
                 />
               </Box>
+            )}
+            {modelsFailed && provider && (
+              <Alert
+                severity="warning"
+                action={
+                  <Button color="inherit" size="small" onClick={() => refetchAvailableModels()}>
+                    Retry
+                  </Button>
+                }
+              >
+                Couldn&apos;t load the models for {getProviderDisplayName(provider)}.
+              </Alert>
             )}
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
               {isSet && (

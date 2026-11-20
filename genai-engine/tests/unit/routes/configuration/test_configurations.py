@@ -133,7 +133,11 @@ def test_insights_generation_enabled_config(client: GenaiEngineTestClientBase):
         assert update_resp.status_code == 200
         assert update_resp.json()["insights_generation_enabled"] is True
 
-        client.update_configs({"trace_retention_days": 90}, headers=headers)
+        retention_resp = client.update_configs(
+            {"trace_retention_days": 90},
+            headers=headers,
+        )
+        assert retention_resp.status_code == 200
         assert (
             client.get_configs(headers=headers).json()["insights_generation_enabled"]
             is True

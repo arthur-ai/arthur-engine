@@ -414,12 +414,24 @@ class ModelProviderRepository:
         ApplicationConfigurations.DEFAULT_LLM_MODEL,
     )
 
-    def _default_model_rows(self) -> list[DatabaseApplicationConfiguration]:
-        return (
-            self.db_session.query(DatabaseApplicationConfiguration)
-            .where(DatabaseApplicationConfiguration.name.in_(self._DEFAULT_MODEL_KEYS))
-            .all()
+    def _default_model_rows(
+        self,
+        lock: bool = False,
+    ) -> list[DatabaseApplicationConfiguration]:
+        query = self.db_session.query(DatabaseApplicationConfiguration).where(
+            DatabaseApplicationConfiguration.name.in_(self._DEFAULT_MODEL_KEYS),
         )
+        if lock:
+            # Writers change only the row that differs, so without the lock two
+            # concurrent writers can each change one row and store a provider and
+            # model that neither chose. A fixed order keeps two writers from each
+            # holding one row; populate_existing re-reads what the last writer committed.
+            query = (
+                query.order_by(DatabaseApplicationConfiguration.name)
+                .with_for_update()
+                .populate_existing()
+            )
+        return query.all()
 
     def get_default_model_provider(self) -> DefaultModelProvider:
         values = {row.name: row.value for row in self._default_model_rows()}
@@ -442,7 +454,7 @@ class ModelProviderRepository:
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=f"model provider {request.provider.value} is not configured",
             )
-        existing = self._default_model_rows()
+        existing = self._default_model_rows(lock=True)
         self.db_session.add_all(
             [
                 update_or_create_config(
@@ -460,7 +472,7 @@ class ModelProviderRepository:
         self.db_session.commit()
 
     def clear_default_model_provider(self) -> None:
-        for row in self._default_model_rows():
+        for row in self._default_model_rows(lock=True):
             self.db_session.delete(row)
         self.db_session.commit()
 

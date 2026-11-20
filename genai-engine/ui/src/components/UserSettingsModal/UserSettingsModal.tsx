@@ -54,6 +54,9 @@ function MethodChip({ method, compact = false }: { method: string; compact?: boo
 const TITLE_ID = "user-settings-dialog-title";
 const DESCRIPTION_ID = "user-settings-dialog-description";
 
+// Stable fallback: a fresh [] each render would re-run the reset-on-open effect and undo edits.
+const NO_RETENTION_DAYS: number[] = [];
+
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   open,
   onClose,
@@ -68,7 +71,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   chatbotEnabled = false,
   traceRetentionEnabled = false,
   initialTraceRetentionDays,
-  allowedTraceRetentionDays = [],
+  allowedTraceRetentionDays = NO_RETENTION_DAYS,
   isLoadingTraceRetention = false,
   insightsGenerationAvailable = false,
   initialInsightsGenerationEnabled = false,
