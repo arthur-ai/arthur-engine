@@ -7,8 +7,8 @@
 - `record_sink`: `StandaloneRecordSink`, which the scan loop publishes through whatever
   the target.
 - One module per target, under the family it belongs to (`siem.splunk_hec`), or at the
-  top level when it has none (`webhook`). Each holds the target's config model, whose
-  `build_sink` makes its `Sink`, and nothing else.
+  top level when it has none (`webhook`, `csv_file`). Each holds the target's config
+  model, whose `build_sink` makes its `Sink`, and nothing else.
 
 ADDING A TARGET is a module holding its config model and its sink, and one entry in
 `Destination` below. `Destination` is the one list of targets, as
@@ -20,11 +20,17 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
+from standalone.sinks.csv_file import CsvDestination
 from standalone.sinks.siem.elasticsearch import ElasticsearchDestination
 from standalone.sinks.siem.splunk_hec import SplunkHecDestination
 from standalone.sinks.webhook import WebhookDestination
 
 Destination = Annotated[
-    Union[ElasticsearchDestination, SplunkHecDestination, WebhookDestination],
+    Union[
+        CsvDestination,
+        ElasticsearchDestination,
+        SplunkHecDestination,
+        WebhookDestination,
+    ],
     Field(discriminator="type"),
 ]
