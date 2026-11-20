@@ -81,7 +81,8 @@ export const SpendEstimateText = ({ estimate, currency }: { estimate: Continuous
 type SpendEstimateLineProps = {
   taskId: string;
   llmEvalName: string | null;
-  llmEvalVersion: string | null;
+  // Omitted or null: the evaluator's latest version.
+  llmEvalVersion?: string | null;
   samplePercent: string;
 };
 
