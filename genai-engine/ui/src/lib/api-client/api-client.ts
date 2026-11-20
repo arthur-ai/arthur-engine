@@ -1104,6 +1104,12 @@ export interface ApplicationConfigurationResponse {
   /** Default Currency */
   default_currency?: string | null;
   document_storage_configuration?: DocumentStorageConfigurationResponse | null;
+  /**
+   * Insights Generation Enabled
+   * Whether insights are generated for this instance. Off by default. Insights run on the default model provider.
+   * @default false
+   */
+  insights_generation_enabled?: boolean;
   /** Max Llm Rules Per Task Count */
   max_llm_rules_per_task_count: number;
   /** Trace Retention Days */
@@ -1117,6 +1123,11 @@ export interface ApplicationConfigurationUpdateRequest {
   /** Default Currency */
   default_currency?: string | null;
   document_storage_configuration?: DocumentStorageConfigurationUpdateRequest | null;
+  /**
+   * Insights Generation Enabled
+   * Turns insights generation on or off for the whole instance. Insights run on the default model provider.
+   */
+  insights_generation_enabled?: boolean | null;
   /** Max Llm Rules Per Task Count */
   max_llm_rules_per_task_count?: number | null;
   /** Trace Retention Days */
@@ -1461,31 +1472,24 @@ export interface ChatbotConfigResponse {
   blacklist_endpoints?: string[];
   /**
    * Model Name
-   * Model the chatbot calls. Null when it uses the default model provider and none is set.
+   * Model the chatbot calls: the instance's default model. Null when none is set.
    */
   model_name?: string | null;
-  /** Provider the chatbot calls. Null when it uses the default model provider and none is set. */
+  /** Provider the chatbot calls: the instance's default model provider. Null when none is set. */
   model_provider?: ModelProvider | null;
-  /**
-   * Uses Default Model
-   * True when the chatbot follows the instance's default model provider instead of a model picked for it.
-   * @default false
-   */
-  uses_default_model?: boolean;
 }
 
 /** ChatbotConfigUpdateRequest */
 export interface ChatbotConfigUpdateRequest {
   /** Blacklist Endpoints */
   blacklist_endpoints?: string[] | null;
-  /** Model Name */
-  model_name?: string | null;
-  model_provider?: ModelProvider | null;
   /**
-   * Use Default Model
-   * True moves the chatbot back to the instance's default model provider. Can't be combined with model_provider or model_name.
+   * Model Name
+   * No longer accepted: the chatbot uses the default model provider. Sending it returns 400.
    */
-  use_default_model?: boolean | null;
+  model_name?: string | null;
+  /** No longer accepted: the chatbot uses the default model provider. Sending it returns 400. */
+  model_provider?: ModelProvider | null;
 }
 
 /** ChatbotRequest */
@@ -15614,7 +15618,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
+     * @description Returns the model the chatbot uses (the default model provider), blacklisted endpoints, and available endpoints.
      *
      * @tags Chatbot
      * @name GetChatbotConfigApiV1ChatbotConfigGet
@@ -17973,7 +17977,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.
+     * @description Updates the endpoints the chatbot may not call. The chatbot always uses the default model provider, set on the Model Providers page; sending model_provider or model_name returns 400.
      *
      * @tags Chatbot
      * @name UpdateChatbotConfigApiV1ChatbotConfigPut

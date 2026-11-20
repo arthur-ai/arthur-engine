@@ -12,78 +12,76 @@ const baseProps = {
   onClose: vi.fn(),
   onSave: vi.fn(),
   chatbotEnabled: true,
-  enabledProviders: ["openai" as const],
   initialSettings: {
     timezone: "UTC",
     use24Hour: false,
     enableChatbot: true,
-    chatbotModelProvider: "openai" as const,
-    chatbotModelName: "gpt-4o",
     blacklistEndpoints: [],
   },
 };
 
+// A stable array: the default [] is a new one each render, which re-runs the
+// reset-on-open effect and would undo a change made in the test.
 const RETENTION_DAYS = [90];
 
-const openModelSelect = () => {
-  fireEvent.mouseDown(screen.getByLabelText("Model Name"));
-};
-
 describe("UserSettingsModal", () => {
-  it("keeps a model that is no longer whitelisted selectable, shown as-is", () => {
-    render(<UserSettingsModal {...baseProps} availableModelsMap={new Map([["openai", ["gpt-5"]]])} />);
+  it("shows the default model with no model picker", () => {
+    const onOpenModelProviders = vi.fn();
+    render(<UserSettingsModal {...baseProps} defaultModelLabel="openai · gpt-4.1-mini" onOpenModelProviders={onOpenModelProviders} />);
 
-    openModelSelect();
-
-    const stale = screen.getByRole("option", { name: "gpt-4o" });
-    expect(stale.getAttribute("aria-disabled")).toBeNull();
-    expect(screen.queryByText(/no longer listed/)).toBeNull();
-  });
-
-  it("does not duplicate a model that is still whitelisted", () => {
-    render(<UserSettingsModal {...baseProps} availableModelsMap={new Map([["openai", ["gpt-4o", "gpt-5"]]])} />);
-
-    openModelSelect();
-
-    expect(screen.getAllByRole("option", { name: "gpt-4o" })).toHaveLength(1);
-  });
-
-  it("shows the default model choice for a chatbot that follows the default", () => {
-    const onSave = vi.fn();
-    render(
-      <UserSettingsModal
-        {...baseProps}
-        onSave={onSave}
-        defaultModelLabel="openai · gpt-4.1-mini"
-        initialSettings={{ ...baseProps.initialSettings, chatbotUseDefaultModel: true }}
-      />
-    );
-
-    expect(screen.getByText("Default model · openai · gpt-4.1-mini")).toBeTruthy();
+    expect(screen.getByText("openai · gpt-4.1-mini")).toBeTruthy();
+    expect(screen.queryByLabelText("Model Provider")).toBeNull();
     expect(screen.queryByLabelText("Model Name")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ chatbotUseDefaultModel: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(onOpenModelProviders).toHaveBeenCalled();
   });
 
-  it("leaves the default when a provider is picked", () => {
+  it("warns when no default model is set and links to Model Providers", () => {
+    const onOpenModelProviders = vi.fn();
+    render(<UserSettingsModal {...baseProps} defaultModelLabel={null} onOpenModelProviders={onOpenModelProviders} />);
+
+    expect(screen.getByText(/No default model is set/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Set default" }));
+    expect(onOpenModelProviders).toHaveBeenCalled();
+  });
+
+  it("saves the AI Assistant toggle", () => {
+    const onSave = vi.fn();
+    render(<UserSettingsModal {...baseProps} onSave={onSave} defaultModelLabel="openai · gpt-4.1-mini" allowedTraceRetentionDays={RETENTION_DAYS} />);
+
+    fireEvent.click(screen.getByLabelText("Enable AI Assistant"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ enableChatbot: false }));
+  });
+
+  it("saves the insights switch only when it changed", () => {
     const onSave = vi.fn();
     render(
       <UserSettingsModal
         {...baseProps}
         onSave={onSave}
-        availableModelsMap={new Map([["openai", ["gpt-4o"]]])}
-        // a stable array: the default [] is a new one each render, which re-runs the
-        // reset-on-open effect and would undo the pick
+        insightsGenerationAvailable
+        initialInsightsGenerationEnabled={false}
         allowedTraceRetentionDays={RETENTION_DAYS}
-        initialSettings={{ ...baseProps.initialSettings, chatbotUseDefaultModel: true }}
       />
     );
 
-    fireEvent.mouseDown(screen.getByLabelText("Model Provider"));
-    fireEvent.click(screen.getByRole("option", { name: "openai" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: undefined }));
 
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ chatbotUseDefaultModel: false, chatbotModelProvider: "openai" }));
+    fireEvent.click(screen.getByLabelText("Generate insights"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: true }));
+  });
+
+  it("shows the insights switch when the AI Assistant is off on the server", () => {
+    render(<UserSettingsModal {...baseProps} chatbotEnabled={false} insightsGenerationAvailable defaultModelLabel={null} />);
+
+    expect(screen.getByLabelText("Generate insights")).toBeTruthy();
+    expect(screen.queryByLabelText("Enable AI Assistant")).toBeNull();
+    expect(screen.getByText(/No default model is set/)).toBeTruthy();
   });
 });

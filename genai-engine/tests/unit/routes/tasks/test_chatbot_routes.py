@@ -19,15 +19,14 @@ from tests.unit.routes.tasks.helpers import (
     make_tool_call,
     parse_sse_event,
 )
-from utils.constants import (
-    ARTHUR_SYSTEM_TASK_ID,
-    CHATBOT_SUMMARIZER_PROMPT_NAME,
-    EMPTY_MODEL_NAME,
-    EMPTY_MODEL_PROVIDER,
-)
+from utils.constants import ARTHUR_SYSTEM_TASK_ID, CHATBOT_PROMPT_NAME
 
 # The chatbot runs on the default model provider, which is instance-wide state
 pytestmark = pytest.mark.xdist_group("default_model_provider")
+
+# Differs from the model the chatbot prompts are seeded with, so a test can tell
+# the default apart from the stored model.
+DEFAULT_MODEL = "claude-opus-5-5"
 
 
 @pytest.fixture
@@ -42,7 +41,7 @@ def anthropic_default(client: GenaiEngineTestClientBase):
     assert response.status_code == 201
     response = client.base_client.put(
         "/api/v1/default_model_provider",
-        json={"provider": "anthropic", "model_name": "claude-sonnet-4-6"},
+        json={"provider": "anthropic", "model_name": DEFAULT_MODEL},
         headers=headers,
     )
     assert response.status_code == 204
@@ -50,6 +49,21 @@ def anthropic_default(client: GenaiEngineTestClientBase):
     # the default first: the API refuses to delete the default provider's credentials
     client.base_client.delete("/api/v1/default_model_provider", headers=headers)
     client.base_client.delete("/api/v1/model_providers/anthropic", headers=headers)
+
+
+def _get_chatbot_config(client: GenaiEngineTestClientBase):
+    return client.base_client.get(
+        "/api/v1/chatbot/config",
+        headers=client.authorized_org_admin_api_key_headers,
+    )
+
+
+def _put_chatbot_config(client: GenaiEngineTestClientBase, body: dict):
+    return client.base_client.put(
+        "/api/v1/chatbot/config",
+        json=body,
+        headers=client.authorized_org_admin_api_key_headers,
+    )
 
 
 @pytest.mark.unit_tests
@@ -66,23 +80,12 @@ def test_chatbot_without_default_model_provider(client: GenaiEngineTestClientBas
     assert response.status_code == 400
     assert "No default model provider is set" in response.json()["detail"]
 
-    # the config reports that the chatbot follows the default, which isn't set
-    response = client.base_client.get(
-        "/api/v1/chatbot/config", headers=client.authorized_org_admin_api_key_headers
-    )
+    # the config has no model to show
+    response = _get_chatbot_config(client)
     assert response.status_code == 200
     config = response.json()
     assert config["model_provider"] is None
     assert config["model_name"] is None
-    assert config["uses_default_model"] is True
-
-    # changing only the model name needs a provider, and there is no default to take it from
-    response = client.base_client.put(
-        "/api/v1/chatbot/config",
-        json={"model_name": "gpt-4o"},
-        headers=client.authorized_org_admin_api_key_headers,
-    )
-    assert response.status_code == 400
 
 
 @pytest.mark.unit_tests
@@ -90,98 +93,86 @@ def test_chatbot_config_shows_default_model(
     client: GenaiEngineTestClientBase,
     anthropic_default: None,
 ):
-    response = client.base_client.get(
-        "/api/v1/chatbot/config",
-        headers=client.authorized_org_admin_api_key_headers,
-    )
+    response = _get_chatbot_config(client)
     assert response.status_code == 200
     config = response.json()
     assert config["model_provider"] == "anthropic"
-    assert config["model_name"] == "claude-sonnet-4-6"
-    assert config["uses_default_model"] is True
-
-
-def _put_chatbot_config(client: GenaiEngineTestClientBase, body: dict):
-    return client.base_client.put(
-        "/api/v1/chatbot/config",
-        json=body,
-        headers=client.authorized_org_admin_api_key_headers,
-    )
-
-
-def _summarizer_model(client: GenaiEngineTestClientBase) -> tuple:
-    db = override_get_db_session()
-    try:
-        prompt = AgenticPromptRepository(db).get_llm_item_by_tag(
-            task_id=ARTHUR_SYSTEM_TASK_ID,
-            item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
-            tag="production",
-        )
-        return prompt.model_provider, prompt.model_name
-    finally:
-        db.close()
+    assert config["model_name"] == DEFAULT_MODEL
+    assert "uses_default_model" not in config
 
 
 @pytest.mark.unit_tests
-def test_chatbot_config_save_of_shown_default_keeps_following_it(
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"model_provider": "openai", "model_name": "gpt-4o"},
+        {"model_name": "gpt-4o"},
+        {"model_provider": "openai", "blacklist_endpoints": []},
+    ],
+)
+def test_chatbot_config_rejects_a_model(
     client: GenaiEngineTestClientBase,
     anthropic_default: None,
+    body: dict,
 ):
-    # A settings form that sends everything back sends the default's model with an
-    # unrelated change; that must not pin the chatbot to today's default.
-    config = client.base_client.get(
-        "/api/v1/chatbot/config",
-        headers=client.authorized_org_admin_api_key_headers,
-    ).json()
-    response = _put_chatbot_config(
-        client,
-        {
-            "model_provider": config["model_provider"],
-            "model_name": config["model_name"],
-            "blacklist_endpoints": config["blacklist_endpoints"],
-        },
-    )
-    assert response.status_code == 200
-    assert response.json()["uses_default_model"] is True
-    assert _summarizer_model(client) == (EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME)
+    blacklist_before = _get_chatbot_config(client).json()["blacklist_endpoints"]
+
+    response = _put_chatbot_config(client, body)
+    assert response.status_code == 400
+    assert "Model Providers page" in response.json()["detail"]
+    # nothing in the request was applied
+    assert _get_chatbot_config(client).json()["blacklist_endpoints"] == blacklist_before
 
 
 @pytest.mark.unit_tests
-def test_chatbot_config_moves_back_to_default_model(
+def test_chatbot_config_updates_blacklist_only(
     client: GenaiEngineTestClientBase,
     anthropic_default: None,
 ):
     try:
         response = _put_chatbot_config(
             client,
-            {"model_provider": "openai", "model_name": "gpt-4o"},
+            {"blacklist_endpoints": ["/api/v2/tasks"]},
         )
         assert response.status_code == 200
-        assert response.json()["uses_default_model"] is False
-        assert _summarizer_model(client) == ("openai", "gpt-4o")
-
-        response = _put_chatbot_config(client, {"use_default_model": True})
-        assert response.status_code == 200
         config = response.json()
-        assert config["uses_default_model"] is True
-        assert config["model_provider"] == "anthropic"
-        assert config["model_name"] == "claude-sonnet-4-6"
-        assert _summarizer_model(client) == (EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME)
+        assert config["blacklist_endpoints"] == ["/api/v2/tasks"]
+        assert config["model_name"] == DEFAULT_MODEL
     finally:
-        # back to the default for the other tests
-        _put_chatbot_config(client, {"use_default_model": True})
+        _put_chatbot_config(client, {"blacklist_endpoints": []})
 
 
 @pytest.mark.unit_tests
-def test_chatbot_config_rejects_default_with_a_model(
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_chatbot_calls_default_not_stored_model(
+    mock_stream,
     client: GenaiEngineTestClientBase,
+    anthropic_default: None,
 ):
-    response = _put_chatbot_config(
-        client,
-        {"use_default_model": True, "model_provider": "openai", "model_name": "gpt-4o"},
+    db = override_get_db_session()
+    try:
+        stored = AgenticPromptRepository(db).get_llm_item_by_tag(
+            task_id=ARTHUR_SYSTEM_TASK_ID,
+            item_name=CHATBOT_PROMPT_NAME,
+            tag="production",
+        )
+    finally:
+        db.close()
+    assert stored.model_name != DEFAULT_MODEL
+
+    _, task = client.create_task("chatbot_task_default_model", is_agentic=True)
+    mock_stream.return_value = make_stream(final_response_events("hi"))
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"history": [{"role": "user", "content": "hello"}]},
+        headers=client.authorized_user_api_key_headers,
     )
-    assert response.status_code == 400
-    assert "use_default_model" in response.text
+    assert response.status_code == 200
+    prompt = mock_stream.call_args.args[0]
+    assert (prompt.model_provider, prompt.model_name) == ("anthropic", DEFAULT_MODEL)
 
 
 @pytest.mark.unit_tests

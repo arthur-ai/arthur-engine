@@ -78,6 +78,11 @@ class ApplicationConfigurationResponse(BaseModel):
     max_llm_rules_per_task_count: int
     trace_retention_days: int
     allowed_trace_retention_days: tuple[int, ...] = ()
+    insights_generation_enabled: bool = Field(
+        default=False,
+        description="Whether insights are generated for this instance. Off by default. "
+        "Insights run on the default model provider.",
+    )
 
 
 class DisplaySettingsResponse(BaseModel):

@@ -17281,7 +17281,7 @@
                     "Chatbot"
                 ],
                 "summary": "Get chatbot model configuration",
-                "description": "Returns the model provider, model name, blacklisted endpoints, and available endpoints.",
+                "description": "Returns the model the chatbot uses (the default model provider), blacklisted endpoints, and available endpoints.",
                 "operationId": "get_chatbot_config_api_v1_chatbot_config_get",
                 "responses": {
                     "200": {
@@ -17306,7 +17306,7 @@
                     "Chatbot"
                 ],
                 "summary": "Update chatbot model configuration",
-                "description": "Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.",
+                "description": "Updates the endpoints the chatbot may not call. The chatbot always uses the default model provider, set on the Model Providers page; sending model_provider or model_name returns 400.",
                 "operationId": "update_chatbot_config_api_v1_chatbot_config_put",
                 "requestBody": {
                     "content": {
@@ -20153,6 +20153,12 @@
                         "type": "array",
                         "title": "Allowed Trace Retention Days",
                         "default": []
+                    },
+                    "insights_generation_enabled": {
+                        "type": "boolean",
+                        "title": "Insights Generation Enabled",
+                        "description": "Whether insights are generated for this instance. Off by default. Insights run on the default model provider.",
+                        "default": false
                     }
                 },
                 "type": "object",
@@ -20217,6 +20223,18 @@
                             }
                         ],
                         "title": "Trace Retention Days"
+                    },
+                    "insights_generation_enabled": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Insights Generation Enabled",
+                        "description": "Turns insights generation on or off for the whole instance. Insights run on the default model provider."
                     }
                 },
                 "type": "object",
@@ -20721,7 +20739,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Provider the chatbot calls. Null when it uses the default model provider and none is set."
+                        "description": "Provider the chatbot calls: the instance's default model provider. Null when none is set."
                     },
                     "model_name": {
                         "anyOf": [
@@ -20733,13 +20751,7 @@
                             }
                         ],
                         "title": "Model Name",
-                        "description": "Model the chatbot calls. Null when it uses the default model provider and none is set."
-                    },
-                    "uses_default_model": {
-                        "type": "boolean",
-                        "title": "Uses Default Model",
-                        "description": "True when the chatbot follows the instance's default model provider instead of a model picked for it.",
-                        "default": false
+                        "description": "Model the chatbot calls: the instance's default model. Null when none is set."
                     },
                     "blacklist_endpoints": {
                         "items": {
@@ -20771,7 +20783,8 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "description": "No longer accepted: the chatbot uses the default model provider. Sending it returns 400."
                     },
                     "model_name": {
                         "anyOf": [
@@ -20782,19 +20795,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Model Name"
-                    },
-                    "use_default_model": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Use Default Model",
-                        "description": "True moves the chatbot back to the instance's default model provider. Can't be combined with model_provider or model_name."
+                        "title": "Model Name",
+                        "description": "No longer accepted: the chatbot uses the default model provider. Sending it returns 400."
                     },
                     "blacklist_endpoints": {
                         "anyOf": [

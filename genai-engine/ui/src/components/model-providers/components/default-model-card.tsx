@@ -65,7 +65,7 @@ export const DefaultModelCard: React.FC<Props> = ({ enabledProviders, getProvide
           Default model
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5, mb: 2 }}>
-          Used wherever no model is named: synthetic data and the chatbot. A model picked for a feature always wins, and evals keep the model they
+          Arthur&apos;s AI features run on this model: the AI Assistant always uses it, and synthetic data starts from it. Evals keep the model they
           were saved with.
         </Typography>
 

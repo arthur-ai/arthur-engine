@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatbotConfigResponse(BaseModel):
@@ -10,15 +10,11 @@ class ChatbotConfigResponse(BaseModel):
 
     model_provider: Optional[ModelProvider] = Field(
         default=None,
-        description="Provider the chatbot calls. Null when it uses the default model provider and none is set.",
+        description="Provider the chatbot calls: the instance's default model provider. Null when none is set.",
     )
     model_name: Optional[str] = Field(
         default=None,
-        description="Model the chatbot calls. Null when it uses the default model provider and none is set.",
-    )
-    uses_default_model: bool = Field(
-        default=False,
-        description="True when the chatbot follows the instance's default model provider instead of a model picked for it.",
+        description="Model the chatbot calls: the instance's default model. Null when none is set.",
     )
     blacklist_endpoints: List[str] = []
     available_endpoints: List[str] = []
@@ -27,24 +23,15 @@ class ChatbotConfigResponse(BaseModel):
 class ChatbotConfigUpdateRequest(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    model_provider: Optional[ModelProvider] = None
-    model_name: Optional[str] = None
-    use_default_model: Optional[bool] = Field(
+    model_provider: Optional[ModelProvider] = Field(
         default=None,
-        description=(
-            "True moves the chatbot back to the instance's default model provider. "
-            "Can't be combined with model_provider or model_name."
-        ),
+        description="No longer accepted: the chatbot uses the default model provider. Sending it returns 400.",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="No longer accepted: the chatbot uses the default model provider. Sending it returns 400.",
     )
     blacklist_endpoints: Optional[List[str]] = None
-
-    @model_validator(mode="after")
-    def validate_one_model_choice(self) -> "ChatbotConfigUpdateRequest":
-        if self.use_default_model and (self.model_provider or self.model_name):
-            raise ValueError(
-                "Set either use_default_model or model_provider and model_name, not both.",
-            )
-        return self
 
 
 class SearchArthurApiArgs(BaseModel):

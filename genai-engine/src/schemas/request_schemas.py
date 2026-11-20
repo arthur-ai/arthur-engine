@@ -94,6 +94,11 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
     ] = None
     max_llm_rules_per_task_count: Optional[int] = None
     trace_retention_days: Optional[int] = None
+    insights_generation_enabled: Optional[bool] = Field(
+        default=None,
+        description="Turns insights generation on or off for the whole instance. "
+        "Insights run on the default model provider.",
+    )
 
     @model_validator(mode="after")
     def validate_trace_retention_days(self) -> "ApplicationConfigurationUpdateRequest":

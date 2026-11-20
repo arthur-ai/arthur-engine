@@ -69,7 +69,7 @@ class ApplicationConfigurations(str, Enum):
     CHATBOT_BLACKLIST_ENDPOINTS = "chatbot_blacklist_endpoints"
     DEFAULT_LLM_PROVIDER = "default_llm_provider"
     DEFAULT_LLM_MODEL = "default_llm_model"
-    CHATBOT_SEED_MOVED_TO_DEFAULT = "chatbot_seed_moved_to_default"
+    INSIGHTS_GENERATION_ENABLED = "insights_generation_enabled"
 
 
 class ClaimClassifierResultEnum(str, Enum):

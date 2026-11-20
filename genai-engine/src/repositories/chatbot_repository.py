@@ -19,7 +19,6 @@ from schemas.chatbot_schemas import (
 )
 from schemas.custom_exceptions import DefaultModelProviderNotSetException
 from schemas.enums import ApplicationConfigurations
-from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.api_call_service import ApiCallService
 from services.chatbot.chatbot_prompts import get_api_index
 from services.chatbot.chatbot_service import ChatbotService
@@ -28,8 +27,6 @@ from utils.constants import (
     ARTHUR_SYSTEM_TASK_ID,
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
-    EMPTY_MODEL_NAME,
-    EMPTY_MODEL_PROVIDER,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,17 +72,11 @@ class ChatbotRepository:
             row.value = value
         self.db_session.commit()
 
-    def _resolve_chatbot_model(
-        self,
-        chatbot_prompt: AgenticPrompt,
-    ) -> tuple[Optional[ModelProvider], Optional[str]]:
-        """The chatbot's model, with the 'empty' placeholder resolved to the default
-        model provider. (None, None) when it uses the default and none is set."""
+    def _default_model(self) -> tuple[Optional[ModelProvider], Optional[str]]:
+        """The instance's default model provider, which the chatbot always uses.
+        (None, None) when none is set."""
         try:
-            return self.model_provider_repo.resolve_model(
-                chatbot_prompt.model_provider,
-                chatbot_prompt.model_name,
-            )
+            return self.model_provider_repo.resolve_model(None, None)
         except DefaultModelProviderNotSetException:
             return None, None
 
@@ -115,24 +106,20 @@ class ChatbotRepository:
                 tag="production",
             ),
         )
+        # The chatbot and its summarizer always run on the default model provider;
+        # the model stored on their prompts is not used.
         chatbot_model_provider, chatbot_model_name = (
-            self.model_provider_repo.resolve_model(
-                chatbot_prompt.model_provider,
-                chatbot_prompt.model_name,
-            )
+            self.model_provider_repo.resolve_model(None, None)
         )
         llm_client = self.model_provider_repo.get_model_provider_client(
             chatbot_model_provider,
         )
-        if summarizer_prompt.model_provider == EMPTY_MODEL_PROVIDER:
-            # The summarizer runs on the chatbot's client, so it follows the
-            # chatbot's model when it uses the default.
-            summarizer_prompt = summarizer_prompt.model_copy(
-                update={
-                    "model_provider": chatbot_model_provider.value,
-                    "model_name": chatbot_model_name,
-                },
-            )
+        summarizer_prompt = summarizer_prompt.model_copy(
+            update={
+                "model_provider": chatbot_model_provider.value,
+                "model_name": chatbot_model_name,
+            },
+        )
 
         blacklist = self.get_blacklist_endpoints()
         api_call_service = ApiCallService(
@@ -165,130 +152,27 @@ class ChatbotRepository:
         )
 
     def get_chatbot_config(self, app: FastAPI) -> ChatbotConfigResponse:
-        chatbot_prompt = cast(
-            AgenticPrompt,
-            self.agentic_prompt_repo.get_llm_item_by_tag(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                tag="production",
-            ),
-        )
-        blacklist = self.get_blacklist_endpoints()
-        available = get_api_index(app)
-        model_provider, model_name = self._resolve_chatbot_model(chatbot_prompt)
+        model_provider, model_name = self._default_model()
         return ChatbotConfigResponse(
             model_provider=model_provider,
             model_name=model_name,
-            uses_default_model=chatbot_prompt.model_provider == EMPTY_MODEL_PROVIDER,
-            blacklist_endpoints=blacklist,
-            available_endpoints=available,
+            blacklist_endpoints=self.get_blacklist_endpoints(),
+            available_endpoints=get_api_index(app),
         )
-
-    def _save_chatbot_prompts(self, model_provider: str, model_name: str) -> None:
-        """Save a new production version of both chatbot prompts on the given model.
-        The 'empty' placeholder makes them follow the default model provider."""
-        for prompt_name in (CHATBOT_PROMPT_NAME, CHATBOT_SUMMARIZER_PROMPT_NAME):
-            prompt = cast(
-                AgenticPrompt,
-                self.agentic_prompt_repo.get_llm_item_by_tag(
-                    task_id=ARTHUR_SYSTEM_TASK_ID,
-                    item_name=prompt_name,
-                    tag="production",
-                ),
-            )
-            item = CreateAgenticPromptRequest(
-                messages=prompt.messages,
-                model_name=model_name,
-                # Placeholder provider: the request type only accepts real providers,
-                # so the actual one (possibly 'empty') is set below.
-                model_provider=ModelProvider.OPENAI,
-                tools=prompt.tools,
-                config=prompt.config,  # type: ignore[arg-type]
-            ).model_copy(update={"model_provider": model_provider})
-            new_version = self.agentic_prompt_repo.save_llm_item(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=prompt_name,
-                item=item,
-            )
-            self.agentic_prompt_repo.add_tag_to_llm_item_version(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=prompt_name,
-                item_version=str(new_version.version),
-                tag="production",
-            )
 
     def update_chatbot_config(
         self,
         update: ChatbotConfigUpdateRequest,
         app: FastAPI,
     ) -> ChatbotConfigResponse:
-        chatbot_prompt = cast(
-            AgenticPrompt,
-            self.agentic_prompt_repo.get_llm_item_by_tag(
-                task_id=ARTHUR_SYSTEM_TASK_ID,
-                item_name=CHATBOT_PROMPT_NAME,
-                tag="production",
-            ),
-        )
-
-        current_provider, current_model = self._resolve_chatbot_model(chatbot_prompt)
-        uses_default_model = chatbot_prompt.model_provider == EMPTY_MODEL_PROVIDER
-        model_provider = update.model_provider or current_provider
-        model_name = update.model_name or current_model
-
-        if update.use_default_model:
-            if uses_default_model:
-                logger.info(
-                    "Chatbot already uses the default model, skipping prompt update"
-                )
-            else:
-                self._save_chatbot_prompts(EMPTY_MODEL_PROVIDER, EMPTY_MODEL_NAME)
-                uses_default_model = True
-                model_provider, model_name = self._resolve_chatbot_model(
-                    chatbot_prompt.model_copy(
-                        update={
-                            "model_provider": EMPTY_MODEL_PROVIDER,
-                            "model_name": EMPTY_MODEL_NAME,
-                        },
-                    ),
-                )
-        elif update.model_provider is None and update.model_name is None:
-            logger.info("No chatbot model change requested, skipping prompt update")
-        elif model_provider is None or model_name is None:
+        if update.model_provider is not None or update.model_name is not None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=(
-                    "Set both model_provider and model_name: the chatbot uses the "
-                    "default model provider, and none is set."
+                    "The chatbot uses the default model provider. Set the model on "
+                    "the Model Providers page instead."
                 ),
             )
-        elif uses_default_model and (model_provider, model_name) == (
-            current_provider,
-            current_model,
-        ):
-            # A client that sends the whole form back sends the default's model too;
-            # that is not a pick, so the chatbot keeps following the default.
-            logger.info(
-                "Requested model is the current default, chatbot keeps using the default",
-            )
-        elif (
-            chatbot_prompt.model_provider == model_provider
-            and chatbot_prompt.model_name == model_name
-        ):
-            logger.info(
-                f"Chatbot model and provider are the same, skipping prompt update",
-            )
-        else:
-            uses_default_model = False
-            self._save_chatbot_prompts(ModelProvider(model_provider).value, model_name)
-
         if update.blacklist_endpoints is not None:
             self.set_blacklist_endpoints(update.blacklist_endpoints)
-
-        return ChatbotConfigResponse(
-            model_provider=model_provider,
-            model_name=model_name,
-            uses_default_model=uses_default_model,
-            blacklist_endpoints=self.get_blacklist_endpoints(),
-            available_endpoints=get_api_index(app),
-        )
+        return self.get_chatbot_config(app)

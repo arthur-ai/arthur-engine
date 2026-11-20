@@ -117,6 +117,38 @@ def test_trace_retention_days_config(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+def test_insights_generation_enabled_config(client: GenaiEngineTestClientBase):
+    """Insights generation is off until an admin turns it on, and other updates leave it alone."""
+    headers = {"Authorization": "Bearer admin_0"}
+    assert (
+        client.get_configs(headers=headers).json()["insights_generation_enabled"]
+        is False
+    )
+
+    try:
+        update_resp = client.update_configs(
+            {"insights_generation_enabled": True},
+            headers=headers,
+        )
+        assert update_resp.status_code == 200
+        assert update_resp.json()["insights_generation_enabled"] is True
+
+        client.update_configs({"trace_retention_days": 90}, headers=headers)
+        assert (
+            client.get_configs(headers=headers).json()["insights_generation_enabled"]
+            is True
+        )
+
+        update_resp = client.update_configs(
+            {"insights_generation_enabled": False},
+            headers=headers,
+        )
+        assert update_resp.json()["insights_generation_enabled"] is False
+    finally:
+        client.update_configs({"insights_generation_enabled": False}, headers=headers)
+
+
+@pytest.mark.unit_tests
 def test_version_read_env_var_not_present():
     version = utils.get_genai_engine_version()
     semver_regex = r"^\d+\.\d+\.\d+$"
