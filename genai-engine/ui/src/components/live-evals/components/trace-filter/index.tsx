@@ -42,6 +42,7 @@ export const TraceFilterField = ({ value, onChange }: Props) => {
           <TextField
             label="Span name"
             size="small"
+            variant="filled"
             placeholder="Any span"
             value={row.spanName}
             onChange={(e) => updateRow(index, { spanName: e.target.value })}
@@ -50,6 +51,7 @@ export const TraceFilterField = ({ value, onChange }: Props) => {
           <TextField
             label="Attribute path"
             size="small"
+            variant="filled"
             required
             placeholder="attributes.metadata.plan"
             value={row.attributePath}
@@ -61,6 +63,7 @@ export const TraceFilterField = ({ value, onChange }: Props) => {
             select
             label="Operator"
             size="small"
+            variant="filled"
             value={row.operator}
             onChange={(e) => updateRow(index, { operator: e.target.value as TraceFilterRow["operator"] })}
             sx={{ flex: 1 }}
@@ -74,6 +77,7 @@ export const TraceFilterField = ({ value, onChange }: Props) => {
           <TextField
             label="Value"
             size="small"
+            variant="filled"
             disabled={row.operator === "exists"}
             value={row.value}
             onChange={(e) => updateRow(index, { value: e.target.value })}
