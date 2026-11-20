@@ -25,7 +25,7 @@ from litellm.types.utils import (
     ModelResponseStream,
 )
 
-from clients.llm.llm_client import LLMClient, LLMModelResponse
+from clients.llm.llm_client import LLMClient, LLMModelResponse, PromptTooLongError
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import SSEEventType
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
@@ -457,6 +457,9 @@ class ChatCompletionService:
                 ).model_dump_json()
 
                 yield format_sse(SSEEventType.FINAL_RESPONSE, data)
+        except PromptTooLongError as e:
+            # str(e) would prefix the status code ("400: ...")
+            yield format_sse_error(e.detail, wrap=False)
         except Exception as e:
             yield format_sse_error(str(e), wrap=False)
 

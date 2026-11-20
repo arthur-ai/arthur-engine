@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel
 
+from services.chatbot.tool_result_budget import bound_tool_result
 from utils.llm_tool_functions import is_allowed_delete_path, is_blacklisted
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,9 @@ class ApiCallResult(BaseModel):
     body: str
 
     def to_tool_result_content(self) -> str:
-        return f"HTTP {self.status_code}\n{self.body}"
+        """The response as the model sees it: in full, or a preview when it is too
+        large to fit in the model's context window."""
+        return bound_tool_result(self.status_code, self.body)
 
 
 class ApiCallService:

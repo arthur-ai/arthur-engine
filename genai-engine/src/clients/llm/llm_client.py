@@ -93,6 +93,20 @@ def get_static_catalog(provider: ModelProvider) -> List[str] | None:
     return SUPPORTED_TEXT_MODELS.get(provider)
 
 
+PROMPT_TOO_LONG_DETAIL = (
+    "The request is too long for the model to read at once. Ask about less at a "
+    "time, for example fewer items or a shorter time range."
+)
+
+
+class PromptTooLongError(HTTPException):
+    """The input is longer than the model's context window. Still a 400, but with a
+    message a user can act on; the provider's own text goes to the log."""
+
+    def __init__(self) -> None:
+        super().__init__(status_code=400, detail=PROMPT_TOO_LONG_DETAIL)
+
+
 class LLMClient:
     def __init__(
         self,
@@ -238,6 +252,12 @@ class LLMClient:
             **kwargs,
         )
 
+    def _prompt_too_long(self, error: Exception) -> PromptTooLongError:
+        # ContextWindowExceededError subclasses BadRequestError, so the except clause
+        # that calls this must come before the BadRequestError one.
+        logger.warning("Prompt too long for provider %s: %s", self.provider, error)
+        return PromptTooLongError()
+
     def completion(
         self,
         *args: Any,
@@ -253,6 +273,8 @@ class LLMClient:
 
         try:
             response = litellm.completion(*args, **kwargs)
+        except litellm.ContextWindowExceededError as e:
+            raise self._prompt_too_long(e) from e
         except litellm.BadRequestError as e:
             if "requires at least one non-system message" in str(e):
                 raise HTTPException(
@@ -365,6 +387,8 @@ class LLMClient:
             if isinstance(response, ModelResponse):
                 self.record_token_usage(org_id, response)
             return response
+        except litellm.ContextWindowExceededError as e:
+            raise self._prompt_too_long(e) from e
         except litellm.BadRequestError as e:
             if "requires at least one non-system message" in str(e):
                 raise HTTPException(

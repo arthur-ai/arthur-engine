@@ -5,8 +5,10 @@ import pytest
 from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
 from fastapi import HTTPException
 
+from clients.llm.llm_client import PROMPT_TOO_LONG_DETAIL, PromptTooLongError
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallResult
+from services.chatbot.tool_result_budget import MAX_TOOL_RESULT_CHARS, NARROW_HINT
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.tasks.helpers import (
     final_response_events,
@@ -178,7 +180,7 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
 
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.LLMClient.acount_tokens")
-@patch("services.chatbot.base_chatbot_service.litellm.get_max_tokens")
+@patch("services.chatbot.base_chatbot_service.litellm.get_model_info")
 @patch("services.chatbot.base_chatbot_service.BaseChatbotService.summarize_history")
 @patch(
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
@@ -186,7 +188,7 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
 def test_chatbot_emits_history_replace_when_over_token_limit(
     mock_stream,
     mock_summarize_history,
-    mock_get_max_tokens,
+    mock_get_model_info,
     mock_acount_tokens,
     client: GenaiEngineTestClientBase,
 ):
@@ -200,7 +202,7 @@ def test_chatbot_emits_history_replace_when_over_token_limit(
     )
 
     mock_stream.return_value = make_stream(final_response_events("Done."))
-    mock_get_max_tokens.return_value = 10
+    mock_get_model_info.return_value = {"max_input_tokens": 10}
     mock_acount_tokens.return_value = make_token_count_response(1000)
     mock_summarize_history.return_value = [
         OpenAIMessage(role=MessageRole.SYSTEM, content="sys"),
@@ -229,3 +231,103 @@ def test_chatbot_emits_history_replace_when_over_token_limit(
     )
     assert replace_event["history"][-1]["content"] == "kept assistant"
     mock_summarize_history.assert_called_once()
+
+
+@pytest.mark.unit_tests
+@patch("services.chatbot.api_call_service.ApiCallService.call")
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_chatbot_caps_an_oversized_tool_result(
+    mock_stream,
+    mock_api_call,
+    client: GenaiEngineTestClientBase,
+):
+    """A multi-megabyte API response reaches the model as a bounded preview."""
+    _, task = client.create_task("chatbot_task_big_tool_result", is_agentic=True)
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    big_body = json.dumps(
+        {"count": 50, "traces": [{"output_content": "a" * 120_000}] * 50},
+    )
+    mock_api_call.return_value = ApiCallResult(
+        method="GET",
+        path="/api/v1/traces",
+        status_code=200,
+        body=big_body,
+    )
+    api_tool_call = make_tool_call(
+        "tc3",
+        "call_arthur_api",
+        '{"method": "GET", "path": "/api/v1/traces"}',
+    )
+    first_call_events = [
+        "event: final_response\ndata: "
+        + AgenticPromptRunResponse(
+            content=None,
+            tool_calls=[api_tool_call],
+            cost="0.0",
+        ).model_dump_json()
+        + "\n\n",
+    ]
+    responses = [
+        make_stream(first_call_events),
+        make_stream(final_response_events("Here is a summary.")),
+    ]
+    prompts = []
+
+    def next_stream(prompt, *args, **kwargs):
+        prompts.append(prompt)
+        return responses.pop(0)
+
+    mock_stream.side_effect = next_stream
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"history": [{"role": "user", "content": "show my traces"}]},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert response.status_code == 200
+    assert "Here is a summary." in response.text
+    # The loop appends its final answer to the same prompt afterwards, so find by role
+    tool_message = next(
+        m for m in prompts[1].messages if m.role == MessageRole.TOOL.value
+    )
+    assert len(big_body) > 6_000_000
+    assert len(tool_message.content) <= MAX_TOOL_RESULT_CHARS
+    assert NARROW_HINT in tool_message.content
+    # The browser gets the same preview, not the full body
+    assert parse_sse_event(response.text, "tool_result")["content"] == (
+        tool_message.content
+    )
+
+
+@pytest.mark.unit_tests
+@patch(
+    "clients.llm.llm_client.LLMClient.acompletion",
+    side_effect=PromptTooLongError(),
+)
+def test_chatbot_prompt_too_long_shows_a_plain_message(
+    _,
+    client: GenaiEngineTestClientBase,
+):
+    _, task = client.create_task("chatbot_task_prompt_too_long", is_agentic=True)
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"history": [{"role": "user", "content": "hello"}]},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert response.status_code == 200
+    assert f"event: error\ndata: {PROMPT_TOO_LONG_DETAIL}" in response.text
+    assert "Bad request to provider" not in response.text

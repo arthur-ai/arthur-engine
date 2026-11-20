@@ -33,6 +33,25 @@ MAX_ITERATIONS = int(
     get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR, True) or 30,
 )
 
+# History is summarized once it passes 150,000 tokens (the default trigger of
+# Anthropic's server-side compaction), or 85% of a smaller model's input window, so
+# the next turn still has room.
+SUMMARIZE_AT_TOKENS = 150_000
+SUMMARIZE_AT_WINDOW_SHARE = 0.85
+
+
+def summarize_threshold(model_name: str) -> Optional[int]:
+    """Token count above which the history is summarized; None when the model's
+    input window is unknown."""
+    try:
+        # get_max_tokens would return the output limit, not the input window
+        window = litellm.get_model_info(model_name).get("max_input_tokens")
+    except Exception:  # litellm raises for models missing from its model map
+        return None
+    if not window:
+        return None
+    return min(SUMMARIZE_AT_TOKENS, int(window * SUMMARIZE_AT_WINDOW_SHARE))
+
 
 class BaseChatbotService(ABC):
     def __init__(
@@ -138,8 +157,9 @@ class BaseChatbotService(ABC):
         llm_client: LLMClient,
         model_name: str,
     ) -> AsyncGenerator[str, None]:
-        # Get the context window size for the specified model
-        max_tokens = litellm.get_max_tokens(model_name)
+        threshold = summarize_threshold(model_name)
+        if threshold is None:
+            return
 
         # Count the tokens in the messages using the provider's api
         token_response = await llm_client.acount_tokens(
@@ -147,8 +167,7 @@ class BaseChatbotService(ABC):
             messages=[m.model_dump(exclude_none=True) for m in messages],
         )
 
-        # If the total tokens are less than the context window size, don't summarize
-        if max_tokens is None or token_response.total_tokens <= max_tokens:
+        if token_response.total_tokens <= threshold:
             return
 
         # Summarize the history
