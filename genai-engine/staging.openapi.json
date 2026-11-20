@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1101"
+        "version": "2.1.1124"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -22865,7 +22865,7 @@
                             }
                         ],
                         "title": "Last Fetched",
-                        "description": "Last time traces were fetched for this task (from task_polling_state)"
+                        "description": "End time of the newest trace GenAI Engine holds for this task; null if it has none"
                     },
                     "tools": {
                         "anyOf": [
@@ -24991,7 +24991,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
+                        "title": "LLM Config Tool Choice",
                         "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "response_format": {
@@ -25343,7 +25343,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
+                        "title": "LLM Prompt Request Tool Choice",
                         "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "stream_options": {

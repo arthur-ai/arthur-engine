@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Vendor ai-detection-spec's osquery binding -- its built artifacts -- at a pinned ref.
 #
-#     tools/vendor-queries.sh v0.17.1
-#     tools/vendor-queries.sh 98eaeca        # a SHA, if no tag carries what you need
+#     tools/vendor-queries.sh v0.18.0
+#     tools/vendor-queries.sh 5bbfe2d        # a SHA, if no tag carries what you need
 #
 # WHY VENDOR RATHER THAN SUBMODULE OR FETCH-AT-BUILD. A vendored copy gives reviewable
 # diffs, works with no network, and puts the pinned version in the tree where a reader
@@ -70,13 +70,14 @@ fi
 
 # THE BINDING MUST BE WHERE THIS SCRIPT COPIES FROM, AND A REF WITHOUT IT IS NAMED AS THE
 # CAUSE. v0.15.0 moved the scanner under osquery/ and renamed the bundler's driver interface
-# to AI_DETECTION_SPEC_ROOT, which tools/build-collector.py's driver reads. An older ref has
-# neither, so vendoring one would fail later, as an import error about a path or a driver that
-# exits 1 on every endpoint.
-for p in osquery/bin osquery/dist osquery/tools/bundle.py osquery/tools/build.py; do
+# to AI_DETECTION_SPEC_ROOT, which tools/build-collector.py's driver reads. v0.18.0 added the
+# Windows runner, bin/discover.ps1, which the third collector is built around. An older ref
+# lacks one or the other, so vendoring it would fail later, as a build that refuses all three
+# collectors. Refused here, while vendor/ still holds the tree that builds.
+for p in osquery/bin osquery/bin/discover.ps1 osquery/dist osquery/tools/bundle.py osquery/tools/build.py; do
   [ -e "$work/src/$p" ] || {
     echo "vendor: $REF has no $p. This repo vendors the osquery binding as" >&2
-    echo "        ai-detection-spec lays it out, so it cannot vendor a ref older than v0.15.0." >&2
+    echo "        ai-detection-spec lays it out, so it cannot vendor a ref older than v0.18.0." >&2
     exit 1; }
 done
 

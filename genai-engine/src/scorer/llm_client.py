@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import random
+import re
 import sys
 import time
 from datetime import datetime as dt
@@ -41,6 +42,10 @@ llm_executor = None
 tracer = trace.get_tracer(__name__)
 
 DEFAULT_TEMPERATURE: float = 0.0
+
+# Shape of an upstream error identifier, e.g. "invalid_api_key", "DeploymentNotFound"
+# or "messages[0].content". Anything else in those fields is free text.
+UPSTREAM_ERROR_IDENTIFIER = re.compile(r"[\w.\-\[\]]{1,64}")
 
 
 class LLMTokensPerPeriodRateLimiter:
@@ -316,7 +321,8 @@ class LLMExecutor:
                         f"OpenAI API request error triggered by {operation_name}: {e}",
                     )
                     raise LLMExecutionException(
-                        "GenAI Engine was unable to evaluate due to an upstream API request error",
+                        "GenAI Engine was unable to evaluate due to an upstream API request error"
+                        + upstream_error_details(e),
                     )
             finally:
                 # Record this LLM invocation on the request's audit accumulator
@@ -348,6 +354,40 @@ class LLMExecutor:
                         "Failed to record LLM model invocation",
                         exc_info=True,
                     )
+
+
+def upstream_error_details(e: openai.APIError) -> str:
+    """Suffix identifying an upstream API failure, e.g. " (HTTP 404, code: DeploymentNotFound)".
+
+    Carries only the HTTP status and the provider's error identifiers, enough for a
+    caller to tell a rejected key from a missing deployment from an unsupported
+    parameter. The provider's message text stays in the logs because it can echo
+    endpoints, deployment names and keys. Returns an empty string when the error
+    has none of these.
+    """
+    details: list[str] = []
+    if isinstance(e, openai.APIStatusError):
+        details.append(f"HTTP {e.status_code}")
+    for label, value in (("code", e.code), ("param", e.param)):
+        identifier = _upstream_error_identifier(value)
+        if identifier:
+            details.append(f"{label}: {identifier}")
+    return f" ({', '.join(details)})" if details else ""
+
+
+def _upstream_error_identifier(value: object) -> str | None:
+    """The field as text when it is a short identifier, otherwise None.
+
+    The body is whatever the endpoint or a gateway in front of it returned, so these
+    fields are not guaranteed to be identifiers. LiteLLM proxies also report an
+    absent field as the string "None".
+    """
+    if value is None:
+        return None
+    text = str(value)
+    if text == "None" or not UPSTREAM_ERROR_IDENTIFIER.fullmatch(text):
+        return None
+    return text
 
 
 def extract_chain_model_name(chain: Any) -> str | None:

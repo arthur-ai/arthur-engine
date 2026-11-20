@@ -1716,7 +1716,7 @@ def test_agentic_experiment_session_id_generator(
     )
     assert (
         experiment_summary["http_template"]["request_body"]
-        == '{"message": "{{user_message}}", "body_session_id": "{{body_session_id}}"}',
+        == '{"message": "{{user_message}}", "body_session_id": "{{body_session_id}}"}'
     )
 
     # Validate that request_time_parameters are NOT in the response
@@ -1765,7 +1765,7 @@ def test_agentic_experiment_session_id_generator(
     assert experiment_detail.http_template.headers[1].value == "{{request_id}}"
     assert (
         experiment_detail.http_template.request_body
-        == '{"message": "{{user_message}}", "body_session_id": "{{body_session_id}}"}',
+        == '{"message": "{{user_message}}", "body_session_id": "{{body_session_id}}"}'
     )
 
     # Validate template_variable_mapping - should include request-time parameter mappings
