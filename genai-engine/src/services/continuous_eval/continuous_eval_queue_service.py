@@ -25,7 +25,7 @@ from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.enums import EvalKind, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
-from utils.transform_executor import execute_transform
+from utils.transform_executor import execute_transform_on_spans
 
 logger = logging.getLogger(__name__)
 
@@ -243,8 +243,8 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 metric_repository,
             )
 
-            trace = span_repository.get_trace_by_id(job.trace_id)
-            if not trace:
+            spans = span_repository.get_trace_spans(job.trace_id)
+            if not spans:
                 raise ValueError(f"Trace {job.trace_id} not found")
 
             # Verify the transform exists
@@ -270,7 +270,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 )
 
             # Execute the transform over the trace
-            transform_results = execute_transform(trace, transform_definition)
+            transform_results = execute_transform_on_spans(spans, transform_definition)
             if len(transform_results.missing_spans) > 0:
                 self._update_annotation_status(
                     db_session,

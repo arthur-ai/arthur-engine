@@ -4,7 +4,6 @@ import ast
 import json
 import uuid
 from datetime import datetime
-from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from sqlalchemy.orm import Session
@@ -16,6 +15,7 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.fixture(scope="function")
@@ -497,7 +497,8 @@ def test_execute_transform_complex_nested_data(
 def test_execute_transform_with_multiple_matching_spans(
     client: GenaiEngineTestClientBase,
 ) -> None:
-    """Test that transform uses first matching span when multiple spans match."""
+    """When several spans match, the value holds every match in tree order, each
+    headed by its span id."""
     db_session: Session = override_get_db_session()
     span_normalizer = SpanNormalizationService()
 
@@ -621,9 +622,12 @@ def test_execute_transform_with_multiple_matching_spans(
 
         variables = {var.name: var.value for var in result.variables}
 
-        # Should use value from the first matching span
-        assert "extracted_value" in variables
-        assert variables["extracted_value"] == "value_0"
+        # Same start time, so siblings order by span id: span_0, span_1, span_2
+        span_ids = [span.span_id for span in spans_data]
+        assert variables["extracted_value"] == "\n\n".join(
+            f"[span {span_id}]\nvalue_{i}" for i, span_id in enumerate(span_ids)
+        )
+        assert result.variable_spans[0].span_ids == span_ids
 
     finally:
         client.delete_transform(transform.id)
@@ -918,11 +922,11 @@ def test_execute_transform_negative_index_extraction(
 
         # Verify complex data is JSON stringified
         assert "last_result" in variables
-        
+
         last_result = ast.literal_eval(variables["last_result"])
         assert last_result["id"] == 2
         assert last_result["name"] == "Jane"
-        
+
         assert "second_to_last_result_name" in variables
         assert variables["second_to_last_result_name"] == "John"
     finally:

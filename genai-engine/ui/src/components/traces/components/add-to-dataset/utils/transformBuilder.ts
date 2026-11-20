@@ -1,15 +1,30 @@
 import { Column, TransformDefinition } from "../form/shared";
 
-// Builds transform definition from columns using the stored span_name and attribute_path
+import { MIN_TRACE_MAX_CHARS } from "@/components/transforms/variableSource";
+
+// Builds transform definition from columns using the stored span_name and attribute_path.
+// A whole-trace column has neither, so it is kept by its source instead; a span column
+// without a resolved span and path is still left out.
 export function buildTransformFromColumns(columns: Column[]): TransformDefinition {
   return {
     variables: columns
-      .filter((col) => col.span_name && col.attribute_path && col.name)
+      .filter((col) => col.name && (col.source === "trace" || (col.span_name && col.attribute_path)))
       .map((col) => {
+        if (col.source === "trace") {
+          return {
+            variable_name: col.name,
+            source: "trace",
+            span_name: "",
+            attribute_path: "",
+            max_chars: col.max_chars ?? undefined,
+            fallback: null,
+          };
+        }
         return {
           variable_name: col.name,
           span_name: col.span_name!,
           attribute_path: col.attribute_path!,
+          max_chars: col.max_chars ?? undefined,
           fallback: null,
         };
       }),
@@ -35,6 +50,15 @@ export function validateTransform(transform: TransformDefinition): string[] {
       errors.push(`Duplicate variable name: ${varDef.variable_name}`);
     }
     variableNames.add(varDef.variable_name);
+
+    if (varDef.max_chars != null && varDef.max_chars < MIN_TRACE_MAX_CHARS) {
+      errors.push(`Variable ${varDef.variable_name}: max_chars must be at least ${MIN_TRACE_MAX_CHARS}`);
+    }
+
+    // A whole-trace variable reads every span, so it names no span or attribute.
+    if (varDef.source === "trace") {
+      continue;
+    }
 
     if (!varDef.span_name) {
       errors.push(`Variable ${varDef.variable_name}: span_name is required`);

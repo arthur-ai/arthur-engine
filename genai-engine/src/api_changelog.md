@@ -2,6 +2,25 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/19/2026
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  when several spans share a variable's `span_name`, the value now holds every match that has the attribute, in tree order, each block headed by `[span <span_id>]`, instead of only the first match; matches without the attribute are left out, and a single match is unchanged. The joined value stays within the variable's `max_chars` (default 48,000): over it, each value is shortened (head and tail kept) and, if still too long, middle spans are left out, and a closing `[TRUNCATED ...]` line says so. `variable_spans` lists the spans whose blocks appear in the value, possibly shortened. Continuous evals, agentic experiments and dataset bulk add read transforms the same way.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/max_chars`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/source`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/max_chars`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/source`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property `variable_spans` to the response with the `200` status
 # 11/18/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `include_span_details`
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/inference_count` to the response with the `200` status

@@ -12338,6 +12338,16 @@ export interface TraceTransformVariableDefinition {
    */
   fallback?: string | null;
   /**
+   * Max Chars
+   * The most characters the value may take: the whole trace's text for source='trace', or the joined value when several spans match for source='span' (a single match is never cut). Over it, the value says what was shortened or left out. Defaults to 48,000.
+   */
+  max_chars?: number | null;
+  /**
+   * Where the value comes from. 'span' (the default) reads attribute_path from the spans named span_name; when several match, every match is read in trace order, each headed by its span id. 'trace' is the whole trace as judge-ready text, every span in tree order; span_name and attribute_path are not used and can be empty.
+   * @default "span"
+   */
+  source?: TransformVariableSource;
+  /**
    * Span Name
    * Name of the span to extract data from.
    */
@@ -12530,6 +12540,11 @@ export interface TransformExtractionResponseList {
    */
   missing_variables: string[];
   /**
+   * Variable Spans
+   * For each variable, the ids of the spans its value shows, in tree order: every matching span that has the attribute and is kept within max_chars (its value possibly shortened), or every span of the trace for a whole-trace variable. Empty when none was read.
+   */
+  variable_spans?: TransformVariableSpans[];
+  /**
    * Variables
    * List of extracted variables.
    */
@@ -12552,6 +12567,23 @@ export interface TransformVariableExperimentOutputSource {
    * @default "transform_variable"
    */
   type?: "transform_variable";
+}
+
+/** TransformVariableSource */
+export type TransformVariableSource = "span" | "trace";
+
+/** TransformVariableSpans */
+export interface TransformVariableSpans {
+  /**
+   * Span Ids
+   * IDs of the spans the value was read from, in tree order.
+   */
+  span_ids: string[];
+  /**
+   * Variable Name
+   * Name of the transform variable.
+   */
+  variable_name: string;
 }
 
 export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostData = any;
