@@ -92,20 +92,38 @@ def test_chunking_tokenizer_is_one_separate_copy_without_truncation(
 
 @pytest.mark.unit_tests
 @pytest.mark.parametrize(
-    "classifier_getter,pipeline_factory",
+    "classifier_getter,pipeline_factory,model_getter,tokenizer_getter",
     [
-        ("get_prompt_injection_classifier", "TextClassificationPipeline"),
-        ("get_toxicity_classifier", "pipeline"),
+        (
+            "get_prompt_injection_classifier",
+            "TextClassificationPipeline",
+            "get_prompt_injection_model",
+            "get_prompt_injection_tokenizer",
+        ),
+        (
+            "get_toxicity_classifier",
+            "pipeline",
+            "get_toxicity_model",
+            "get_toxicity_tokenizer",
+        ),
     ],
 )
 def test_pipeline_tokenizer_gets_its_truncation_setting_once(
     fresh_tokenizer_globals,
     classifier_getter,
     pipeline_factory,
+    model_getter,
+    tokenizer_getter,
 ):
     tokenizer = FakeFastTokenizer()
     model = MagicMock()
-    with patch.object(model_load, pipeline_factory) as factory:
+    # The (None, None) call resolves the model and tokenizer through these getters;
+    # point them at the same fakes so no real model loads and skip mode is irrelevant.
+    with (
+        patch.object(model_load, pipeline_factory) as factory,
+        patch.object(model_load, model_getter, return_value=model),
+        patch.object(model_load, tokenizer_getter, return_value=tokenizer),
+    ):
         first = getattr(model_load, classifier_getter)(model, tokenizer)
         # The guardrail client and the ML eval scorers both go through this getter
         second = getattr(model_load, classifier_getter)(None, None)
