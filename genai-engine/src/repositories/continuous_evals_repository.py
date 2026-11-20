@@ -675,7 +675,7 @@ class ContinuousEvalsRepository:
         annotation.annotation_score = None
         annotation.annotation_description = None
         annotation.input_variables = None
-        annotation.cost = None
+        # cost is kept: the earlier judge call was billed, and the rerun adds its own.
         annotation.updated_at = datetime.now()
         self.db_session.commit()
 
