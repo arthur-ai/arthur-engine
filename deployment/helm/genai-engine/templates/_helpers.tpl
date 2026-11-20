@@ -60,3 +60,20 @@ Create the name of the service account to use
 {{- default "default" .Values.genaiEngineServiceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+GCP credentials for the Vertex AI model provider's default credentials. gcpCredentials
+replaces gcpDiscoveryConfig, which is still read: whichever block is enabled is used, and
+gcpCredentials wins when both are. A disabled new block does not hide an enabled old one.
+*/}}
+{{- define "arthur-genai-engine.gcpCredentials" -}}
+{{- $new := .Values.gcpCredentials | default dict -}}
+{{- $old := .Values.gcpDiscoveryConfig | default dict -}}
+{{- if $new.isEnabled -}}
+{{- toYaml $new -}}
+{{- else if $old.isEnabled -}}
+{{- toYaml $old -}}
+{{- else -}}
+{{- toYaml dict -}}
+{{- end -}}
+{{- end }}

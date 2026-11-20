@@ -287,9 +287,10 @@ arthur-genai-engine:
   ###################################
   ## Advanced - GCP Service Account
   ###################################
-  # Referenced unconditionally by the deployment template (.gcpDiscoveryConfig.isEnabled), so this
-  # block must be present. Leave isEnabled: false unless integrating Vertex AI.
-  gcpDiscoveryConfig:
+  # Google credentials for a Vertex AI model provider saved without a key file. Replaces
+  # gcpDiscoveryConfig, which is deprecated but still read when gcpCredentials is not set.
+  # Leave isEnabled: false unless integrating Vertex AI.
+  gcpCredentials:
     isEnabled: false
     # Google Cloud project ID for Vertex AI integration
     # googleCloudProject: ""
