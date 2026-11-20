@@ -228,6 +228,88 @@ def test_max_chars_caps_the_trace_and_says_what_was_cut():
 
 
 @pytest.mark.unit_tests
+def test_several_matches_are_joined_within_max_chars():
+    """Twelve retries with long outputs: each value is cut to a share of the budget,
+    head and tail kept, and the closing line says what was cut."""
+    retries = [RETRY_TRACE[0]] + [
+        (
+            f"search-{i}",
+            "root",
+            "TOOL",
+            "search",
+            1 + i,
+            f"attempt {i} " + "x" * 3000,
+            "Ok",
+        )
+        for i in range(12)
+    ]
+    result = execute_transform_on_spans(
+        spans(retries),
+        definition({**SEARCH_OUTPUT, "max_chars": 12_000}),
+    )
+    value = result.variables[0].value
+    assert len(value) <= 12_000
+    assert value.count("[span ") == 12  # every attempt is still there
+    assert "attempt 0" in value and "attempt 11" in value
+    assert "chars cut]" in value
+    assert value.endswith(
+        "[TRUNCATED view of 12 matching spans, 36,338 chars in full: "
+        "12 values shortened, 0 spans omitted]",
+    )
+    assert len(result.variable_spans[0].span_ids) == 12
+
+
+@pytest.mark.unit_tests
+def test_too_many_matches_for_the_budget_leave_out_middle_spans():
+    retries = [RETRY_TRACE[0]] + [
+        (
+            f"search-{i}",
+            "root",
+            "TOOL",
+            "search",
+            1 + i,
+            f"attempt {i} " + "x" * 500,
+            "Ok",
+        )
+        for i in range(40)
+    ]
+    value = (
+        execute_transform_on_spans(
+            spans(retries),
+            definition({**SEARCH_OUTPUT, "max_chars": MIN_MAX_CHARS}),
+        )
+        .variables[0]
+        .value
+    )
+    assert len(value) <= MIN_MAX_CHARS
+    # the first and last attempts stay; the gap is named where it is
+    assert value.startswith("[span search-0]\nattempt 0")
+    assert "[span search-39]\nattempt 39" in value
+    assert "matching spans omitted]" in value
+    assert value.endswith("spans omitted]") and "of 40 matching spans" in value
+
+
+@pytest.mark.unit_tests
+def test_a_single_long_match_is_never_cut():
+    long_answer = [("root", None, "AGENT", "travel-agent", 0, "y" * 5000, "Ok")]
+    value = (
+        execute_transform_on_spans(
+            spans(long_answer),
+            definition(
+                {
+                    **SEARCH_OUTPUT,
+                    "span_name": "travel-agent",
+                    "max_chars": MIN_MAX_CHARS,
+                },
+            ),
+        )
+        .variables[0]
+        .value
+    )
+    assert value == "y" * 5000
+
+
+@pytest.mark.unit_tests
 def test_variable_source_defaults_to_span_and_max_chars_has_a_floor():
     var = TraceTransformVariableDefinition.model_validate(SEARCH_OUTPUT)
     assert var.source == TransformVariableSource.SPAN and var.max_chars is None

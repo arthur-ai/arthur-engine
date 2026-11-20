@@ -58,6 +58,12 @@ describe("validateTransform", () => {
     ]);
   });
 
+  it("checks the size budget floor for a span variable too", () => {
+    expect(validateTransform({ variables: [{ variable_name: "x", ...search, max_chars: 500 }] })).toEqual([
+      "Variable x: max_chars must be at least 2000",
+    ]);
+  });
+
   it("checks the whole-trace size budget floor", () => {
     expect(validateTransform({ variables: [{ variable_name: "trace", ...wholeTrace, max_chars: 1000 }] })).toEqual([
       "Variable trace: max_chars must be at least 2000",

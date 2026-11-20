@@ -113,19 +113,78 @@ def _read_span(span: TransformableSpan, attribute_path: str) -> Any:
     return get_nested_value(span.raw_data, attribute_path)
 
 
-def _read_spans(spans: Sequence[TransformableSpan], attribute_path: str) -> Any:
+# Room kept under max_chars for the line saying what a joined value lost.
+JOIN_FOOTER_RESERVE = 200
+# No matching span's value is cut shorter than this before whole spans are left out.
+JOIN_MIN_VALUE_CHARS = 200
+
+
+def _cut_middle(text: str, cap: int) -> str:
+    """Keep the head (two thirds) and tail of text, saying how much was cut."""
+    if len(text) <= cap:
+        return text
+    head = (cap * 2) // 3
+    return f"{text[:head]} …[{len(text) - cap:,} chars cut]… {text[len(text) - (cap - head):]}"
+
+
+def _join_values(values: list[tuple[str, str]], max_chars: int) -> str:
+    """Every matching span's value, each headed by its span id, within max_chars.
+
+    Over budget, every value is first cut to an equal share (head and tail kept);
+    if that is still too long, whole spans are left out from the middle outwards,
+    so the first and last attempts stay. A closing line says what was cut.
+    """
+
+    def render(kept: list[int], texts: list[str]) -> str:
+        blocks: list[str] = []
+        for position, index in enumerate(kept):
+            if position and index != kept[position - 1] + 1:
+                gap = index - kept[position - 1] - 1
+                blocks.append(f"[{gap} matching span{'s' if gap > 1 else ''} omitted]")
+            blocks.append(f"[span {values[index][0]}]\n{texts[index]}")
+        return "\n\n".join(blocks)
+
+    every = list(range(len(values)))
+    full = render(every, [text for _, text in values])
+    if len(full) <= max_chars:
+        return full
+
+    budget = max_chars - JOIN_FOOTER_RESERVE
+    headers = sum(len(f"[span {span_id}]\n") + 2 for span_id, _ in values)
+    # each cut value also carries a ' …[N chars cut]… ' marker
+    share = max(JOIN_MIN_VALUE_CHARS, (budget - headers) // len(values) - 32)
+    texts = [_cut_middle(text, share) for _, text in values]
+    shortened = sum(1 for (_, text), cut in zip(values, texts) if cut != text)
+    kept = every[:]
+    text = render(kept, texts)
+    while len(text) > budget and len(kept) > 2:
+        middle = (len(kept) - 1) / 2
+        kept.pop(min(range(1, len(kept) - 1), key=lambda i: (abs(i - middle), i)))
+        text = render(kept, texts)
+    text = text[:budget]
+    return text + (
+        f"\n[TRUNCATED view of {len(values)} matching spans, {len(full):,} chars "
+        f"in full: {shortened} values shortened, {len(values) - len(kept)} spans omitted]"
+    )
+
+
+def _read_spans(
+    spans: Sequence[TransformableSpan],
+    attribute_path: str,
+    max_chars: int,
+) -> Any:
     """One matching span: its value, as before. Several: every value in tree order,
     each headed by its span id so a judge can say which call it means (the first
-    attempt of a retried tool call failing, the last succeeding). None when no span
-    has the attribute."""
+    attempt of a retried tool call failing, the last succeeding), joined within
+    max_chars. None when no span has the attribute."""
     if len(spans) == 1:
         return _read_span(spans[0], attribute_path)
-    blocks = []
+    values = []
     for span in spans:
         value = _read_span(span, attribute_path)
         if value is not None:
-            blocks.append(f"[span {span.span_id}]\n{stringify_value(value)}")
-    return "\n\n".join(blocks) if blocks else None
+            values.append((span.span_id, stringify_value(value)))
+    return _join_values(values, max_chars) if values else None
 
 
 def execute_transform_on_spans(
@@ -135,7 +194,7 @@ def execute_transform_on_spans(
     """Execute a transform on a trace's flat span list, returns raw extracted values.
 
     A span variable reads attribute_path from every span named span_name, in tree
-    order; a whole-trace variable (source='trace') is the trace serialized as
+    order (several matches are joined within max_chars); a whole-trace variable (source='trace') is the trace serialized as
     judge-ready text within its max_chars.
 
     Args:
@@ -187,7 +246,11 @@ def execute_transform_on_spans(
             else:
                 value = fallback
         else:
-            value = _read_spans(matching_spans, attribute_path)
+            value = _read_spans(
+                matching_spans,
+                attribute_path,
+                max_chars=var_def.max_chars or DEFAULT_MAX_CHARS,
+            )
 
             # Use value if found, otherwise use fallback
             if value is None:

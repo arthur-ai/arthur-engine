@@ -12339,7 +12339,7 @@ export interface TraceTransformVariableDefinition {
   fallback?: string | null;
   /**
    * Max Chars
-   * For source='trace': the most characters the trace text may take. Over it, the text says what was shortened or left out. Defaults to 48,000.
+   * The most characters the value may take: the whole trace's text for source='trace', or the joined value when several spans match for source='span' (a single match is never cut). Over it, the value says what was shortened or left out. Defaults to 48,000.
    */
   max_chars?: number | null;
   /**

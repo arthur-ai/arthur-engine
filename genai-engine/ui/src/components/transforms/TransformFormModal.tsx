@@ -149,6 +149,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
           span_name: variable.span_name,
           attribute_path: variable.attribute_path,
           fallback: fallbackValue,
+          max_chars: variable.max_chars.trim() ? Number(variable.max_chars) : undefined,
         };
       }),
     };
@@ -169,11 +170,11 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       if (!variable.variable_name.trim()) {
         validationErrors.push(`Variable ${idx + 1}: Variable name is required`);
       }
+      const maxCharsError = validateMaxChars(variable.max_chars);
+      if (maxCharsError) {
+        validationErrors.push(`Variable ${idx + 1}: ${maxCharsError}`);
+      }
       if (variable.source === "trace") {
-        const maxCharsError = validateMaxChars(variable.max_chars);
-        if (maxCharsError) {
-          validationErrors.push(`Variable ${idx + 1}: ${maxCharsError}`);
-        }
         return;
       }
       if (!variable.span_name.trim()) {
@@ -400,18 +401,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                         {VARIABLE_SOURCES.find((option) => option.value === variable.source)?.description}
                       </Typography>
                     </Box>
-                    {variable.source === "trace" ? (
-                      <TextField
-                        label="Size Budget (characters, Optional)"
-                        value={variable.max_chars}
-                        onChange={(e) => handleVariableChange(idx, "max_chars", e.target.value)}
-                        placeholder={DEFAULT_TRACE_MAX_CHARS.toLocaleString()}
-                        helperText={`Default ${DEFAULT_TRACE_MAX_CHARS.toLocaleString()}, at least ${MIN_TRACE_MAX_CHARS.toLocaleString()}. Over it, long fields are shortened and middle spans left out, and the text says what was cut.`}
-                        size="small"
-                        type="number"
-                        fullWidth
-                      />
-                    ) : (
+                    {variable.source === "span" && (
                       <>
                         <TextField
                           label="Span Name"
@@ -442,6 +432,20 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                         />
                       </>
                     )}
+                    <TextField
+                      label="Size Budget (characters, Optional)"
+                      value={variable.max_chars}
+                      onChange={(e) => handleVariableChange(idx, "max_chars", e.target.value)}
+                      placeholder={DEFAULT_TRACE_MAX_CHARS.toLocaleString()}
+                      helperText={
+                        variable.source === "trace"
+                          ? `Default ${DEFAULT_TRACE_MAX_CHARS.toLocaleString()}, at least ${MIN_TRACE_MAX_CHARS.toLocaleString()}. Over it, long fields are shortened and middle spans left out, and the text says what was cut.`
+                          : `Applies when several spans match: their joined value stays within it (default ${DEFAULT_TRACE_MAX_CHARS.toLocaleString()}, at least ${MIN_TRACE_MAX_CHARS.toLocaleString()}). A single match is never cut.`
+                      }
+                      size="small"
+                      type="number"
+                      fullWidth
+                    />
                   </Stack>
                 </Box>
               ))}

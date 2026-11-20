@@ -38,11 +38,12 @@ export function validateTransform(transform: TransformDefinition): string[] {
     }
     variableNames.add(varDef.variable_name);
 
+    if (varDef.max_chars != null && varDef.max_chars < MIN_TRACE_MAX_CHARS) {
+      errors.push(`Variable ${varDef.variable_name}: max_chars must be at least ${MIN_TRACE_MAX_CHARS}`);
+    }
+
     // A whole-trace variable reads every span, so it names no span or attribute.
     if (varDef.source === "trace") {
-      if (varDef.max_chars != null && varDef.max_chars < MIN_TRACE_MAX_CHARS) {
-        errors.push(`Variable ${varDef.variable_name}: max_chars must be at least ${MIN_TRACE_MAX_CHARS}`);
-      }
       continue;
     }
 

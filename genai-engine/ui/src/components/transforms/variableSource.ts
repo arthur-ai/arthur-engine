@@ -8,7 +8,8 @@ export const VARIABLE_SOURCES: { value: TransformVariableSource; label: string; 
   {
     value: "span",
     label: "A span",
-    description: "Reads one attribute from the spans with this name. If several match, every one is read, in trace order.",
+    description:
+      "Reads one attribute from the spans with this name. If several match, every one is read, in trace order, each labelled with its span id.",
   },
   {
     value: "trace",
