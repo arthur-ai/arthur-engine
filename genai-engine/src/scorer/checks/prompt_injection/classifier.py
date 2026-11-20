@@ -12,6 +12,7 @@ from monitoring.ai_activity import track_ml_model_invocation
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
 from utils.model_load import (
+    PROMPT_INJECTION_TOKENIZER_LOCK,
     get_prompt_injection_classifier,
     get_prompt_injection_model,
     get_prompt_injection_tokenizer,
@@ -43,14 +44,14 @@ class BinaryPromptInjectionClassifier(RuleScorer):
             raise ValueError(
                 "Tokenizer is not available",
             )
-        chunk_iterator = SlidingWindowChunkIterator(
-            text=text,
-            tokenizer=self.tokenizer,
-            chunk_size=MAX_LENGTH,
-            stride=MAX_LENGTH // 2,
-        )
-
-        return [chunk for chunk in chunk_iterator]
+        with PROMPT_INJECTION_TOKENIZER_LOCK:
+            chunk_iterator = SlidingWindowChunkIterator(
+                text=text,
+                tokenizer=self.tokenizer,
+                chunk_size=MAX_LENGTH,
+                stride=MAX_LENGTH // 2,
+            )
+            return [chunk for chunk in chunk_iterator]
 
     def _download_model_and_tokenizer(self) -> None:
         global PROMPT_INJECTION_MODEL
@@ -95,7 +96,7 @@ class BinaryPromptInjectionClassifier(RuleScorer):
 
         for chunk in text_chunks:
             # Get raw scores from model
-            with torch.no_grad():
+            with torch.no_grad(), PROMPT_INJECTION_TOKENIZER_LOCK:
                 raw_scores: list[dict[str, Any]] = self.model(chunk)
 
             scores = torch.tensor([item["score"] for item in raw_scores])
