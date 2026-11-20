@@ -139,7 +139,9 @@ class ChatbotService(BaseChatbotService):
                 call_args.body,
             )
 
-            self.tracing.set_tool_output(tool_span, result.to_tool_result_content())
+            # Bounding a large response is CPU work; do it once for all three uses
+            tool_content = result.to_tool_result_content()
+            self.tracing.set_tool_output(tool_span, tool_content)
             self.tracing.end_span(tool_span)
 
             yield (
@@ -147,7 +149,7 @@ class ChatbotService(BaseChatbotService):
                     SSEEventType.TOOL_RESULT,
                     {
                         "tool_call_id": tool_call_id,
-                        "content": result.to_tool_result_content(),
+                        "content": tool_content,
                         "method": call_args.method,
                         "path": call_args.path,
                         "status_code": result.status_code,
@@ -160,7 +162,7 @@ class ChatbotService(BaseChatbotService):
                 None,
                 OpenAIMessage(
                     role=MessageRole.TOOL,
-                    content=result.to_tool_result_content(),
+                    content=tool_content,
                     tool_call_id=tool_call_id,
                 ),
             )

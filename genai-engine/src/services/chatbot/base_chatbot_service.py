@@ -46,7 +46,10 @@ def summarize_threshold(model_name: str) -> Optional[int]:
     try:
         # get_max_tokens would return the output limit, not the input window
         window = litellm.get_model_info(model_name).get("max_input_tokens")
-    except Exception:  # litellm raises for models missing from its model map
+    except litellm.ModelNotMappedError:
+        return None
+    except Exception as e:
+        logger.warning("Could not read the input window for %s: %s", model_name, e)
         return None
     if not window:
         return None

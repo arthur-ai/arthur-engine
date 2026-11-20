@@ -1,9 +1,11 @@
 import json
 from unittest.mock import patch
 
+import litellm
 import pytest
 from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
 from fastapi import HTTPException
+from litellm import CustomStreamWrapper
 
 from clients.llm.llm_client import PROMPT_TOO_LONG_DETAIL, PromptTooLongError
 from schemas.response_schemas import AgenticPromptRunResponse
@@ -331,3 +333,47 @@ def test_chatbot_prompt_too_long_shows_a_plain_message(
     assert response.status_code == 200
     assert f"event: error\ndata: {PROMPT_TOO_LONG_DETAIL}" in response.text
     assert "Bad request to provider" not in response.text
+
+
+class _StreamFailingOnFirstRead(CustomStreamWrapper):
+    """A stream whose provider request only runs, and fails, when first read."""
+
+    def __init__(self) -> None:
+        pass
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise litellm.ContextWindowExceededError(
+            message="prompt is too long: 2556402 tokens > 1000000 maximum",
+            model="claude-opus-5-5",
+            llm_provider="anthropic",
+        )
+
+
+@pytest.mark.unit_tests
+@patch(
+    "clients.llm.llm_client.LLMClient.acompletion",
+    return_value=_StreamFailingOnFirstRead(),
+)
+def test_chatbot_prompt_too_long_while_streaming_shows_a_plain_message(
+    _,
+    client: GenaiEngineTestClientBase,
+):
+    _, task = client.create_task("chatbot_task_stream_too_long", is_agentic=True)
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"history": [{"role": "user", "content": "hello"}]},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert response.status_code == 200
+    assert f"event: error\ndata: {PROMPT_TOO_LONG_DETAIL}" in response.text
+    assert "2556402" not in response.text
