@@ -24,7 +24,7 @@ export const SampleRateField = ({ value, onChange, onBlur, errors }: Props) => {
       label="Sample rate"
       type="number"
       fullWidth
-      variant="outlined"
+      variant="filled"
       placeholder="100"
       value={value}
       onChange={(e) => onChange(e.target.value)}

@@ -24,7 +24,7 @@ export const DailyCapField = ({ value, onChange, onBlur, errors }: Props) => {
       label="Daily spend cap"
       type="number"
       fullWidth
-      variant="outlined"
+      variant="filled"
       placeholder="No cap"
       value={value}
       onChange={(e) => onChange(e.target.value)}
