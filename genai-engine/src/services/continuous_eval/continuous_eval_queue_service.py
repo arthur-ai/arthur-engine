@@ -26,6 +26,10 @@ from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.enums import EvalKind, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
+from utils.constants import (
+    CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION,
+    CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION,
+)
 from utils.transform_executor import execute_transform
 
 logger = logging.getLogger(__name__)
@@ -277,7 +281,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     db_session,
                     job.annotation_id,
                     ContinuousEvalRunStatus.SKIPPED.value,
-                    annotation_description=f"Spans {', '.join(transform_results.missing_spans)} not found in trace {job.trace_id} skipping continuous eval execution for eval {job.continuous_eval_id}",
+                    annotation_description=CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION.format(
+                        spans=", ".join(transform_results.missing_spans),
+                        trace_id=job.trace_id,
+                        eval_id=job.continuous_eval_id,
+                    ),
                 )
                 return
             if len(transform_results.missing_variables) > 0:
@@ -332,7 +340,10 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     db_session,
                     job.annotation_id,
                     ContinuousEvalRunStatus.SKIPPED.value,
-                    annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match eval variables: {', '.join(expected_vars)}",
+                    annotation_description=CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION.format(
+                        mapped=", ".join(mapped_eval_vars),
+                        expected=", ".join(expected_vars),
+                    ),
                 )
                 return
 

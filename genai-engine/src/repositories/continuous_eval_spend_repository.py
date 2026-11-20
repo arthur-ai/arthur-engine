@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -14,7 +15,11 @@ from schemas.response_schemas import (
     ContinuousEvalDailySpendEstimate,
     ContinuousEvalSpendResponse,
 )
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
+from utils.constants import (
+    AGENT_EXPERIMENT_SESSION_PREFIX,
+    CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION,
+    CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION,
+)
 
 SPEND_ESTIMATE_WINDOW_DAYS = 7
 
@@ -31,13 +36,16 @@ _LLM_CALLING_RUN_STATUSES = (
 # says nothing about whether a sampled trace would reach the judge, and counting it
 # would lower the estimate whenever the provider is failing.
 # A trace can't reach the judge when the transform's spans are missing or the
-# transform doesn't fill the eval's variables; these are the descriptions the
-# continuous eval worker writes for those skips. Runs skipped for any other reason
-# (a setting on the eval, such as a filter or a spend limit, that the estimate
-# prices on its own) are left out of both sides too.
-_SKIPPED_BEFORE_JUDGE_DESCRIPTIONS = (
-    "Spans % not found in trace %",
-    "Mapped eval variables: % do not match eval variables: %",
+# transform doesn't fill the eval's variables. The worker describes those skips
+# with the templates in utils.constants, which these LIKE patterns are built from.
+# Runs skipped for any other reason (a setting on the eval, such as a filter or a
+# spend limit, that the estimate prices on its own) are left out of both sides too.
+_SKIPPED_BEFORE_JUDGE_DESCRIPTIONS = tuple(
+    re.sub(r"\{\w+\}", "%", template)
+    for template in (
+        CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION,
+        CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION,
+    )
 )
 # continuous_evals.eval_type of evals that call an LLM judge ("ml_eval" otherwise).
 _LLM_EVAL_TYPE = "llm_eval"

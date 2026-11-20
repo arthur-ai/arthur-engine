@@ -21,7 +21,12 @@ from tests.unit.routes.tasks.test_continuous_eval_crud_routes import (
     create_test_llm_eval,
     create_test_transform,
 )
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, DEFAULT_ORG_ID
+from utils.constants import (
+    AGENT_EXPERIMENT_SESSION_PREFIX,
+    CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION,
+    CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION,
+    DEFAULT_ORG_ID,
+)
 
 
 def _create_continuous_eval(
@@ -178,7 +183,11 @@ def test_continuous_eval_spend_last_24h_and_estimate(
             ContinuousEvalRunStatus.SKIPPED,
             None,
             recent,
-            description=f"Spans agent not found in trace {trace_ids[3]}",
+            description=CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION.format(
+                spans="agent",
+                trace_id=trace_ids[3],
+                eval_id=continuous_eval.id,
+            ),
         )
         _add_run(
             continuous_eval.id,
@@ -707,9 +716,10 @@ def test_judged_share_counts_only_skips_the_trace_itself_causes(
             ContinuousEvalRunStatus.SKIPPED,
             None,
             recent,
-            description=(
-                f"Spans agent not found in trace {trace_ids[8]} skipping continuous "
-                f"eval execution for eval {continuous_eval.id}"
+            description=CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION.format(
+                spans="agent",
+                trace_id=trace_ids[8],
+                eval_id=continuous_eval.id,
             ),
         )
         _add_run(
@@ -718,7 +728,10 @@ def test_judged_share_counts_only_skips_the_trace_itself_causes(
             ContinuousEvalRunStatus.SKIPPED,
             None,
             recent,
-            description="Mapped eval variables: response do not match eval variables: response, context",
+            description=CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION.format(
+                mapped="response",
+                expected="response, context",
+            ),
         )
         status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
         assert status_code == 200
@@ -729,6 +742,7 @@ def test_judged_share_counts_only_skips_the_trace_itself_causes(
         _cleanup(client, task.id, [continuous_eval.id])
 
 
+@pytest.mark.unit_tests
 def test_spend_estimate_ignores_errored_runs_in_judged_share(
     client: GenaiEngineTestClientBase,
 ):
