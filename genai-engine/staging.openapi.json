@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1124"
+        "version": "2.1.1125"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -1134,7 +1134,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
+                "description": "Get tasks with enriched agent metadata (tools, sub-agents, models), provenance, and activity: trace and inference counts and the time of the newest trace or inference. Set `include_span_details` to false to list many tasks without reading their spans. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1224,6 +1224,18 @@
                             "title": "Page Size"
                         },
                         "description": "Tasks per page. A page shorter than this is the last one."
+                    },
+                    {
+                        "name": "include_span_details",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Read each task's tools, sub-agents, models and data sources from its spans. False leaves them null and reads no spans, which keeps a listing of many busy tasks cheap; `num_spans` then comes from the tasks' trace metadata.",
+                            "default": true,
+                            "title": "Include Span Details"
+                        },
+                        "description": "Read each task's tools, sub-agents, models and data sources from its spans. False leaves them null and reads no spans, which keeps a listing of many busy tasks cheap; `num_spans` then comes from the tasks' trace metadata."
                     }
                 ],
                 "responses": {
@@ -23018,6 +23030,45 @@
                         ],
                         "title": "Num Spans",
                         "description": "Number of spans associated with this task"
+                    },
+                    "trace_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Count",
+                        "description": "Number of traces GenAI Engine holds for this task; null if not computed"
+                    },
+                    "inference_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Inference Count",
+                        "description": "Number of inferences GenAI Engine holds for this task; null if not computed"
+                    },
+                    "last_activity_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Activity At",
+                        "description": "The later of the newest trace's end time and the newest inference's creation time for this task; null if it has neither, or if not computed. The counts tell the two apart"
                     },
                     "rules": {
                         "items": {
