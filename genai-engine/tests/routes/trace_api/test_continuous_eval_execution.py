@@ -275,6 +275,15 @@ def cleanup_test_data(test_data):
 
 
 @pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "completion_cost, stored_cost",
+    [
+        (0.002345, 0.002345),
+        # No pricing for the judge model: stored as unknown, not as a $0 run.
+        (Exception("no pricing"), None),
+    ],
+    ids=["priced", "unpriced"],
+)
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
 @patch(
@@ -285,6 +294,8 @@ def test_continuous_eval_execution(
     mock_get_db_session,
     mock_completion,
     mock_completion_cost,
+    completion_cost,
+    stored_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test continuous eval execution."""
@@ -297,7 +308,10 @@ def test_continuous_eval_execution(
         "content": '{"reason": "The model name is correct.", "score": 1}',
     }
     mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.002345
+    if isinstance(completion_cost, Exception):
+        mock_completion_cost.side_effect = completion_cost
+    else:
+        mock_completion_cost.return_value = completion_cost
 
     # Initialize with 1 second delay for faster test execution
     initialize_continuous_eval_queue_service(num_workers=2, override_execution_delay=0)
@@ -383,6 +397,10 @@ def test_continuous_eval_execution(
     status_code, received_annotation = client.get_annotation_by_id(annotation.id)
     assert status_code == 200
     assert received_annotation.run_status == ContinuousEvalRunStatus.PASSED.value
+    db_session = override_get_db_session()
+    db_annotation = db_session.get(DatabaseAgenticAnnotation, annotation.id)
+    assert db_annotation.cost == stored_cost
+    db_session.close()
 
     delete_mock_annotation(annotation.id)
 

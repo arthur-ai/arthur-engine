@@ -482,3 +482,14 @@ AUDIT_LOG_OVERRIDE_PATH_ENV_VAR = "AUDIT_LOG_OVERRIDE_PATH"
 AUDIT_LOG_INCLUDE_AI_ACTIVITY_ENV_VAR = "AUDIT_LOG_INCLUDE_AI_ACTIVITY"
 
 ##################################################################
+
+# Descriptions the continuous eval worker writes when a trace can't reach the judge
+# on its own. The spend estimate matches on them to tell these skips from skips a
+# setting on the eval causes, so both read the same templates.
+CONTINUOUS_EVAL_MISSING_SPANS_SKIP_DESCRIPTION = (
+    "Spans {spans} not found in trace {trace_id} skipping continuous eval "
+    "execution for eval {eval_id}"
+)
+CONTINUOUS_EVAL_VARIABLE_MISMATCH_SKIP_DESCRIPTION = (
+    "Mapped eval variables: {mapped} do not match eval variables: {expected}"
+)

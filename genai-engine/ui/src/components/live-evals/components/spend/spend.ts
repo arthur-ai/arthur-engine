@@ -16,12 +16,26 @@ const formatTracesPerDay = (tracesPerDay: number): string => tracesPerDay.toLoca
 // traces/day × sample rate × average run cost, with the numbers the backend used.
 export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstimate, currency: string): string => {
   const parts = [`${formatTracesPerDay(estimate.traces_per_day)} traces/day`, `${sampleRateToPercent(estimate.sample_rate)}% sampled`];
+  const judgedShare = estimate.judged_share ?? 1;
+  if (judgedShare < 1) parts.push(`${sampleRateToPercent(judgedShare)}% reach the judge`);
   if (estimate.average_run_cost != null) parts.push(`${formatSpend(estimate.average_run_cost, currency)} per run`);
-  return `${parts.join(" × ")} (last ${estimate.window_days} days)`;
+  const pricedFrom = estimate.priced_since ? `, runs since the evaluator changed` : "";
+  return `${parts.join(" × ")} (last ${estimate.window_days} days${pricedFrom})`;
 };
 
-export const describeUnavailableEstimate = (reason: SpendEstimateUnavailableReason | null | undefined, windowDays: number): string => {
+export const describeUnavailableEstimate = (
+  reason: SpendEstimateUnavailableReason | null | undefined,
+  windowDays: number,
+  unpricedRunCount = 0,
+  pricedSince: string | null = null
+): string => {
   if (reason === "no_traces") return `No traces in the last ${windowDays} days`;
+  // The judge was called, but its model has no price, so there is no cost to average.
+  if (unpricedRunCount > 0) {
+    return `${unpricedRunCount} runs called the LLM ${pricedSince ? "since the evaluator changed" : `in the last ${windowDays} days`}, but its model has no price`;
+  }
+  // Only runs from the current evaluator are priced, so older runs don't count.
+  if (pricedSince) return "No runs since the evaluator changed";
   return `No runs that called the LLM in the last ${windowDays} days`;
 };
 

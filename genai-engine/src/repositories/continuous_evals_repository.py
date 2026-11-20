@@ -218,6 +218,10 @@ class ContinuousEvalsRepository:
         if update_continuous_eval.description:
             db_continuous_eval.description = update_continuous_eval.description
             has_changes = True
+        previous_judge = (
+            db_continuous_eval.llm_eval_name,
+            db_continuous_eval.llm_eval_version,
+        )
         if update_continuous_eval.llm_eval_name:
             db_continuous_eval.llm_eval_name = update_continuous_eval.llm_eval_name
             has_changes = True
@@ -226,6 +230,11 @@ class ContinuousEvalsRepository:
                 update_continuous_eval.llm_eval_version,
             )
             has_changes = True
+        if (
+            db_continuous_eval.llm_eval_name,
+            db_continuous_eval.llm_eval_version,
+        ) != previous_judge:
+            db_continuous_eval.judge_changed_at = datetime.now()
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
             has_changes = True
