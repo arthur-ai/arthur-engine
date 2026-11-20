@@ -166,11 +166,19 @@ def _join_values(
         kept.pop(min(range(1, len(kept) - 1), key=lambda i: (abs(i - middle), i)))
         text = render(kept, texts)
     text = text[:budget]
+    # The slice can cut into a header (very long span ids), so list only the spans
+    # whose whole header line is still in the text.
+    shown = [
+        values[index][0]
+        for index in kept
+        if text.startswith(header := f"[span {values[index][0]}]\n")
+        or f"\n\n{header}" in text
+    ]
     text += (
         f"\n[TRUNCATED view of {len(values)} matching spans, {len(full):,} chars "
-        f"in full: {shortened} values shortened, {len(values) - len(kept)} spans omitted]"
+        f"in full: {shortened} values shortened, {len(values) - len(shown)} spans omitted]"
     )
-    return text, [values[index][0] for index in kept]
+    return text, shown
 
 
 def _read_spans(

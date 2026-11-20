@@ -291,6 +291,27 @@ def test_too_many_matches_for_the_budget_leave_out_middle_spans():
 
 
 @pytest.mark.unit_tests
+def test_spans_whose_header_is_cut_are_not_listed():
+    """Two 1,000-char span ids in a 2,000-char budget: the final cut takes part of
+    the second header, so only the first span is listed."""
+    first, second = "a" * 1000, "b" * 1000
+    long_ids = [
+        RETRY_TRACE[0],
+        (first, "root", "TOOL", "search", 1, "timeout after 30s", "Error"),
+        (second, "root", "TOOL", "search", 2, "3 flights found", "Ok"),
+    ]
+    result = execute_transform_on_spans(
+        spans(long_ids),
+        definition({**SEARCH_OUTPUT, "max_chars": MIN_MAX_CHARS}),
+    )
+    value = result.variables[0].value
+    assert len(value) <= MIN_MAX_CHARS
+    assert f"[span {second}]" not in value
+    assert result.variable_spans[0].span_ids == [first]
+    assert "1 spans omitted]" in value
+
+
+@pytest.mark.unit_tests
 def test_a_single_long_match_is_never_cut():
     long_answer = [("root", None, "AGENT", "travel-agent", 0, "y" * 5000, "Ok")]
     value = (
