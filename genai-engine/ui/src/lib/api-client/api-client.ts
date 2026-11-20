@@ -150,6 +150,23 @@ export interface AgenticAnnotationResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * Judged Span Count
+   * Spans in the trace when it was judged. Fewer than the trace has now means spans arrived after the run.
+   */
+  judged_span_count?: number | null;
+  /** 'trace' for human annotations and trace-scope runs; 'span' (one judged span) or 'span_rollup' (the trace's verdict from its span runs) for span scope. */
+  run_level?: ContinuousEvalRunLevel;
+  /**
+   * Label
+   * Category of the result, such as 'wrong_tool', given by a person or by a judge whose instructions define categories.
+   */
+  label?: string | null;
+  /**
+   * Span Id
+   * Span the annotation is about. Null for the whole trace.
+   */
+  span_id?: string | null;
 }
 
 /** AgenticAnnotationType */
@@ -1578,6 +1595,11 @@ export interface ConnectionCheckResult {
  */
 export interface ContinuousEvalCreateRequest {
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval
    */
@@ -1615,6 +1637,11 @@ export interface ContinuousEvalCreateRequest {
    */
   sample_rate?: number | null;
   /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged; all must hold. A trace that doesn't match is skipped before the judge is called. Null or empty judges every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
+  /**
    * Transform Id
    * ID of the transform to create the continuous eval for
    * @format uuid
@@ -1630,6 +1657,17 @@ export interface ContinuousEvalCreateRequest {
    * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
    */
   transform_version_id?: string | null;
+  /**
+   * Max Spans Per Trace
+   * Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.
+   */
+  max_spans_per_trace?: number;
+  /** How span verdicts decide the trace when scope is 'span'. */
+  rollup_rule?: ContinuousEvalRollupRule | null;
+  /** 'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup. */
+  scope?: ContinuousEvalScope;
+  /** Spans judged when scope is 'span'. */
+  span_filter?: ContinuousEvalSpanFilter | null;
 }
 
 /**
@@ -1643,7 +1681,8 @@ export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
  * ContinuousEvalDailySpendEstimate
  * Projected daily cost of a continuous eval at the task's recent traffic.
  *
- * estimated_daily_cost = traces_per_day * sample_rate * average_run_cost
+ * estimated_daily_cost = traces_per_day * sample_rate * judged_share * average_run_cost
+ * (* filter_match_share, when a trace filter was given)
  */
 export interface ContinuousEvalDailySpendEstimate {
   /**
@@ -1657,8 +1696,29 @@ export interface ContinuousEvalDailySpendEstimate {
    */
   estimated_daily_cost?: number | null;
   /**
+   * Judged Share
+   * Share of finished runs that called the LLM rather than being skipped. Errored runs are left out. 1.0 with no finished runs.
+   * @default 1
+   */
+  judged_share?: number;
+  /**
+   * Priced Since
+   * Set when the evaluator changed inside the window: the average only uses runs from this time on.
+   */
+  priced_since?: string | null;
+  /**
+   * Filter Match Share
+   * Share of the task's recent traces that match the given trace filter, checked over up to filter_traces_checked of the latest traces in the window. Null when no trace filter was given.
+   */
+  filter_match_share?: number | null;
+  /**
+   * Filter Traces Checked
+   * How many recent traces filter_match_share was measured on.
+   */
+  filter_traces_checked?: number | null;
+  /**
    * Run Count
-   * Live runs in the window that called the LLM (passed or failed), which the average is taken over.
+   * Live runs from the current evaluator that called the LLM (passed or failed) and have a cost, which the average is taken over.
    */
   run_count: number;
   /**
@@ -1676,13 +1736,24 @@ export interface ContinuousEvalDailySpendEstimate {
    * trace_count divided by window_days.
    */
   traces_per_day: number;
-  /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs that called the LLM in the window. */
+  /** Set when estimated_daily_cost is null: no_traces when the task received no traces in the window, no_runs when the evaluator has no live runs in the window that called the LLM and have a recorded cost (unpriced_run_count counts the ones without). */
   unavailable_reason?: SpendEstimateUnavailableReason | null;
+  /**
+   * Unpriced Run Count
+   * Runs that called the LLM but have no cost (a model without a price), left out of the average.
+   * @default 0
+   */
+  unpriced_run_count?: number;
   /**
    * Window Days
    * Number of trailing days the traffic and the average run cost are measured over.
    */
   window_days: number;
+  /**
+   * Spans Per Trace
+   * Span scope only: judge calls per sampled trace, one per judged span. The estimate is multiplied by it.
+   */
+  spans_per_trace?: number | null;
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1702,9 +1773,9 @@ export interface ContinuousEvalRerunResponse {
 
 /**
  * ContinuousEvalResponse
- * The continuous eval response, with its sample rate.
+ * The continuous eval response, with its sample rate and trace filter.
  *
- * Extends the shared model only until `arthur_common` carries `sample_rate` on
+ * Extends the shared model only until `arthur_common` carries these fields on
  * `ContinuousEvalResponse` itself, at which point this subclass goes. Named the
  * same so the OpenAPI component, and the generated clients built from it, keep
  * their name either way.
@@ -1716,6 +1787,11 @@ export interface ContinuousEvalResponse {
    * @format date-time
    */
   created_at: string;
+  /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
   /**
    * Description
    * Description of the continuous eval.
@@ -1764,6 +1840,11 @@ export interface ContinuousEvalResponse {
    */
   task_id: string;
   /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged. Null judges every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
+  /**
    * Transform Id
    * ID of the transform.
    * @format uuid
@@ -1785,6 +1866,17 @@ export interface ContinuousEvalResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * Max Spans Per Trace
+   * Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.
+   */
+  max_spans_per_trace?: number;
+  /** How span verdicts decide the trace when scope is 'span'. */
+  rollup_rule?: ContinuousEvalRollupRule | null;
+  /** 'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup. */
+  scope?: ContinuousEvalScope;
+  /** Spans judged when scope is 'span'. */
+  span_filter?: ContinuousEvalSpanFilter | null;
 }
 
 /** ContinuousEvalRunStatus */
@@ -1806,13 +1898,28 @@ export interface ContinuousEvalSpendResponse {
    */
   last_24h_run_count: number;
   /**
+   * Cap Reached
+   * Whether today's spend has reached the cap, so new runs are skipped until midnight.
+   */
+  cap_reached: boolean;
+  /**
    * Continuous Eval Id
    * ID of the continuous eval.
    * @format uuid
    */
   continuous_eval_id: string;
+  /**
+   * Daily Cost Cap Usd
+   * The eval's daily spend cap. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
   /** Projected daily cost at the current sample rate. */
   estimate: ContinuousEvalDailySpendEstimate;
+  /**
+   * Spent Today
+   * Total cost of the live runs judged since midnight, counted against the daily cap.
+   */
+  spent_today: number;
 }
 
 /** ContinuousEvalTestRunResponse */
@@ -1878,6 +1985,64 @@ export interface ContinuousEvalTestRunResponse {
    * @format date-time
    */
   updated_at: string;
+}
+
+/**
+ * ContinuousEvalTraceFilterOperator
+ * How a continuous eval trace filter condition compares a span attribute.
+ */
+/** ContinuousEvalRollupRule */
+export type ContinuousEvalRollupRule = "any_fail" | "final_attempt";
+
+/** ContinuousEvalRunLevel */
+export type ContinuousEvalRunLevel = "trace" | "span" | "span_rollup";
+
+/** ContinuousEvalScope */
+export type ContinuousEvalScope = "trace" | "span";
+
+/**
+ * ContinuousEvalSpanFilter
+ * Which spans a span-scope continuous eval judges, one run per matching span.
+ */
+export interface ContinuousEvalSpanFilter {
+  /** Conditions the span itself must meet; all must hold. */
+  conditions?: ContinuousEvalTraceFilterCondition[];
+  /** Only judge spans of this kind, such as TOOL or LLM. */
+  span_kind?: string | null;
+  /** Only judge spans with this name. */
+  span_name?: string | null;
+}
+
+export type ContinuousEvalTraceFilterOperator = "equals" | "not_equals" | "contains" | "exists";
+
+/**
+ * ContinuousEvalTraceFilterCondition
+ * One condition a trace must meet for a continuous eval to judge it.
+ *
+ * Checks the spans in the trace (only spans named `span_name`, when set):
+ * `equals`, `contains` and `exists` hold when any of them has a value at
+ * `attribute_path` that meets the operator; `not_equals` holds when none of them
+ * has that value, so a trace without the attribute counts as not equal.
+ */
+export interface ContinuousEvalTraceFilterCondition {
+  /**
+   * Attribute Path
+   * Dot-separated path into the span, the same paths transforms use, e.g. 'attributes.metadata.plan' or 'attributes.llm.model_name'.
+   * @minLength 1
+   */
+  attribute_path: string;
+  /** How to compare the value at attribute_path. 'not_equals' holds when no checked span has the value, including when none has the attribute. */
+  operator: ContinuousEvalTraceFilterOperator;
+  /**
+   * Span Name
+   * Only check spans with this name. Null checks every span in the trace.
+   */
+  span_name?: string | null;
+  /**
+   * Value
+   * Value to compare against. Required unless operator is 'exists'.
+   */
+  value?: string | null;
 }
 
 /** ContinuousEvalTransformVariableMappingRequest */
@@ -2849,6 +3014,12 @@ export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpend
    */
   llm_eval_name: string;
   /**
+   * Llm Eval Version
+   * Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model.
+   * @default "latest"
+   */
+  llm_eval_version?: string;
+  /**
    * Sample Rate
    * Fraction of traces to evaluate, in (0, 1]. Omit to evaluate every trace.
    */
@@ -2858,6 +3029,22 @@ export interface EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpend
    * @format uuid
    */
   taskId: string;
+  /**
+   * Trace Filter
+   * The new eval's trace filter as a JSON list of conditions, the same shape as trace_filter on create. When set, the estimate is scaled by the share of the task's recent traces that match it.
+   */
+  /**
+   * Span Filter
+   * For a span-scope eval: its span filter as JSON, the same shape as span_filter on create.
+   */
+  span_filter?: string | null;
+  /**
+   * Max Spans Per Trace
+   * For a span-scope eval: most spans judged per trace.
+   * @default 20
+   */
+  max_spans_per_trace?: number;
+  trace_filter?: string | null;
 }
 
 /** Eval */
@@ -5576,6 +5763,11 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    * List of trace IDs to filter on.
    */
   trace_ids?: string[] | null;
+  /**
+   * Run Levels
+   * Run levels to include: 'trace', 'span' (one judged span), 'span_rollup' (a trace's summary of its span runs). Omit for all.
+   */
+  run_levels?: ContinuousEvalRunLevel[] | null;
 }
 
 /** ListContinuousEvalTestRunsResponse */
@@ -12339,9 +12531,16 @@ export interface TraceTransformVariableDefinition {
   fallback?: string | null;
   /**
    * Span Name
-   * Name of the span to extract data from.
+   * Name of the span to read from. Optional when span_kind is set; at least one of the two is required.
    */
-  span_name: string;
+  span_name?: string | null;
+  /**
+   * Span Kind
+   * Kind of the span to read from, such as TOOL or LLM. Alone it matches every span of that kind; with span_name it narrows the named spans.
+   */
+  span_kind?: string | null;
+  /** Which span to read when several match: 'first' or 'last' in tree order, 'all', or 'current' (the span a span-scope eval is judging). */
+  span_selector?: TransformSpanSelector;
   /**
    * Variable Name
    * Name of the variable to extract.
@@ -12530,10 +12729,32 @@ export interface TransformExtractionResponseList {
    */
   missing_variables: string[];
   /**
+   * Variable Spans
+   * For each variable, the ids of the spans its value was read from, in tree order. Empty when no span matched.
+   */
+  variable_spans?: TransformVariableSpans[];
+  /**
    * Variables
    * List of extracted variables.
    */
   variables: VariableTemplateValue[];
+}
+
+/** TransformSpanSelector */
+export type TransformSpanSelector = "first" | "last" | "all" | "current";
+
+/** TransformVariableSpans */
+export interface TransformVariableSpans {
+  /**
+   * Span Ids
+   * IDs of the spans the value was read from, in tree order.
+   */
+  span_ids: string[];
+  /**
+   * Variable Name
+   * Name of the transform variable.
+   */
+  variable_name: string;
 }
 
 /**
@@ -12776,6 +12997,11 @@ export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValid
  */
 export interface UpdateContinuousEvalRequest {
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval
    */
@@ -12806,6 +13032,11 @@ export interface UpdateContinuousEvalRequest {
    */
   sample_rate?: number | null;
   /**
+   * Trace Filter
+   * Conditions a trace must meet to be judged; all must hold. Omit to leave it unchanged; send null or an empty list to judge every sampled trace.
+   */
+  trace_filter?: ContinuousEvalTraceFilterCondition[] | null;
+  /**
    * Transform Id
    * ID of the transform to create the continuous eval for
    */
@@ -12820,6 +13051,17 @@ export interface UpdateContinuousEvalRequest {
    * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
    */
   transform_version_id?: string | null;
+  /**
+   * Max Spans Per Trace
+   * Most spans judged per trace when scope is 'span', the first ones in tree order. Each span run is one judge call.
+   */
+  max_spans_per_trace?: number | null;
+  /** How span verdicts decide the trace when scope is 'span'. */
+  rollup_rule?: ContinuousEvalRollupRule | null;
+  /** 'trace': one run per trace. 'span': one run per matching span plus a per-trace rollup. */
+  scope?: ContinuousEvalScope | null;
+  /** Spans judged when scope is 'span'. */
+  span_filter?: ContinuousEvalSpanFilter | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -15082,7 +15324,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the average cost of the live runs that called the LLM (passed or failed) over the last 7 days of the task's continuous evals using that evaluator.
+     * @description Estimates the daily cost of a continuous eval that would run the given evaluator at the given sample rate: the task's traces per day over the last 7 days, times the sample rate, times the share of finished runs that reached the LLM, times the average cost of the live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days of the task's continuous evals using that evaluator version (latest by default), counting each eval's runs since its evaluator last changed, or all its runs in the window if it never changed.
      *
      * @tags Continuous Evals
      * @name EstimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet
@@ -15615,7 +15857,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the average cost of its live runs that called the LLM (passed or failed) over the last 7 days. Test runs are not counted.
+     * @description Returns the number and total cost of the eval's live runs in the last 24 hours, and an estimated daily cost: the task's traces per day over the last 7 days, times the eval's sample rate, times the share of finished runs that reached the LLM, times the average cost of its live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 days. If the evaluator changed in that window, only runs since the change are averaged; otherwise all of them are. Test runs are not counted.
      *
      * @tags Continuous Evals
      * @name GetContinuousEvalSpendApiV1ContinuousEvalsEvalIdSpendGet

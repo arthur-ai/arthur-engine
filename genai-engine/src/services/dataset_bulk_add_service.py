@@ -9,14 +9,13 @@ columns), but for many traces at once.
 
 from uuid import UUID
 
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
-
 from repositories.span_repository import SpanRepository
 from schemas.common_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
 )
 from schemas.response_schemas import BulkAddTraceResult
+from schemas.transform_schemas import TraceTransformDefinition
 from utils.transform_executor import execute_transform
 
 

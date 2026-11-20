@@ -1,4 +1,4 @@
-import { getNestedValue, withFieldGroup } from "@arthur/shared-components/traces";
+import { withFieldGroup } from "@arthur/shared-components/traces";
 import { Autocomplete, Box, Stack, TextField, Typography } from "@mui/material";
 import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
@@ -6,8 +6,8 @@ import { useStore } from "@tanstack/react-form";
 import { addToDatasetFormOptions, resolveSchemaColumns } from "../form/shared";
 import { useExecuteTransform } from "../hooks/useExecuteTransform";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
+import { previewSourceSpanName } from "../utils/previewSources";
 
-import { getNestedValueWildcard } from "@/components/traces/utils/spans";
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
@@ -81,23 +81,12 @@ export const TransformSelector = withFieldGroup({
             };
           }
 
-          const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
-          let validatedPath = "";
-          let validatedSpanName = "";
-          let validatedAttributePath = "";
-
-          if (span) {
-            const hasWildcard = variableDef.attribute_path.includes("*");
-            const extracted = hasWildcard
-              ? getNestedValueWildcard(span.raw_data, variableDef.attribute_path)
-              : getNestedValue(span.raw_data, variableDef.attribute_path);
-
-            if (extracted !== undefined && (Array.isArray(extracted) ? extracted.length > 0 : true)) {
-              validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
-              validatedSpanName = variableDef.span_name;
-              validatedAttributePath = variableDef.attribute_path;
-            }
-          }
+          // The engine names the span each value came from (its span selector may
+          // read the last or every match), so the preview shows what the eval reads.
+          const sourceSpanName = previewSourceSpanName(columnName, executionResult, flatSpans);
+          const validatedSpanName = sourceSpanName ?? "";
+          const validatedAttributePath = sourceSpanName ? variableDef.attribute_path : "";
+          const validatedPath = sourceSpanName ? `${sourceSpanName}.${variableDef.attribute_path}` : "";
 
           return {
             name: columnName,

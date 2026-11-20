@@ -4,6 +4,9 @@ import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, Dial
 
 import { useTransformVersion } from "./hooks/useTransformVersion";
 
+import { describeVariableSpans } from "@/components/transforms/variableRows";
+import type { TraceTransformVariableDefinition } from "@/lib/api-client/api-client";
+
 interface TransformVersionSnapshotModalProps {
   open: boolean;
   onClose: () => void;
@@ -11,12 +14,7 @@ interface TransformVersionSnapshotModalProps {
   versionId: string | null;
 }
 
-interface VariableDefinition {
-  variable_name: string;
-  span_name: string;
-  attribute_path: string;
-  fallback?: unknown;
-}
+type VariableDefinition = TraceTransformVariableDefinition;
 
 interface ConfigSnapshot {
   variables?: VariableDefinition[];
@@ -122,7 +120,7 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
                           color: "text.secondary",
                         }}
                       >
-                        Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
+                        Span: <code>{describeVariableSpans(variable)}</code> → Path: <code>{variable.attribute_path}</code>
                       </Typography>
                       {variable.fallback !== undefined && variable.fallback !== null && (
                         <Typography

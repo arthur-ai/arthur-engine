@@ -49,7 +49,8 @@ class DatabaseTraceMetadata(Base):
     root_span_resource_id: Mapped[str | None] = mapped_column(
         String,
         ForeignKey(
-            "resource_metadata.id", name="fk_trace_metadata_root_span_resource_id"
+            "resource_metadata.id",
+            name="fk_trace_metadata_root_span_resource_id",
         ),
         nullable=True,
         index=True,
@@ -86,10 +87,11 @@ class DatabaseTraceMetadata(Base):
         nullable=False,
     )
 
-    # Relationships — excludes test run annotations at the DB level
+    # Relationships — excludes test run annotations and span runs at the DB level:
+    # a span-scope eval shows on the trace through its rollup.
     annotations: Mapped[List["DatabaseAgenticAnnotation"]] = relationship(
         "DatabaseAgenticAnnotation",
-        primaryjoin="and_(DatabaseTraceMetadata.trace_id == DatabaseAgenticAnnotation.trace_id, DatabaseAgenticAnnotation.test_run_id == None)",
+        primaryjoin="and_(DatabaseTraceMetadata.trace_id == DatabaseAgenticAnnotation.trace_id, DatabaseAgenticAnnotation.test_run_id == None, DatabaseAgenticAnnotation.run_level != 'span')",
         foreign_keys="[DatabaseAgenticAnnotation.trace_id]",
         lazy="selectin",
         viewonly=True,
@@ -182,7 +184,9 @@ class DatabaseServiceNameTaskMapping(Base):
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey(
-            "tasks.id", name="fk_service_name_task_mappings_task_id", ondelete="CASCADE"
+            "tasks.id",
+            name="fk_service_name_task_mappings_task_id",
+            ondelete="CASCADE",
         ),
         nullable=False,
         index=True,

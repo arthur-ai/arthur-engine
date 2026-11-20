@@ -2482,6 +2482,86 @@ def test_continuous_eval_sample_rate_create_update_get(
 
 
 @pytest.mark.unit_tests
+def test_continuous_eval_trace_filter_create_update_get(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, agentic_task = client.create_task(
+        name="test_continuous_eval_trace_filter",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    paid_only = [
+        {
+            "span_name": None,
+            "attribute_path": "attributes.metadata.plan",
+            "operator": "equals",
+            "value": "paid",
+        },
+    ]
+
+    try:
+        status_code, llm_eval = create_test_llm_eval(
+            client,
+            agentic_task.id,
+            llm_eval_name="filtered",
+        )
+        assert status_code == 200
+        status_code, transform = create_test_transform(client, agentic_task.id)
+        assert status_code == 200
+        status_code, created = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "filtered",
+                "llm_eval_name": llm_eval.name,
+                "llm_eval_version": llm_eval.version,
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
+                "trace_filter": paid_only,
+            },
+        )
+        assert status_code == 200
+        assert [c.model_dump(mode="json") for c in created.trace_filter] == paid_only
+
+        status_code, fetched = client.get_continuous_eval_by_id(created.id)
+        assert status_code == 200
+        assert [c.model_dump(mode="json") for c in fetched.trace_filter] == paid_only
+
+        # An update that leaves trace_filter out keeps it.
+        status_code, updated = client.update_continuous_eval(
+            continuous_eval_id=created.id,
+            continuous_eval_data={"description": "still filtered"},
+        )
+        assert status_code == 200
+        assert len(updated.trace_filter) == 1
+
+        # An empty list clears it, the same as null.
+        status_code, updated = client.update_continuous_eval(
+            continuous_eval_id=created.id,
+            continuous_eval_data={"trace_filter": []},
+        )
+        assert status_code == 200
+        assert updated.trace_filter is None
+
+        # A condition without a value is rejected.
+        status_code, _ = client.update_continuous_eval(
+            continuous_eval_id=created.id,
+            continuous_eval_data={
+                "trace_filter": [
+                    {"attribute_path": "attributes.metadata.plan", "operator": "equals"},
+                ],
+            },
+        )
+        assert status_code == 400
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
 @pytest.mark.parametrize("sample_rate", [0, 0.0, -0.1, 1.01, 2])
 def test_continuous_eval_sample_rate_out_of_range_is_rejected(
     client: GenaiEngineTestClientBase,

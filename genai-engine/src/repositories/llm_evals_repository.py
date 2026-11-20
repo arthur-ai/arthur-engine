@@ -274,6 +274,7 @@ class LLMEvalsRepository(
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
             cost=llm_model_response.cost or "",
+            label=llm_model_response.structured_output_response.label,
         )
 
     def get_llm_item(

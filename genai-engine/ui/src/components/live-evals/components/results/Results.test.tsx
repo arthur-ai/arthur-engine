@@ -12,6 +12,9 @@ const queryState = vi.hoisted(() => ({
 }));
 
 vi.mock("nuqs", () => ({
+  parseAsBoolean: {
+    withDefault: () => ({}),
+  },
   parseAsString: {
     withDefault: () => ({}),
   },
