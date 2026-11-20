@@ -1792,10 +1792,13 @@ def test_rerun_keeps_the_cost_of_earlier_judge_calls(
     }
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002
-    initialize_continuous_eval_queue_service(num_workers=1, override_execution_delay=0)
     agentic_task = None
     annotation = None
     try:
+        initialize_continuous_eval_queue_service(
+            num_workers=1,
+            override_execution_delay=0,
+        )
         status_code, agentic_task = client.create_task(
             name="test_rerun_keeps_the_cost_of_earlier_judge_calls",
             is_agentic=True,
