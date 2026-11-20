@@ -1,7 +1,7 @@
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
@@ -72,6 +72,12 @@ LLM_RULE_TYPES = set(
 # Task IDs per IN clause when reading spans in bulk. Smaller than the other bulk
 # lookups because each chunk also loads up to 30 days of those tasks' spans.
 _SPAN_LOOKUP_CHUNK_SIZE = 100
+
+
+class TraceActivity(NamedTuple):
+    trace_count: int
+    span_count: int
+    last_trace_end: datetime
 
 
 class TaskRepository:
@@ -310,24 +316,30 @@ class TaskRepository:
         """
         return self._extract_agent_metadata_for_tasks([task_id])[task_id]
 
-    def get_last_trace_end_times(self, task_ids: list[str]) -> dict[str, datetime]:
-        """The end time of each task's most recent trace, for the tasks that have one.
+    def get_trace_activity(self, task_ids: list[str]) -> dict[str, TraceActivity]:
+        """Each task's trace count, its spans across those traces, and the end time of
+        its most recent trace, for the tasks that have traces.
 
-        One grouped query for a page of tasks rather than one per task. A task with no
-        traces has no entry, so looking it up reads as None.
+        One grouped query over trace metadata for a page of tasks, reading no spans. A
+        task with no traces has no entry.
         """
         if not task_ids:
             return {}
         rows = (
             self.db_session.query(
                 DatabaseTraceMetadata.task_id,
+                func.count(),
+                func.coalesce(func.sum(DatabaseTraceMetadata.span_count), 0),
                 func.max(DatabaseTraceMetadata.end_time),
             )
             .filter(DatabaseTraceMetadata.task_id.in_(task_ids))
             .group_by(DatabaseTraceMetadata.task_id)
             .all()
         )
-        return {task_id: end_time for task_id, end_time in rows}
+        return {
+            task_id: TraceActivity(trace_count, int(span_count), last_trace_end)
+            for task_id, trace_count, span_count, last_trace_end in rows
+        }
 
     def _extract_agent_metadata_for_tasks(
         self,

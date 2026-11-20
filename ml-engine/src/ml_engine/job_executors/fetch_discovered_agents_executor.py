@@ -10,6 +10,10 @@ Each fetch then also uploads every task on the engine that no discovery source h
 reported, such as an agent GenAI Engine only knows from its traces or one created by
 hand: no source's own walk will ever carry those, so they ride along with every scan.
 
+A fetch with no source is a task sync, asked for from the Platform: it uploads only
+those unreported tasks, as a light listing that reads no spans, so an engine no source
+is configured on still lists every task it holds, with each one's activity.
+
 Tasks are the seam between the two jobs, so everything this uploads carries a
 `task_id` by construction. Running it twice over the same window uploads the same
 agents twice: task identity is stable across scans (D-08) and the Platform upserts on
@@ -118,6 +122,9 @@ class FetchDiscoveredAgentsExecutor:
         """
         workspace_id = str(job_spec.workspace_id)
         data_plane_id = str(job_spec.data_plane_id)
+        if job_spec.discovery_source_id is None:
+            self._sync_tasks(workspace_id, data_plane_id)
+            return
         source_id = str(job_spec.discovery_source_id)
         window = (
             f"reported since {job_spec.reported_since.isoformat()}"
@@ -133,12 +140,7 @@ class FetchDiscoveredAgentsExecutor:
             },
         )
 
-        with ApiClient(
-            Configuration(
-                host=self.genai_engine_url,
-                access_token=self.genai_engine_api_key,
-            ),
-        ) as api_client:
+        with self._genai_engine_client() as api_client:
             tasks_api = TasksApi(api_client)
             uploaded = self._upload_walk(
                 tasks_api,
@@ -173,6 +175,43 @@ class FetchDiscoveredAgentsExecutor:
             },
         )
 
+    def _sync_tasks(self, workspace_id: str, data_plane_id: str) -> None:
+        """Upload every task no source has reported, reading no spans.
+
+        Spans are what make a walk of thousands of busy tasks slow, and the Platform
+        keeps the tools, sub-agents and models an earlier fetch found when an upload
+        leaves them out.
+        """
+        self.logger.info(
+            "Syncing the tasks no discovery source reported",
+            extra={"workspace_id": workspace_id, "data_plane_id": data_plane_id},
+        )
+        with self._genai_engine_client() as api_client:
+            uploaded = self._upload_walk(
+                TasksApi(api_client),
+                workspace_id,
+                data_plane_id,
+                source_id=None,
+                reported_since=None,
+                unreported=True,
+                include_span_details=False,
+            )
+        self.logger.info(
+            f"Uploaded {uploaded} agent(s) no discovery source reported",
+            extra={
+                "workspace_id": workspace_id,
+                "num_unreported_upserted": uploaded,
+            },
+        )
+
+    def _genai_engine_client(self) -> ApiClient:
+        return ApiClient(
+            Configuration(
+                host=self.genai_engine_url,
+                access_token=self.genai_engine_api_key,
+            ),
+        )
+
     def _upload_walk(
         self,
         tasks_api: TasksApi,
@@ -181,6 +220,7 @@ class FetchDiscoveredAgentsExecutor:
         source_id: Optional[str],
         reported_since: Any,
         unreported: Optional[bool],
+        include_span_details: bool = True,
     ) -> int:
         """Walk one agent-tasks query by cursor, uploading each page as it arrives.
 
@@ -197,6 +237,7 @@ class FetchDiscoveredAgentsExecutor:
                     unreported=unreported,
                     after_task_id=after_task_id,
                     page_size=self.page_size,
+                    include_span_details=include_span_details,
                     _request_timeout=AGENT_TASKS_TIMEOUT_SECONDS,
                 )
             )
@@ -356,10 +397,15 @@ def enriched_task_to_agent(
         "is_autocreated": task_dict.get("is_autocreated", True),
         "rules": task_dict.get("rules") or [],
         "last_fetched": task_dict.get("last_fetched"),
-        "tools": task_dict.get("tools") or [],
-        "sub_agents": task_dict.get("sub_agents") or [],
-        "llm_models": task_dict.get("models") or [],
-        "data_sources": task_dict.get("data_sources") or [],
+        # Null from a listing that read no spans. The Platform keeps the ones it has for
+        # a null rather than clearing them.
+        "tools": task_dict.get("tools"),
+        "sub_agents": task_dict.get("sub_agents"),
+        "llm_models": task_dict.get("models"),
+        "data_sources": task_dict.get("data_sources"),
+        "trace_count": task_dict.get("trace_count"),
+        "inference_count": task_dict.get("inference_count"),
+        "last_activity_at": task_dict.get("last_activity_at"),
     }
     if discovery_source_id is not None:
         evidence = source_evidence(task_dict, discovery_source_id)

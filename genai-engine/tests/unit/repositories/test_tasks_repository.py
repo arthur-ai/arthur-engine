@@ -21,7 +21,7 @@ from db_models.telemetry_models import DatabaseTraceMetadata
 from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
+from repositories.tasks_repository import TaskRepository, TraceActivity
 from schemas.enums import TaskSortField
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import override_get_db_session
@@ -682,7 +682,7 @@ def test_a_manual_source_gains_nothing():
 
 
 @pytest.mark.unit_tests
-def test_get_last_trace_end_times_reads_each_tasks_newest_trace(repo_env):
+def test_get_trace_activity_sums_each_tasks_traces(repo_env):
     repo, db_session, created, client = repo_env
     now = datetime.now()
 
@@ -695,7 +695,9 @@ def test_get_last_trace_end_times_reads_each_tasks_newest_trace(repo_env):
         _add_trace(db_session, traced_task, end_time=newer),
     ]
 
-    last_traces = repo.get_last_trace_end_times([traced_task, untraced_task])
+    activity = repo.get_trace_activity([traced_task, untraced_task])
 
-    assert last_traces == {traced_task: newer}
-    assert repo.get_last_trace_end_times([]) == {}
+    assert activity == {
+        traced_task: TraceActivity(trace_count=2, span_count=2, last_trace_end=newer),
+    }
+    assert repo.get_trace_activity([]) == {}
