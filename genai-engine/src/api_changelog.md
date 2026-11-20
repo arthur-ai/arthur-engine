@@ -3,6 +3,20 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/03/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/default_rules/{rule_id}  api path removed without deprecation
+- **CHANGE** on upgrade: every default rule linked to a task is copied into a task rule on that task, keeping the task's enabled setting, so existing tasks run the same checks. Each copy has a new rule ID; the original default rules are archived, and rule results recorded before the upgrade keep their IDs. New tasks no longer receive any rules.
+- **CHANGE** for **URL**: /api/v2/validate_prompt  api path removed with deprecation
+- **CHANGE** for **URL**: /api/v2/validate_response/{inference_id}  api path removed with deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  api tag 'Task Based Validation' removed
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  api tag 'Task Based Validation' removed
+- **CHANGE** for **URL**: /api/v2/validate  api tag 'Validation' added
+- **CHANGE** for **URL**: /api/v2/validate  api tag 'Stateless Validation' removed
+
+# 11/03/2026
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/reasoning_options  endpoint added
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/spend  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/spend_estimate  endpoint added

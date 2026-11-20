@@ -36,6 +36,10 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = false
+# SOC-222: certifi 2026.10.19 drops the compromised "emSign ECC Root CA - G3" root, which every
+# earlier release trusts (2026.10.18 removed too many roots, so floor at .19). The downloader
+# stage fetches the model weights over it.
+constraint-dependencies = ["certifi>=2026.10.19"]
 
 [tool.mypy]
 python_version = "3.12"

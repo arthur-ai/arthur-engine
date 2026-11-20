@@ -377,9 +377,10 @@ def _corroborations(
     be blank, and an address with no resource is one `SourceAddress` refuses, which
     would end the scan at this device over one piece of evidence.
 
-    AN ENTRY'S OCCURRENCES ARE ITS IDENTIFIER'S ROWS. The address moves to whichever
-    running version osquery listed first, so `occurrences` is where the others are: every
-    version under ~/.local/share/claude/versions/, every profile an extension is in.
+    AN ENTRY'S OCCURRENCES ARE ITS IDENTIFIER'S ROWS. The address moves to the version
+    that speaks for the finding, the newest among tied rows, so `occurrences` is where
+    the others are: every version under ~/.local/share/claude/versions/, every profile
+    an extension is in.
     """
     corroborations: list[CorroboratingRecord] = []
     for match in finding.identifiers:

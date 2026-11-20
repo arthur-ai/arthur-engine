@@ -1,5 +1,6 @@
 import pytest
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -17,14 +18,14 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
     [
         [None, None, None, None, None, None, None],
         [None, None, 4, None, None, None, None],
-        [None, None, 20, [RuleScope.DEFAULT], None, None, None],
-        [None, None, 20, [RuleScope.DEFAULT], True, None, None],
-        [None, None, 20, [RuleScope.DEFAULT], True, False, None],
+        [None, None, 20, [RuleScope.TASK], None, None, None],
+        [None, None, 20, [RuleScope.TASK], True, None, None],
+        [None, None, 20, [RuleScope.TASK], True, False, None],
         [
             None,
             None,
             20,
-            [RuleScope.DEFAULT],
+            [RuleScope.TASK],
             True,
             False,
             [RuleType.REGEX, RuleType.KEYWORD],
@@ -33,7 +34,7 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
             PaginationSortMethod.ASCENDING,
             None,
             20,
-            [RuleScope.DEFAULT],
+            [RuleScope.TASK],
             True,
             False,
             [RuleType.REGEX, RuleType.KEYWORD],
@@ -58,16 +59,15 @@ def test_search_rules(
             for re in [True, False]:
                 if not pe and not re:
                     continue
-                for rule_scope in [RuleScope.TASK, RuleScope.DEFAULT]:
-                    sc, rule = client.create_rule(
-                        "",
-                        rule_type=rule_type,
-                        prompt_enabled=pe,
-                        response_enabled=re,
-                        task_id=task.id if rule_scope == RuleScope.TASK else None,
-                    )
-                    assert sc == 200
-                    request_ids.append(rule.id)
+                sc, rule = client.create_rule(
+                    "",
+                    rule_type=rule_type,
+                    prompt_enabled=pe,
+                    response_enabled=re,
+                    task_id=task.id,
+                )
+                assert sc == 200
+                request_ids.append(rule.id)
 
     sc, rules_resp = client.search_rules(
         sort=sort,

@@ -34,9 +34,17 @@ SELECT 'ext' AS kind, identifier AS id, version AS ver, profile_path AS loc,
 UNION ALL
 
 -- from filesystem.sql
-SELECT 'file' AS kind, path AS id, '' AS ver, path AS loc, '' AS extra, '' AS perms
-  FROM file
-  WHERE path LIKE '/Users/%/.local/bin/%'
+SELECT 'file' AS kind, s.path AS id, coalesce(max(v.ver), '') AS ver, s.path AS loc,
+       '' AS extra, '' AS perms
+  FROM file s
+  LEFT JOIN (SELECT path, inode, regex_match(path, '/versions/([^/]+)$', 1) AS ver
+               FROM file
+              WHERE path LIKE '/Users/%/.local/share/%/versions/%' AND symlink = 0) v
+    ON v.inode = s.inode
+   AND substr(v.path, 1, instr(s.path, '/.local/bin/'))
+       = substr(s.path, 1, instr(s.path, '/.local/bin/'))
+  WHERE s.path LIKE '/Users/%/.local/bin/%'
+  GROUP BY s.path
 UNION ALL
 -- STATE DIRECTORIES, the signal least tied to an install route: a cask, an npm global, a
 -- curl installer and a source checkout all create the same dotdir on first run. Every
@@ -160,8 +168,11 @@ UNION ALL
 -- RUNNING FROM A HOME DIRECTORY, by executable path: Claude Code's native install runs from
 -- ~/.local/share/claude/versions/<version>, not the ~/.local/bin/claude link `binaries`
 -- names, so process_paths carries its own value. `path` only: an unreadable path leaves
--- argv[0], the launcher a user typed, which no value names.
-SELECT 'proc', path, '', path, '', ''
+-- argv[0], the launcher a user typed, which no value names. `ver` is the release, read off
+-- that layout as queries/filesystem.sql reads a shim's, and empty elsewhere.
+SELECT 'proc', path,
+       coalesce(regex_match(path, '^(?:/Users/[^/]+|/home/[^/]+|/root)/\.local/share/[^/]+/versions/([^/]+)$', 1), ''),
+       path, '', ''
   FROM processes
   WHERE path LIKE '/Users/%/%' OR path LIKE '/home/%/%' OR path LIKE '/root/%'
   GROUP BY path

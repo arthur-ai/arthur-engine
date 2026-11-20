@@ -20,10 +20,12 @@ from utils import constants
 
 @pytest.mark.unit_tests
 def test_query_happy_path(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     inference_ids = []
     for _ in range(10):
         status_code, prompt_result = client.create_prompt(
             "Prompt%s" % random.randint(0, 100),
+            task_id=task.id,
         )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
@@ -31,6 +33,7 @@ def test_query_happy_path(client: GenaiEngineTestClientBase):
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task.id,
         )
         assert status_code == 200
 
@@ -46,10 +49,12 @@ def test_query_happy_path(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_query_count_toggle(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     inference_ids = []
     for _ in range(10):
         status_code, prompt_result = client.create_prompt(
             "Prompt%s" % random.randint(0, 100),
+            task_id=task.id,
         )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
@@ -57,6 +62,7 @@ def test_query_count_toggle(client: GenaiEngineTestClientBase):
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task.id,
         )
         assert status_code == 200
 
@@ -78,11 +84,13 @@ def test_query_page_size_parameter(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_query_conversation_filter(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     inference_ids = []
     conversation_id = "conversationid%s" % random.random()
     for _ in range(10):
         status_code, prompt_result = client.create_prompt(
             "Prompt%s" % random.randint(0, 100),
+            task_id=task.id,
             conversation_id=conversation_id,
         )
         assert status_code == 200
@@ -91,6 +99,7 @@ def test_query_conversation_filter(client: GenaiEngineTestClientBase):
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task.id,
         )
         assert status_code == 200
 
@@ -118,6 +127,7 @@ def test_query_task_filter(client: GenaiEngineTestClientBase):
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task_id,
         )
         assert status_code == 200
 
@@ -159,6 +169,7 @@ def test_query_date_filter(
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task_id,
         )
         assert status_code == 200
 
@@ -181,11 +192,13 @@ def test_query_date_filter(
 
 @pytest.mark.unit_tests
 def test_query_missing_responses(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     inference_ids = []
     k = 3
     for _ in range(k):
         status_code, prompt_result = client.create_prompt(
             "Prompt%s" % random.randint(0, 100),
+            task_id=task.id,
         )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
@@ -201,11 +214,13 @@ def test_query_missing_responses(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_query_sorting(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     inference_ids = []
     k = 3
     for _ in range(k):
         status_code, prompt_result = client.create_prompt(
             "Prompt%s" % random.randint(0, 100),
+            task_id=task.id,
         )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
@@ -213,6 +228,7 @@ def test_query_sorting(client: GenaiEngineTestClientBase):
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task.id,
         )
         assert status_code == 200
 
@@ -223,10 +239,12 @@ def test_query_sorting(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_query_paging(client: GenaiEngineTestClientBase):
+    _, task = client.create_task()
     inference_ids = []
     for _ in range(4):
         status_code, prompt_result = client.create_prompt(
             "Prompt%s" % random.randint(0, 100),
+            task_id=task.id,
         )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
@@ -234,6 +252,7 @@ def test_query_paging(client: GenaiEngineTestClientBase):
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response123",
+            task_id=task.id,
         )
         assert status_code == 200
 
@@ -259,9 +278,9 @@ def test_query_inference_contents_not_present_when_disabled(
 ):
     os.environ[constants.GENAI_ENGINE_ENABLE_PERSISTENCE_ENV_VAR] = "disabled"
     inference_ids = []
-    sc, task = client.create_task(empty_rules=True)
+    sc, task = client.create_task()
     assert sc == 200
-    sc, rule = client.create_rule("", RuleType.REGEX)
+    sc, rule = client.create_rule("", RuleType.REGEX, task_id=task.id)
     assert sc == 200
 
     status_code, prompt_result = client.create_prompt("Prompt0", task_id=task.id)
@@ -319,15 +338,20 @@ def test_query_inference_contents_not_present_when_disabled(
 @pytest.mark.unit_tests
 def test_query_inference_contents_contexts_present(client: GenaiEngineTestClientBase):
     inference_ids = []
+    _, task = client.create_task()
     k = 3
     for i in range(k):
-        status_code, prompt_result = client.create_prompt("Prompt%d" % i)
+        status_code, prompt_result = client.create_prompt(
+            "Prompt%d" % i,
+            task_id=task.id,
+        )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
         inference_ids.append(new_inference_id)
         status_code, _ = client.create_response(
             new_inference_id,
             f"Response{i}",
+            task_id=task.id,
             context=f"Context{i}",
         )
         assert status_code == 200
@@ -391,7 +415,7 @@ def test_query_rule_status_filters(
     client: GenaiEngineTestClientBase,
 ):
     print("PYTEST_CURRENT_TEST: ", "PYTEST_CURRENT_TEST" not in os.environ)
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     _, hall_rule = client.create_rule(
         "",
         rule_type=RuleType.TOXICITY,
@@ -508,15 +532,20 @@ def test_query_inference_hidden_components_not_present(
     client: GenaiEngineTestClientBase,
 ):
     inference_ids = []
+    _, task = client.create_task()
     k = 1
     for i in range(k):
-        status_code, prompt_result = client.create_prompt("Prompt%d" % i)
+        status_code, prompt_result = client.create_prompt(
+            "Prompt%d" % i,
+            task_id=task.id,
+        )
         assert status_code == 200
         new_inference_id = prompt_result.inference_id
         inference_ids.append(new_inference_id)
         status_code, response_result = client.create_response(
             new_inference_id,
             "Response%d" % i,
+            task_id=task.id,
         )
         assert status_code == 200
 

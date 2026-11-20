@@ -1,5 +1,5 @@
 import pytest
-from arthur_common.models.enums import RuleScope
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.clients.integration_test_client import get_genai_engine_test_client
 
@@ -37,20 +37,6 @@ def clear_old_tasks_before_test_run(initialize_client):
 #     all_inferences = client.query_all_inferences()
 #     # Make sure all historical data is still parseable / no issues with old inferences
 #     assert isinstance(all_inferences, QueryInferencesResponse)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def clear_default_rules_before_test_run(initialize_client):
-    status_code, rules = client.search_rules(
-        rule_scopes=[RuleScope.DEFAULT],
-        page_size=250,
-    )
-    rules = rules.rules
-    assert status_code == 200
-    for rule in rules:
-        status_code = client.delete_default_rule(rule.id)
-        assert status_code == 200
-    yield
 
 
 @pytest.mark.integration_tests

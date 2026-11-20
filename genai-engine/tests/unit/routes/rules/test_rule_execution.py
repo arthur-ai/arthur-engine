@@ -5,6 +5,7 @@ from arthur_common.models.response_schemas import (
     KeywordDetailsResponse,
     RegexDetailsResponse,
 )
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_scorer_client import (
     LATENCY_DURATION_MS,
@@ -14,7 +15,7 @@ from tests.mocks.mock_scorer_client import (
 
 @pytest.mark.unit_tests
 def test_prompt_injection_rule(client: GenaiEngineTestClientBase):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, _ = client.create_rule(
@@ -34,7 +35,7 @@ def test_prompt_injection_rule(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_prompt_injection_long_prompt_passes(client: GenaiEngineTestClientBase):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, _ = client.create_rule(
@@ -102,7 +103,7 @@ def test_run_rule_types_check_response_model(
     rule_type: RuleType,
     client: GenaiEngineTestClientBase,
 ):
-    _, task = client.create_task(empty_rules=True)
+    _, task = client.create_task()
     task_id = task.id
 
     status_code, rule = client.create_rule(
@@ -209,7 +210,7 @@ def test_run_rule_types_check_response_model(
 
 @pytest.mark.unit_tests
 def test_rule_latency(client: GenaiEngineTestClientBase):
-    status_code, task = client.create_task(empty_rules=True)
+    status_code, task = client.create_task()
     assert status_code == 200
 
     client.create_rule(
@@ -217,6 +218,7 @@ def test_rule_latency(client: GenaiEngineTestClientBase):
         RuleType.KEYWORD,
         prompt_enabled=True,
         response_enabled=True,
+        task_id=task.id,
     )
 
     status_code, prompt = client.create_prompt(
@@ -237,10 +239,10 @@ def test_rule_latency(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_rule_result_skipped(client: GenaiEngineTestClientBase):
-    status_code, task = client.create_task(empty_rules=True)
+    status_code, task = client.create_task()
     assert status_code == 200
 
-    client.create_rule("hallv2", RuleType.MODEL_HALLUCINATION_V2)
+    client.create_rule("hallv2", RuleType.MODEL_HALLUCINATION_V2, task_id=task.id)
 
     status_code, prompt = client.create_prompt(task_id=task.id)
     assert status_code == 200
@@ -257,10 +259,12 @@ def test_rule_result_skipped(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_rules_greater_than_page_size(client: GenaiEngineTestClientBase):
+    sc, task = client.create_task()
+    assert sc == 200
     for _ in range(20):
-        sc, _ = client.create_rule("", rule_type=RuleType.REGEX)
+        sc, _ = client.create_rule("", rule_type=RuleType.REGEX, task_id=task.id)
         assert sc == 200
 
-    sc, prompt = client.create_prompt("hi")
+    sc, prompt = client.create_prompt("hi", task_id=task.id)
     assert sc == 200
     assert len(prompt.rule_results) > 10

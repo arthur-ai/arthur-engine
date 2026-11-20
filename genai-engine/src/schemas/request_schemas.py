@@ -870,8 +870,11 @@ class LLMPromptRequestConfigSettings(LLMRequestConfigSettings):
         None,
         description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
     )
+    # Distinct title for the same reason as LLMConfigSettings.tool_choice in
+    # arthur-common: "Tool Choice" would overwrite the ToolChoice model.
     tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
         None,
+        title="LLM Prompt Request Tool Choice",
         description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
     )
     stream_options: Optional[StreamOptions] = Field(

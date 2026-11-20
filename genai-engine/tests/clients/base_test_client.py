@@ -578,7 +578,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         name: str = None,
         is_agentic: bool = False,
-        empty_rules: bool = False,
         user_id: str = None,
         agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
@@ -596,14 +595,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         log_response(resp)
-
-        if resp.status_code == 200 and empty_rules:
-            task = TaskResponse.model_validate(resp.json())
-            _, task = self.get_task(task.id)
-            rule_ids = [r.id for r in task.rules]
-            for id in rule_ids:
-                s, _ = self.patch_rule(task.id, id, False)
-                assert s == 200
 
         return (
             resp.status_code,
@@ -805,13 +796,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         headers_with_authorization = (self.authorized_user_api_key_headers,)
         if use_org_admin:
             headers_with_authorization = self.authorized_org_admin_api_key_headers
-        if not task_id:
-            url = "/api/v2/default_rules"
-        else:
-            url = f"/api/v2/tasks/{task_id}/rules"
-
         resp = self.base_client.post(
-            url,
+            f"/api/v2/tasks/{task_id}/rules",
             json=rule,
             headers=headers_with_authorization,
         )
@@ -961,9 +947,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         conversation_id: str = None,
         user_id: str = None,
     ) -> tuple[int, ValidationResult]:
-        uri = "/api/v2/validate_prompt"
-        if task_id != None:
-            uri = f"/api/v2/tasks/{task_id}/validate_prompt"
+        uri = f"/api/v2/tasks/{task_id}/validate_prompt"
         if prompt is None:
             prompt = random.choice(EXAMPLE_PROMPTS)
 
@@ -1019,9 +1003,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         context: str = None,
         model_name: str = None,
     ) -> tuple[int, ValidationResult]:
-        uri = "/api/v2/validate_response/"
-        if task_id != None:
-            uri = f"/api/v2/tasks/{task_id}/validate_response/"
+        uri = f"/api/v2/tasks/{task_id}/validate_response/"
 
         body = {"response": response if response else random.choice(EXAMPLE_RESPONSES)}
         if context:
@@ -1056,17 +1038,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"/api/chat/feedback/{inference_id}",
             json=request.model_dump(),
             headers=self.authorized_chat_headers,
-        )
-
-        log_response(resp)
-
-        return resp.status_code
-
-    def delete_default_rule(self, rule_id: str) -> int:
-        path = f"api/v2/default_rules/{rule_id}"
-        resp = self.base_client.delete(
-            path,
-            headers=self.authorized_org_admin_api_key_headers,
         )
 
         log_response(resp)
@@ -1752,21 +1723,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         return resp.status_code, resp.json()
-
-    def get_default_rules(self) -> tuple[int, list[RuleResponse]]:
-        uri = "/api/v2/default_rules"
-        resp = self.base_client.get(
-            url=uri,
-            headers=self.authorized_user_api_key_headers,
-        )
-        log_response(resp)
-        data = resp.json()
-        if isinstance(data, list):
-            loaded_data = [RuleResponse(**x) for x in data]
-        else:
-            loaded_data = []
-
-        return (resp.status_code, loaded_data)
 
     def get_chat_default_task(
         self,

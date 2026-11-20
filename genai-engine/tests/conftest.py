@@ -16,12 +16,12 @@ from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
-from utils.constants import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import InferencePrompt, Rule, Task
 from scorer.llm_client import LLMExecutor
 from tests.clients.base_test_client import TEST_AUDIT_LOG_DIR, override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 def pytest_configure(config):
@@ -92,26 +92,6 @@ def create_prompt_in_db(
     )
 
     return prompt
-
-
-@pytest.fixture
-def without_leftover_default_rules() -> None:
-    """Archive the DEFAULT rules that earlier tests left active.
-
-    A new task is linked to every active default rule, so a test that counts a
-    task's rules or adds LLM rules up to the per-task limit would otherwise
-    depend on which tests ran before it. Request it before ``create_task``.
-    """
-    db_session = override_get_db_session()
-    application_config = get_application_config(session=db_session)
-    rules_repo = RuleRepository(db_session)
-    metric_repo = MetricRepository(db_session)
-    tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
-    default_rules, _ = rules_repo.query_rules(rule_scopes=[RuleScope.DEFAULT])
-    for rule in default_rules:
-        rules_repo.archive_rule(rule_id=rule.id)
-        tasks_repo.update_all_tasks_remove_default_rule(rule.id)
-    db_session.close()
 
 
 @pytest.fixture

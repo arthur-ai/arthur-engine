@@ -721,19 +721,9 @@ class TaskRepository:
     def create_task(
         self,
         task: Task,
-        with_default_rules: bool = True,
         commit: bool = True,
     ) -> Task:
         db_task = task._to_database_model()
-
-        if with_default_rules:
-            db_default_rules, _ = self.rule_repository.query_rules(
-                rule_scopes=[RuleScope.DEFAULT],
-            )
-            db_task.rule_links = [
-                DatabaseTaskToRules(task_id=task.id, rule_id=r.id)
-                for r in db_default_rules
-            ]
         self.db_session.add(db_task)
         if commit:
             self.db_session.commit()
@@ -750,7 +740,6 @@ class TaskRepository:
         - Have name set to the service_name
         - Have is_autocreated=True flag set
         - Are agentic (is_agentic=True)
-        - Do NOT get default rules (with_default_rules=False)
         - Have no task_metadata (not a registered agent)
         - Are owned by the `default` org (OTEL auto-discovery is an admin path)
 
@@ -772,7 +761,7 @@ class TaskRepository:
             org_id=DEFAULT_ORG_ID,
         )
 
-        return self.create_task(task, with_default_rules=False)
+        return self.create_task(task)
 
     def create_discovered_task(
         self,
@@ -783,13 +772,10 @@ class TaskRepository:
         """Create a task for an agent a discovery scan found.
 
         The same task shape `create_auto_task` mints for an unregistered OTEL trace --
-        agentic, auto-created, no default rules -- differing only in that the source
+        agentic, auto-created -- differing only in that the source
         that found it is recorded. Discovery and OTEL auto-creation are the same event
         seen from two sides, and a scan-minted task that looked different from a
         trace-minted one would show up as two kinds of agent in every downstream view.
-
-        Default rules are deliberately not applied: nobody asked for this task, and a
-        discovered agent that is not sending traces has nothing for a rule to evaluate.
 
         Args:
             name: Human-readable agent name, used as the task name.
@@ -812,7 +798,7 @@ class TaskRepository:
             task_metadata=TaskMetadata(creation_source=creation_source),
         )
 
-        return self.create_task(task, with_default_rules=False)
+        return self.create_task(task)
 
     def find_by_gcp_engine_id(self, engine_id: str) -> Optional[DatabaseTask]:
         """Find the task for a Vertex AI Agent Engine, in either shape its row holds.
@@ -957,34 +943,6 @@ class TaskRepository:
 
         self.db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
         self.db_session.commit()
-
-    def update_all_tasks_add_default_rule(self, default_rule: Rule) -> None:
-        # Only the IDs are needed. get_all_tasks() builds a full Task, with its rule
-        # links and service names, for every task, which made this cost grow with
-        # tasks x default rules. Same set: every non-archived task in every org.
-        task_ids = (
-            self.db_session.query(DatabaseTask.id)
-            .where(DatabaseTask.archived == False)
-            .all()
-        )
-        tasks_to_rules: list[DatabaseTaskToRules] = [
-            DatabaseTaskToRules(task_id=task_id, rule_id=default_rule.id)
-            for (task_id,) in task_ids
-        ]
-        self.db_session.add_all(tasks_to_rules)
-        self.db_session.commit()
-
-    def update_all_tasks_remove_default_rule(self, default_rule_id: str) -> int:
-        default_rule_links = (
-            self.db_session.query(DatabaseTaskToRules)
-            .where(DatabaseTaskToRules.rule_id == default_rule_id)
-            .all()
-        )
-        for link in default_rule_links:
-            self.db_session.delete(link)
-        self.db_session.commit()
-
-        return len(default_rule_links)
 
     def check_llm_rule_count(self, enabled_rules: list[DatabaseRule]) -> None:
         llm_rule_count = len(

@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from arthur_common.models.response_schemas import TaskResponse
 
 from config.config import Config
 from monitoring.audit_log_middleware import ENDPOINT_OVERRIDES, AuditLogMiddleware
@@ -8,6 +9,25 @@ from schemas.audit_log_schemas import RouteInfo
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 from .helpers import get_audit_logs_with_ids, read_audit_entries
+
+
+def _get_all_tasks(
+    client: GenaiEngineTestClientBase,
+) -> tuple[int, list[TaskResponse]]:
+    """GET /api/v2/tasks is deprecated in favour of /tasks/search, but it is the
+    task endpoint that still answers with a bare list[TaskResponse]."""
+    resp = client.base_client.get(
+        "/api/v2/tasks",
+        headers=client.authorized_user_api_key_headers,
+    )
+    return (
+        resp.status_code,
+        (
+            [TaskResponse.model_validate(task) for task in resp.json()]
+            if resp.status_code == 200
+            else []
+        ),
+    )
 
 
 @pytest.mark.unit_tests
@@ -28,9 +48,10 @@ def test_audit_log_middleware(client: GenaiEngineTestClientBase):
     status_code, _ = client.get_task(task_id)
     assert status_code == 200
 
-    # 3) GET default rules — bare list[RuleResponse]
-    status_code, _ = client.get_default_rules()
+    # 3) GET all tasks — bare list[TaskResponse]
+    status_code, all_tasks = _get_all_tasks(client)
     assert status_code == 200
+    assert task_id in [task.id for task in all_tasks]
 
     # 4) Health check — should NOT be logged
     client.base_client.get("/health")
@@ -42,8 +63,8 @@ def test_audit_log_middleware(client: GenaiEngineTestClientBase):
     all_entries = read_audit_entries()
     new_entries = get_audit_logs_with_ids(all_entries, {task_id, non_existent_task_id})
 
-    assert len(new_entries) >= 3, (
-        f"Expected at least 3 audit entries for task {task_id}, got {len(new_entries)}: "
+    assert len(new_entries) >= 4, (
+        f"Expected at least 4 audit entries for task {task_id}, got {len(new_entries)}: "
         f"{[(e.request_method.value, e.request_path) for e in new_entries]}"
     )
 
@@ -68,6 +89,16 @@ def test_audit_log_middleware(client: GenaiEngineTestClientBase):
     assert len(get_task_entry.response_ids) == 1
     assert get_task_entry.response_ids[0].response_type == "TaskResponse"
     assert str(get_task_entry.response_ids[0].response_id) == task_id
+
+    # GET /api/v2/tasks — bare list, every element's id is recorded
+    list_tasks_entry = next(
+        e
+        for e in new_entries
+        if e.request_method.value == "get" and e.request_path.endswith("/tasks")
+    )
+    assert list_tasks_entry.status_code == 200
+    assert all(r.response_type == "TaskResponse" for r in list_tasks_entry.response_ids)
+    assert task_id in [str(r.response_id) for r in list_tasks_entry.response_ids]
 
     # GET /api/v2/tasks/{id} — non-existent
     get_missing_entry = [

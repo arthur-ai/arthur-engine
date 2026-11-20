@@ -96,21 +96,6 @@ class PermissionLevelsEnum(Enum):
             constants.CHAT_USER,
         ],
     )
-    DEFAULT_RULES_WRITE = frozenset(
-        [
-            constants.ORG_ADMIN,
-            constants.DEFAULT_RULE_ADMIN,
-        ],
-    )
-    DEFAULT_RULES_READ = frozenset(
-        [
-            constants.ORG_ADMIN,
-            constants.ORG_AUDITOR,
-            constants.DEFAULT_RULE_ADMIN,
-            constants.TASK_ADMIN,
-            constants.TENANT_USER,
-        ],
-    )
     FEEDBACK_READ = frozenset(
         [
             constants.ORG_ADMIN,
@@ -256,13 +241,6 @@ class PermissionLevelsEnum(Enum):
     # data and seeing it could expose other tenants' span names.
     TELEMETRY_ADMIN_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
-    )
-    # Run validation using only default (non-task-scoped) rules. Covers the
-    # deprecated `/api/v2/validate_prompt` endpoint. Admin-only because there
-    # is no task to enforce org scope against — tenants use the task-scoped
-    # `/api/v2/tasks/{task_id}/validate_*` endpoints instead.
-    DEFAULT_VALIDATION_RUN = frozenset(
-        [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
 
 
