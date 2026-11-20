@@ -1,8 +1,9 @@
+import copy
 import json
 import os
 from functools import wraps
 from multiprocessing import get_context
-from typing import Callable
+from typing import Any, Callable
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -105,6 +106,10 @@ PROMPT_INJECTION_TOKENIZER: PreTrainedTokenizerBase | None = None
 PROMPT_INJECTION_CLASSIFIER: TextClassificationPipeline | None = None
 TOXICITY_MODEL: AutoModelForSequenceClassification | None = None
 TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None = None
+# Copies of the prompt injection and toxicity tokenizers used only by the text
+# chunkers; see _fix_truncation_setting.
+PROMPT_INJECTION_CHUNKING_TOKENIZER: PreTrainedTokenizerBase | None = None
+TOXICITY_CHUNKING_TOKENIZER: PreTrainedTokenizerBase | None = None
 RELEVANCE_MODEL: AutoModelForSequenceClassification | None = None
 RELEVANCE_TOKENIZER: PreTrainedTokenizerBase | None = None
 TOXICITY_CLASSIFIER: TextClassificationPipeline | None = None
@@ -359,6 +364,31 @@ def get_prompt_injection_tokenizer() -> PreTrainedTokenizerBase | None:
     return PROMPT_INJECTION_TOKENIZER
 
 
+def _fix_truncation_setting(tokenizer: PreTrainedTokenizerBase, **kwargs: Any) -> None:
+    """Apply the truncation setting a shared tokenizer will always be called with.
+
+    A Hugging Face fast tokenizer stores its truncation setting on the object and
+    rewrites it whenever a call asks for a different one; a rewrite while another
+    thread is using the tokenizer fails with "RuntimeError: Already borrowed". The text
+    chunkers call without truncation and the classifier pipelines with it, so each gets
+    its own tokenizer object, set here once at load time and never changed again.
+    """
+    tokenizer("", **kwargs)
+
+
+def get_prompt_injection_chunking_tokenizer() -> PreTrainedTokenizerBase | None:
+    """Copy of the prompt injection tokenizer for the text chunker (no truncation)."""
+    tokenizer = get_prompt_injection_tokenizer()
+    if tokenizer is None:
+        return None
+    global PROMPT_INJECTION_CHUNKING_TOKENIZER
+    if PROMPT_INJECTION_CHUNKING_TOKENIZER is None:
+        chunking_tokenizer = copy.deepcopy(tokenizer)
+        _fix_truncation_setting(chunking_tokenizer)
+        PROMPT_INJECTION_CHUNKING_TOKENIZER = chunking_tokenizer
+    return PROMPT_INJECTION_CHUNKING_TOKENIZER
+
+
 @log_model_loading("prompt injection classifier", "PROMPT_INJECTION_CLASSIFIER")
 def get_prompt_injection_classifier(
     model: PreTrainedModel | None,
@@ -383,6 +413,7 @@ def get_prompt_injection_classifier(
             truncation=True,
             device=torch.device(get_device()),
         )
+        _fix_truncation_setting(tokenizer, truncation=True, max_length=512)
     return PROMPT_INJECTION_CLASSIFIER
 
 
@@ -421,6 +452,19 @@ def get_toxicity_tokenizer() -> PreTrainedTokenizerBase | None:
     return TOXICITY_TOKENIZER
 
 
+def get_toxicity_chunking_tokenizer() -> PreTrainedTokenizerBase | None:
+    """Copy of the toxicity tokenizer for the text chunker (no truncation)."""
+    tokenizer = get_toxicity_tokenizer()
+    if tokenizer is None:
+        return None
+    global TOXICITY_CHUNKING_TOKENIZER
+    if TOXICITY_CHUNKING_TOKENIZER is None:
+        chunking_tokenizer = copy.deepcopy(tokenizer)
+        _fix_truncation_setting(chunking_tokenizer)
+        TOXICITY_CHUNKING_TOKENIZER = chunking_tokenizer
+    return TOXICITY_CHUNKING_TOKENIZER
+
+
 @log_model_loading("toxicity classifier pipeline", "TOXICITY_CLASSIFIER")
 def get_toxicity_classifier(
     model: AutoModelForSequenceClassification | None,
@@ -446,6 +490,7 @@ def get_toxicity_classifier(
             max_length=512,
             device=torch.device(get_device()),
         )
+        _fix_truncation_setting(tokenizer, truncation=True, max_length=512)
     return TOXICITY_CLASSIFIER
 
 
