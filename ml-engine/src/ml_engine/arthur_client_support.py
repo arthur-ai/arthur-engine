@@ -9,6 +9,7 @@ Such an executor is imported and dispatched only when the client it needs is ins
 import arthur_client.api_bindings as api_bindings
 from arthur_client.api_bindings import (
     DiscoverySourcesV1Api,
+    FetchDiscoveredAgentsJobSpec,
     JobDequeueParameters,
     JobKind,
 )
@@ -86,4 +87,14 @@ ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE = (
 # engine whose last dequeue said so, and refuses to start an analysis on any other.
 DEQUEUE_DECLARES_ONBOARDING_ANALYSIS = (
     "onboarding_analysis" in JobDequeueParameters.model_fields
+)
+
+# Whether this client can say the engine runs task syncs, fetches with no discovery
+# source, and read one: a client whose fetch spec requires a source cannot. The Platform
+# hands a task sync only to an engine whose last dequeue said so.
+DEQUEUE_DECLARES_AGENT_TASK_SYNC = (
+    "agent_task_sync" in JobDequeueParameters.model_fields
+    and not FetchDiscoveredAgentsJobSpec.model_fields[
+        "discovery_source_id"
+    ].is_required()
 )

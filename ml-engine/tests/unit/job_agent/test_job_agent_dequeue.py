@@ -1,9 +1,10 @@
 """What the job agent says about itself when it asks the Platform for work.
 
 The Platform hands TEST_DISCOVERY_SOURCE jobs only to an engine whose last dequeue
-declared `discovery_source_test=true`, and ONBOARDING_ANALYSIS jobs only to one that
-declared `onboarding_analysis=true`. Each declaration must be made exactly when the
-installed arthur-client can both send it and run the job, and never otherwise.
+declared `discovery_source_test=true`, task syncs only to one that declared
+`agent_task_sync=true`, and ONBOARDING_ANALYSIS jobs only to one that declared
+`onboarding_analysis=true`. Each declaration must be made exactly when the installed
+arthur-client can both send it and run the job, and never otherwise.
 """
 
 import json
@@ -15,6 +16,7 @@ from pytest_httpserver import HTTPServer
 
 import job_agent
 from arthur_client_support import (
+    DEQUEUE_DECLARES_AGENT_TASK_SYNC,
     DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST,
     DEQUEUE_DECLARES_ONBOARDING_ANALYSIS,
     ONBOARDING_ANALYSIS_SUPPORTED,
@@ -63,6 +65,18 @@ def test_the_dequeue_declares_test_connection_only_when_the_client_can(
         assert "discovery_source_test" not in body
 
 
+def test_the_dequeue_declares_task_sync_only_when_the_client_can(
+    app_plane_http_server: HTTPServer,
+    test_data_plane_user: User,
+) -> None:
+    body = _dequeue_body(app_plane_http_server, test_data_plane_user)
+
+    if DEQUEUE_DECLARES_AGENT_TASK_SYNC:
+        assert body["agent_task_sync"] is True
+    else:
+        assert "agent_task_sync" not in body
+
+
 def test_the_dequeue_declares_onboarding_analysis_only_when_the_client_can(
     app_plane_http_server: HTTPServer,
     test_data_plane_user: User,
@@ -92,12 +106,12 @@ def test_the_dequeue_declares_onboarding_analysis_when_the_client_can(
     assert body["onboarding_analysis"] is True
 
 
-def test_a_client_without_either_field_sends_the_old_request(
+def test_a_client_without_any_field_sends_the_old_request(
     app_plane_http_server: HTTPServer,
     test_data_plane_user: User,
 ) -> None:
     body = _dequeue_body(app_plane_http_server, test_data_plane_user)
 
-    if not DECLARES and not DECLARES_ONBOARDING:
-        # Exactly the request an engine sent before either field existed.
+    if not (DECLARES or DEQUEUE_DECLARES_AGENT_TASK_SYNC or DECLARES_ONBOARDING):
+        # Exactly the request an engine sent before any of the fields existed.
         assert set(body) == {"memory_limit_mb"}
