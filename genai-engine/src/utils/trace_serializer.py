@@ -12,11 +12,14 @@ What each span shows:
   context from this turn's work.
 - TOOL: args and result. RETRIEVER: query and documents. Other kinds: input and output.
 - Any span with an error status or exception events: the error text.
-Exact repeats of a long value become `(same as [n] label)`.
+Exact repeats of a long value become `(same as [n] label)`; when cutting leaves out
+the value a repeat points to, the repeat shows the value itself instead.
 
 When the text is over budget it is cut in a fixed order, and a footer says what was cut:
-1. shorten fields, least important class first (history, tool results, LLM inputs,
-   documents, tool args, LLM outputs, other input/output), each cut keeping head and tail;
+1. shorten fields one ladder step at a time (2,000, 1,000, 500, 250, 120 chars), each
+   step taken by every class in order, least important first (history, tool results,
+   LLM inputs, documents, tool args, LLM outputs, other input/output), so no class is
+   cut far while another keeps its full length; each cut keeps head and tail;
 2. omit span bodies from the middle of the trace outwards (error spans last, the root never);
 3. collapse runs of same-named siblings whose bodies are omitted;
 4. cut the span list itself, keeping head and tail.
@@ -44,7 +47,7 @@ DEDUPE_MIN_CHARS = 80
 TOOLS_FIELD_CAP = 1000
 FOOTER_RESERVE = 160
 
-# Field classes, in the order they are shortened (first to last).
+# Field classes, least important first: each ladder step shortens them in this order.
 (
     C_HISTORY,
     C_TOOL_RESULT,
@@ -183,20 +186,19 @@ def _message_fields(messages: Any, direction: str) -> list[Field]:
     for i, message in enumerate(unwrapped):
         role = message.get("role", "?")
         content = _message_content(message)
-        if i < last_user and role != "system":
-            if content not in (None, "", []):
-                fields.append((f"history.{role}", content, C_HISTORY))
-            continue
+        is_history = i < last_user and role != "system"
+        prefix = "history" if is_history else direction
+        message_class = C_HISTORY if is_history else field_class
         if content not in (None, "", []):
-            fields.append((f"{direction}.{role}", content, field_class))
+            fields.append((f"{prefix}.{role}", content, message_class))
         for tool_call in message.get("tool_calls") or []:
             tool_call = tool_call.get("tool_call", tool_call)
             function = tool_call.get("function", {})
             fields.append(
                 (
-                    f"{direction}.call {function.get('name', '?')}",
+                    f"{prefix}.call {function.get('name', '?')}",
                     function.get("arguments"),
-                    field_class,
+                    message_class,
                 ),
             )
     return fields
@@ -216,8 +218,9 @@ def _tool_params(function: dict[str, Any]) -> list[str]:
 def _tools_field(tools: Any) -> str:
     """The tools an LLM call could use, one line each: `name(param, ...): description`.
 
-    Names always survive: descriptions shorten first (160, 80, 0 chars), then
-    parameter names go."""
+    To fit TOOLS_FIELD_CAP, descriptions shorten first (160, 80, 0 chars), then
+    parameter names go. A names-only list still over it is returned whole, so the
+    budget stage cuts it and reports the cut like any other field."""
     parsed = []
     for tool in tools or []:
         tool = tool.get("tool", tool) if isinstance(tool, dict) else {}
@@ -254,7 +257,21 @@ def _tools_field(tools: Any) -> str:
         text = "\n".join(lines)
         if len(text) <= TOOLS_FIELD_CAP:
             return text
-    return _cut(text, TOOLS_FIELD_CAP)[0]
+    return text
+
+
+def _has_exception(span: SerializableSpan) -> bool:
+    raw = span.raw_data if isinstance(span.raw_data, dict) else {}
+    return any(
+        event.get("name") == "exception"
+        or "exception" in (event.get("attributes") or {})
+        for event in raw.get("events") or []
+    )
+
+
+def _is_error(span: SerializableSpan) -> bool:
+    """An error status, or an exception recorded on a span whose status was left unset."""
+    return span.status_code == "Error" or _has_exception(span)
 
 
 def _error_text(span: SerializableSpan) -> Optional[str]:
@@ -320,7 +337,12 @@ def _span_fields(span: SerializableSpan, is_root: bool) -> list[Field]:
     return [field for field in fields if field[1] not in (None, "", [], {})]
 
 
-def _head_line(span: SerializableSpan, number: int, trace_start: float) -> str:
+def _head_line(
+    span: SerializableSpan,
+    number: int,
+    trace_start: float,
+    is_error: bool,
+) -> str:
     raw = span.raw_data if isinstance(span.raw_data, dict) else {}
     attributes = raw.get("attributes") or {}
     start, end = _seconds(span.start_time), _seconds(span.end_time)
@@ -343,9 +365,32 @@ def _head_line(span: SerializableSpan, number: int, trace_start: float) -> str:
             parts.append(f"tokens_in={prompt_tokens} tokens_out={completion_tokens}")
         if _get(attributes, "llm.finish_reason"):
             parts.append(f"finish={_get(attributes, 'llm.finish_reason')}")
-    if span.status_code == "Error":
+    if is_error:
         parts.append("ERROR")
     return " ".join(parts)
+
+
+class _RowField:
+    """One field of a row. A back-reference also keeps the value it stands for, so
+    the value can be shown again when its target row's body is left out."""
+
+    __slots__ = ("label", "text", "field_class", "target", "value", "value_class")
+
+    def __init__(
+        self,
+        label: str,
+        text: str,
+        field_class: int,
+        target: Optional[int] = None,
+        value: str = "",
+        value_class: int = C_PROTECTED,
+    ) -> None:
+        self.label = label
+        self.text = text
+        self.field_class = field_class
+        self.target = target
+        self.value = value
+        self.value_class = value_class
 
 
 class _Row:
@@ -364,7 +409,7 @@ class _Row:
         number: int,
         depth: int,
         head: str,
-        fields: list[tuple[str, str, int]],
+        fields: list["_RowField"],
         is_error: bool,
         is_root: bool,
         signature: tuple[str, str],
@@ -384,8 +429,13 @@ def _render(
     caps: dict[int, int],
     bodiless: set[int],
     collapse: bool = False,
+    expand_references: bool = False,
 ) -> tuple[str, int, int]:
-    """Returns (text, fields shortened, chars cut)."""
+    """Returns (text, fields shortened, chars cut).
+
+    A back-reference whose target row has no body shows the value itself; with
+    expand_references every back-reference does (for the final cut, which may drop
+    any target)."""
     lines, fields_cut, chars_cut = [header], 0, 0
     i = 0
     while i < len(rows):
@@ -410,13 +460,18 @@ def _render(
                 continue
         lines.append(pad + row.head)
         if row.number not in bodiless:
-            for label, text, field_class in row.fields:
+            for field in row.fields:
+                text, field_class = field.text, field.field_class
+                if field.target is not None and (
+                    expand_references or field.target in bodiless
+                ):
+                    text, field_class = field.value, field.value_class
                 shown, removed = _cut(text, caps[field_class])
                 if removed:
                     fields_cut += 1
                     chars_cut += removed
                 shown = shown.replace("\n", "\n" + pad + "    ")
-                lines.append(f"{pad}  {label}: {shown}")
+                lines.append(f"{pad}  {field.label}: {shown}")
         i += 1
     return "\n".join(lines), fields_cut, chars_cut
 
@@ -467,23 +522,34 @@ def serialize_trace(
     trace_end = max(_seconds(span.end_time) for span in spans)
 
     # 2. Fields per span, with back-references for exact repeats of long values.
-    seen: dict[str, str] = {}
+    seen: dict[str, tuple[int, str]] = {}
     rows: list[_Row] = []
     duplicate_chars = 0
     for number, (span, level, is_detached) in enumerate(placed, 1):
         is_root = span.parent_span_id is None
-        fields: list[tuple[str, str, int]] = []
+        is_error = _is_error(span)
+        fields: list[_RowField] = []
         for label, value, field_class in _span_fields(span, is_root=is_root):
             text = _text(value)
             if dedupe and len(text) >= DEDUPE_MIN_CHARS:
                 digest = hashlib.sha256(text.encode()).hexdigest()
                 if digest in seen:
+                    target, target_label = seen[digest]
                     duplicate_chars += len(text)
-                    fields.append((label, f"(same as {seen[digest]})", C_PROTECTED))
+                    fields.append(
+                        _RowField(
+                            label,
+                            f"(same as [{target}] {target_label})",
+                            C_PROTECTED,
+                            target=target,
+                            value=text,
+                            value_class=field_class,
+                        ),
+                    )
                     continue
-                seen[digest] = f"[{number}] {label}"
-            fields.append((label, text, field_class))
-        head = _head_line(span, number, trace_start)
+                seen[digest] = (number, label)
+            fields.append(_RowField(label, text, field_class))
+        head = _head_line(span, number, trace_start, is_error)
         if is_detached:
             head += " (detached: parent link is cyclic)"
         rows.append(
@@ -492,7 +558,7 @@ def serialize_trace(
                 depth=level,
                 head=head,
                 fields=fields,
-                is_error=span.status_code == "Error",
+                is_error=is_error,
                 is_root=is_root,
                 signature=((span.span_kind or "SPAN").upper(), span.span_name or "?"),
             ),
@@ -569,6 +635,15 @@ def serialize_trace(
     # 3d. Last resort: cut the span list itself, keeping head and tail.
     hard_cut = 0
     if len(text) + FOOTER_RESERVE > max_chars:
+        # The cut may drop any reference's target, so repeats show their values.
+        text, fields_cut, chars_cut = _render(
+            header,
+            rows,
+            caps,
+            bodiless,
+            collapse=True,
+            expand_references=True,
+        )
         text, hard_cut = _cut(text, max(0, (max_chars - FOOTER_RESERVE) * 4 // 5))
 
     truncated = bool(fields_cut or bodiless or hard_cut)
