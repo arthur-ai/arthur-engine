@@ -87,6 +87,7 @@ def _add_run(
     cost: Optional[float],
     created_at: datetime,
     test_run_id: Optional[uuid.UUID] = None,
+    description: Optional[str] = None,
 ) -> None:
     db_session = override_get_db_session()
     db_session.add(
@@ -98,6 +99,7 @@ def _add_run(
             run_status=run_status.value,
             cost=cost,
             test_run_id=test_run_id,
+            annotation_description=description,
             created_at=created_at,
             updated_at=created_at,
             org_id=DEFAULT_ORG_ID,
@@ -176,6 +178,7 @@ def test_continuous_eval_spend_last_24h_and_estimate(
             ContinuousEvalRunStatus.SKIPPED,
             None,
             recent,
+            description=f"Spans agent not found in trace {trace_ids[3]}",
         )
         _add_run(
             continuous_eval.id,
@@ -642,6 +645,90 @@ def test_spend_estimate_ignores_other_versions_and_ml_evals(
 
 
 @pytest.mark.unit_tests
+def test_judged_share_counts_only_skips_the_trace_itself_causes(
+    client: GenaiEngineTestClientBase,
+):
+    """Only a skip that says the trace can't reach the judge (its spans are missing,
+    or the transform doesn't fill the eval's variables) lowers the judged share. A
+    run skipped because of a setting on the eval, such as a trace filter or a daily
+    spend cap, would have reached the judge, so it is left out on both sides."""
+    status_code, task = client.create_task(
+        name="test_spend_estimate_skip_reasons",
+        is_agentic=True,
+    )
+    assert status_code == 200
+    status_code, llm_eval = create_test_llm_eval(client, task.id, "skipping_eval")
+    assert status_code == 200
+    continuous_eval, _ = _create_continuous_eval(client, task.id, llm_eval.name, None)
+    try:
+        now = datetime.now()
+        # 70 traces in 7 days -> 10 traces/day.
+        trace_ids = _add_traces(task.id, [now - timedelta(hours=2)] * 70)
+        recent = now - timedelta(hours=1)
+        for trace_id in trace_ids[:2]:
+            _add_run(
+                continuous_eval.id,
+                trace_id,
+                ContinuousEvalRunStatus.PASSED,
+                0.01,
+                recent,
+            )
+        for trace_id in trace_ids[2:5]:
+            _add_run(
+                continuous_eval.id,
+                trace_id,
+                ContinuousEvalRunStatus.SKIPPED,
+                None,
+                recent,
+                description=f"Trace did not match the trace filter for eval {continuous_eval.id}",
+            )
+        for trace_id in trace_ids[5:8]:
+            _add_run(
+                continuous_eval.id,
+                trace_id,
+                ContinuousEvalRunStatus.SKIPPED,
+                None,
+                recent,
+                description="Daily spend cap of $0.02 reached; runs resume at midnight (engine clock, UTC by default).",
+            )
+
+        status_code, estimate = client.estimate_continuous_eval_spend(
+            task.id,
+            llm_eval.name,
+        )
+        assert status_code == 200
+        assert estimate.judged_share == pytest.approx(1.0)
+        # 10 traces/day * 1.0 sampled * 1.0 judged * $0.01
+        assert estimate.estimated_daily_cost == pytest.approx(0.1)
+
+        _add_run(
+            continuous_eval.id,
+            trace_ids[8],
+            ContinuousEvalRunStatus.SKIPPED,
+            None,
+            recent,
+            description=(
+                f"Spans agent not found in trace {trace_ids[8]} skipping continuous "
+                f"eval execution for eval {continuous_eval.id}"
+            ),
+        )
+        _add_run(
+            continuous_eval.id,
+            trace_ids[9],
+            ContinuousEvalRunStatus.SKIPPED,
+            None,
+            recent,
+            description="Mapped eval variables: response do not match eval variables: response, context",
+        )
+        status_code, spend = client.get_continuous_eval_spend(str(continuous_eval.id))
+        assert status_code == 200
+        # 2 judged of 4 that either reached the judge or couldn't on their own.
+        assert spend.estimate.judged_share == pytest.approx(0.5)
+        assert spend.estimate.estimated_daily_cost == pytest.approx(10 * 0.5 * 0.01)
+    finally:
+        _cleanup(client, task.id, [continuous_eval.id])
+
+
 def test_spend_estimate_ignores_errored_runs_in_judged_share(
     client: GenaiEngineTestClientBase,
 ):

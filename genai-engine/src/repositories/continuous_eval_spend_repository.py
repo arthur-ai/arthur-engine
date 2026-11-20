@@ -24,15 +24,20 @@ _LLM_CALLING_RUN_STATUSES = (
     ContinuousEvalRunStatus.PASSED.value,
     ContinuousEvalRunStatus.FAILED.value,
 )
-# Runs that are done one way or another: called the LLM, or were skipped before
-# it. Their split is the share of sampled traces that reach the judge. ERROR is
-# left out of both sides: it covers failures before the judge (missing variables)
-# and during it (quota, provider errors), so it says nothing about whether a
-# sampled trace would reach the judge, and counting it would lower the estimate
-# whenever the provider is failing.
-_FINISHED_RUN_STATUSES = (
-    *_LLM_CALLING_RUN_STATUSES,
-    ContinuousEvalRunStatus.SKIPPED.value,
+# Runs that are done one way or another: called the LLM, or were skipped because
+# the trace itself can't reach this judge. Their split is the share of sampled
+# traces that reach the judge. ERROR is left out of both sides: it covers failures
+# before the judge (missing variables) and during it (quota, provider errors), so it
+# says nothing about whether a sampled trace would reach the judge, and counting it
+# would lower the estimate whenever the provider is failing.
+# A trace can't reach the judge when the transform's spans are missing or the
+# transform doesn't fill the eval's variables; these are the descriptions the
+# continuous eval worker writes for those skips. Runs skipped for any other reason
+# (a setting on the eval, such as a filter or a spend limit, that the estimate
+# prices on its own) are left out of both sides too.
+_SKIPPED_BEFORE_JUDGE_DESCRIPTIONS = (
+    "Spans % not found in trace %",
+    "Mapped eval variables: % do not match eval variables: %",
 )
 # continuous_evals.eval_type of evals that call an LLM judge ("ml_eval" otherwise).
 _LLM_EVAL_TYPE = "llm_eval"
@@ -169,7 +174,16 @@ class ContinuousEvalSpendRepository:
             _LLM_CALLING_RUN_STATUSES,
         )
         priced = called_llm & cost.is_not(None)
-        finished = DatabaseAgenticAnnotation.run_status.in_(_FINISHED_RUN_STATUSES)
+        skipped_before_judge = (
+            DatabaseAgenticAnnotation.run_status
+            == ContinuousEvalRunStatus.SKIPPED.value
+        ) & or_(
+            *(
+                DatabaseAgenticAnnotation.annotation_description.like(description)
+                for description in _SKIPPED_BEFORE_JUDGE_DESCRIPTIONS
+            ),
+        )
+        finished = called_llm | skipped_before_judge
         return [
             func.count(case((priced, 1))).label("run_count"),
             # A run without a cost (a model litellm has no price for) would pull the
