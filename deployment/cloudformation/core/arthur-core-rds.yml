@@ -43,6 +43,10 @@ Parameters:
   ArthurRDSPrivateSubnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: 'List of private subnets to use for the cluster'
+  ArthurPgauditLog:
+    Type: String
+    Default: 'ddl,role'
+    Description: 'pgaudit.log statement classes to audit (e.g. ddl,role). write adds every INSERT/UPDATE/DELETE and is high volume.'
 
 Conditions:
   CreateRDS: !Equals
@@ -80,6 +84,20 @@ Resources:
       Family: 'aurora-postgresql15'
       Description: !Sub "RDS Parameter group for ${ArthurResourceNamespace} stack"
       DBParameterGroupName: !Sub "${ArthurResourceNamespace}-rds-parameter-group${ArthurResourceNameSuffix}"
+  ArthurRDSClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Condition: CreateRDS
+    Properties:
+      Family: 'aurora-postgresql15'
+      Description: !Sub "RDS Cluster Parameter group for ${ArthurResourceNamespace} stack"
+      DBClusterParameterGroupName: !Sub "${ArthurResourceNamespace}-rds-cluster-parameter-group${ArthurResourceNameSuffix}"
+      Parameters:
+        # pgaudit (SOC2 aws-rds-pgaudit-enabled). pg_stat_statements is the engine default and
+        # must be kept or Performance Insights loses query stats. shared_preload_libraries is
+        # static: existing clusters need one writer reboot, then
+        # `CREATE EXTENSION IF NOT EXISTS pgaudit;` per database.
+        shared_preload_libraries: 'pg_stat_statements,pgaudit'
+        pgaudit.log: !Ref ArthurPgauditLog
   ArthurRDSCluster:
     Type: AWS::RDS::DBCluster
     Condition: CreateRDS
@@ -88,6 +106,7 @@ Resources:
       DatabaseName: !Ref ArthurRDSDatabaseName
       Engine: 'aurora-postgresql'
       EngineVersion: '15'
+      DBClusterParameterGroupName: !Ref ArthurRDSClusterParameterGroup
       ServerlessV2ScalingConfiguration:
         MinCapacity: !Ref ArthurRDSScalingConfigurationMinCapacity
         MaxCapacity: !Ref ArthurRDSScalingConfigurationMaxCapacity
