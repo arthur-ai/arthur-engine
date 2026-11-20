@@ -15,6 +15,8 @@ from arthur_client.api_bindings import JobKind, JobState
 
 import job_executor
 from arthur_client_support import (
+    ONBOARDING_ANALYSIS_JOB_KIND,
+    ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
 )
@@ -80,3 +82,21 @@ def test_a_test_connection_job_names_the_client_to_upgrade(
     assert isinstance(raised, NotImplementedError)
     assert str(raised) == TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE
     assert "upgrade arthur-client" in str(raised)
+
+
+def test_an_onboarding_analysis_job_names_the_client_to_upgrade(
+    unsupported_executor: tuple[job_executor.JobExecutor, MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executor, list_datasets, errors = unsupported_executor
+    monkeypatch.setattr(job_executor, "ONBOARDING_ANALYSIS_SUPPORTED", False)
+    onboarding = MagicMock()
+    monkeypatch.setattr(job_executor, "OnboardingAnalysisExecutor", onboarding)
+
+    state = _run_job_of_kind(executor, ONBOARDING_ANALYSIS_JOB_KIND)
+
+    assert state == JobState.FAILED
+    onboarding.assert_not_called()
+    raised = errors.call_args.kwargs["exc_info"]
+    assert isinstance(raised, NotImplementedError)
+    assert str(raised) == ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE

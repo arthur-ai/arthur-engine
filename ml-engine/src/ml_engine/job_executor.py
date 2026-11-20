@@ -44,11 +44,15 @@ from arthur_common.models.task_job_specs import (
 from pydantic import StrictBytes
 
 from arthur_client_support import (
+    ONBOARDING_ANALYSIS_JOB_KIND,
+    ONBOARDING_ANALYSIS_SUPPORTED,
+    ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
     TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
 )
 from config import Config
+from dataset_loader import DatasetLoader
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (
     CompliancePolicyCheckExecutor,
@@ -66,6 +70,11 @@ from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
 )
+from job_executors.onboarding_analysis_executor import (
+    OnboardingAnalysisExecutor,
+    PlatformOnboardingResultUploader,
+)
+from job_executors.onboarding_insights import HttpInsightEngineClient
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
 from job_executors.task_management_job_executors import (
@@ -117,6 +126,9 @@ class JobSpecRawParser:
 
     def to_update_model_task_spec(self) -> UpdateModelTaskRulesJobSpec:
         return UpdateModelTaskRulesJobSpec.model_validate(self._parse_job_spec_field())
+
+    def job_spec(self) -> Any:
+        return self._parse_job_spec_field()
 
     def to_delete_model_task_spec(self) -> DeleteModelTaskJobSpec:
         return DeleteModelTaskJobSpec.model_validate(self._parse_job_spec_field())
@@ -439,6 +451,32 @@ class JobExecutor:
                             self.discovery_sources_client,
                             self.logger,
                         ).execute(job, job_run.id, job.job_spec.actual_instance)
+                    # Matched by value: no published client has the member yet.
+                    case kind if kind == ONBOARDING_ANALYSIS_JOB_KIND:
+                        if not ONBOARDING_ANALYSIS_SUPPORTED:
+                            raise NotImplementedError(
+                                ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
+                            )
+                        OnboardingAnalysisExecutor(
+                            DatasetLoader(
+                                self.connector_constructor,
+                                self.datasets_client,
+                                self.logger,
+                            ),
+                            PlatformOnboardingResultUploader(
+                                self.jobs_client.api_client,
+                            ),
+                            self.logger,
+                            insight_client=self._onboarding_insight_client(),
+                        ).execute(
+                            job.id,
+                            job_run.id,
+                            # Validated by the executor, so that a malformed spec
+                            # still reaches the wizard as a failed result.
+                            JobSpecRawParser(
+                                job_resp.raw_data,
+                            ).job_spec(),
+                        )
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,
@@ -474,6 +512,19 @@ class JobExecutor:
                     exc_info=e,
                 )
                 return JobState.FAILED
+
+    def _onboarding_insight_client(self) -> HttpInsightEngineClient | None:
+        """The GenAI Engine that runs the onboarding insight prompts, or None, which
+        skips the LLM insights rather than failing the analysis."""
+        host = Config.settings.GENAI_ENGINE_INTERNAL_HOST
+        api_key = Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
+        if not host or not api_key:
+            self.logger.warning(
+                "GenAI Engine configuration missing, so onboarding analysis runs no "
+                "LLM insights.",
+            )
+            return None
+        return HttpInsightEngineClient(host, api_key)
 
     def _genai_engine_config(self) -> tuple[str, str]:
         """The GenAI Engine a discovery job talks to, from this engine's environment."""
