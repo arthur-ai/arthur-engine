@@ -139,17 +139,24 @@ def _join_values(
     so the first and last attempts stay. A closing line says what was cut.
     """
 
-    def render(kept: list[int], texts: list[str]) -> str:
+    def render(kept: list[int], texts: list[str]) -> tuple[str, dict[int, int]]:
+        """The joined text, and where each kept span's header line ends in it."""
         blocks: list[str] = []
+        header_ends: dict[int, int] = {}
+        length = 0
         for position, index in enumerate(kept):
             if position and index != kept[position - 1] + 1:
                 gap = index - kept[position - 1] - 1
                 blocks.append(f"[{gap} matching span{'s' if gap > 1 else ''} omitted]")
-            blocks.append(f"[span {values[index][0]}]\n{texts[index]}")
-        return "\n\n".join(blocks)
+                length += len(blocks[-1]) + 2
+            header = f"[span {values[index][0]}]\n"
+            header_ends[index] = length + len(header)
+            blocks.append(header + texts[index])
+            length += len(blocks[-1]) + 2
+        return "\n\n".join(blocks), header_ends
 
     every = list(range(len(values)))
-    full = render(every, [text for _, text in values])
+    full, _ = render(every, [text for _, text in values])
     if len(full) <= max_chars:
         return full, [span_id for span_id, _ in values]
 
@@ -160,20 +167,16 @@ def _join_values(
     texts = [_cut_middle(text, share) for _, text in values]
     shortened = sum(1 for (_, text), cut in zip(values, texts) if cut != text)
     kept = every[:]
-    text = render(kept, texts)
+    text, header_ends = render(kept, texts)
     while len(text) > budget and len(kept) > 2:
         middle = (len(kept) - 1) / 2
         kept.pop(min(range(1, len(kept) - 1), key=lambda i: (abs(i - middle), i)))
-        text = render(kept, texts)
+        text, header_ends = render(kept, texts)
     text = text[:budget]
     # The slice can cut into a header (very long span ids), so list only the spans
-    # whose whole header line is still in the text.
-    shown = [
-        values[index][0]
-        for index in kept
-        if text.startswith(header := f"[span {values[index][0]}]\n")
-        or f"\n\n{header}" in text
-    ]
+    # whose whole header line ends inside the kept text, by position: a value may
+    # itself contain text that looks like a header.
+    shown = [values[index][0] for index in kept if header_ends[index] <= budget]
     text += (
         f"\n[TRUNCATED view of {len(values)} matching spans, {len(full):,} chars "
         f"in full: {shortened} values shortened, {len(values) - len(shown)} spans omitted]"

@@ -312,6 +312,37 @@ def test_spans_whose_header_is_cut_are_not_listed():
 
 
 @pytest.mark.unit_tests
+def test_a_header_like_string_inside_a_value_does_not_count_as_shown():
+    """A long first span id leaves the final cut inside the second span's header,
+    while the first value starts with text that looks exactly like that header.
+    The second span must not be listed."""
+    first = "a" * 1650
+    long_ids = [
+        RETRY_TRACE[0],
+        (
+            first,
+            "root",
+            "TOOL",
+            "search",
+            1,
+            "\n\n[span s]\nlooks real" + "y" * 1000,
+            "Ok",
+        ),
+        ("s", "root", "TOOL", "search", 2, "3 flights found", "Ok"),
+    ]
+    result = execute_transform_on_spans(
+        spans(long_ids),
+        definition({**SEARCH_OUTPUT, "max_chars": MIN_MAX_CHARS}),
+    )
+    value = result.variables[0].value
+    assert len(value) <= MIN_MAX_CHARS
+    assert "\n\n[span s]\nlooks real" in value  # the look-alike survives the cut
+    assert "3 flights found" not in value
+    assert result.variable_spans[0].span_ids == [first]
+    assert "1 spans omitted]" in value
+
+
+@pytest.mark.unit_tests
 def test_a_single_long_match_is_never_cut():
     long_answer = [("root", None, "AGENT", "travel-agent", 0, "y" * 5000, "Ok")]
     value = (
