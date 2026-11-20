@@ -26,6 +26,7 @@ result route up in the installed client when it runs, so this module still loads
 client without it, and the engine declares the kind on dequeue only when it is there.
 """
 
+import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 from enum import Enum
@@ -54,6 +55,12 @@ from arthur_client_support import (
 )
 from config import Config
 from dataset_loader import DatasetLoader
+from job_executors.onboarding_insights import (
+    InsightEngineClient,
+    InsightSpan,
+    MergedVerdict,
+    run_llm_insights,
+)
 from tools.converters import client_to_common_dataset_schema
 
 ONBOARDING_WINDOW = timedelta(days=30)
@@ -126,7 +133,7 @@ class OnboardingOutcome(str, Enum):
     INSUFFICIENT_TRACES = "insufficient_traces"
     RAW_DATA_DISABLED = "raw_data_disabled"
     FAILED = "failed"
-    # TODO: LLM_INSIGHTS_OFF = "llm_insights_off", once the insights setting exists.
+    LLM_INSIGHTS_OFF = "llm_insights_off"
 
 
 class OnboardingErrorCode(str, Enum):
@@ -281,11 +288,15 @@ class OnboardingAnalysisExecutor:
         uploader: OnboardingResultUploader,
         logger: logging.Logger,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        insight_client: InsightEngineClient | None = None,
     ) -> None:
         self.dataset_loader = dataset_loader
         self.uploader = uploader
         self.logger = logger
         self.now = now
+        # The GenAI Engine that runs the insight prompts; None when this engine has none
+        # configured, which skips the LLM insights.
+        self.insight_client = insight_client
 
     def execute(
         self,
@@ -366,9 +377,13 @@ class OnboardingAnalysisExecutor:
                 )
 
             sample = _draw_sample(conn, traces_table, SAMPLE_TABLE, spec, salt=job_id)
-            findings, skipped = self._insights(conn, SAMPLE_TABLE)
+            findings, skipped, insights_off = self._insights(conn, SAMPLE_TABLE)
             return OnboardingAnalysisResult(
-                outcome=OnboardingOutcome.COMPLETED,
+                outcome=(
+                    OnboardingOutcome.LLM_INSIGHTS_OFF
+                    if insights_off
+                    else OnboardingOutcome.COMPLETED
+                ),
                 report=OnboardingReport(
                     window=window,
                     totals=totals,
@@ -406,20 +421,118 @@ class OnboardingAnalysisExecutor:
         self,
         conn: DuckDBPyConnection,
         sample_table: str,
-    ) -> tuple[list[Finding], list[SkippedInsight]]:
-        # TODO: the insight steps are being redesigned and are not built here:
-        # - fact extraction from the sample;
-        # - rule insights over the sample, no LLM;
-        # - the insights setting: off ends `llm_insights_off` with `skipped`
-        #   (`llm_insights`, `insights_off`), keeping the rule insights and the PII detector;
-        # - the LLM insights through the GenAI Engine, in batches of 25-50 traces, each call
-        #   retried with backoff, a call that still fails listed in `skipped`;
-        # - no default model: `skipped` (`llm_insights`, `no_default_model`), the rest kept.
-        # Until then each is listed as skipped, so the result never reads as "nothing found".
-        return [], [
-            SkippedInsight(kind="rule_insights", reason=INSIGHT_NOT_IMPLEMENTED),
-            SkippedInsight(kind="llm_insights", reason=INSIGHT_NOT_IMPLEMENTED),
+    ) -> tuple[list[Finding], list[SkippedInsight], bool]:
+        """The findings, the insights that could not run, and whether the insights
+        setting is off."""
+        # TODO: rule insights over the sample, no LLM, and the PII detector.
+        skipped = [SkippedInsight(kind="rule_insights", reason=INSIGHT_NOT_IMPLEMENTED)]
+        # TODO: no default model: `skipped` (`llm_insights`, `no_default_model`), the
+        # rest kept, once the engine reports it apart from a failed call.
+        if self.insight_client is None:
+            skipped.append(
+                SkippedInsight(kind="llm_insights", reason="engine_not_configured"),
+            )
+            return [], skipped, False
+        traces = _sampled_traces(conn, sample_table)
+        run = run_llm_insights(self.insight_client, traces, self.logger)
+        skipped += [SkippedInsight(kind=k, reason=r) for k, r in run.skipped]
+        findings = [_finding(v, sample_traces=len(traces)) for v in run.verdicts]
+        return findings, skipped, run.insights_off
+
+
+# What the title calls each insight.
+INSIGHT_TITLES = {
+    "internet_access": "Internet access",
+    "tool_output_to_llm": "Tool output reaches the model",
+    "reference_material": "Reference material",
+    "user_facing": "User-facing",
+    "heavy_model": "Heavy model for light work",
+    "tool_failures": "Tool failures",
+}
+MAX_TITLE_LENGTH = 300
+MAX_DETAIL_LENGTH = 2000
+MAX_TRACE_IDS_IN_DETAIL = 10
+
+
+def _finding(verdict: MergedVerdict, sample_traces: int) -> Finding:
+    """An insight's verdict in the Platform's finding shape.
+
+    `values["fired"]` is 1 for yes and 0 for no, and absent when the model could not
+    tell, which the title says. Trace ids, the example span and the suggested check are
+    text, so they go in `detail`, which the Platform keeps to 2,000 characters.
+    """
+    matched = len(verdict.matched_trace_ids)
+    label = INSIGHT_TITLES.get(verdict.kind, verdict.kind)
+    if verdict.fired == "yes":
+        title = f"{label}: yes, in {matched} of {sample_traces} sampled traces"
+    elif verdict.fired == "no":
+        title = f"{label}: no, in {sample_traces} sampled traces"
+    else:
+        title = f"{label}: cannot tell from {sample_traces} sampled traces"
+    parts = [" ".join(verdict.reasons)]
+    if verdict.example_span_name:
+        parts.append(f"Example span: {verdict.example_span_name}.")
+    if verdict.suggested_check:
+        parts.append(f"Suggested: {verdict.suggested_check}.")
+    if verdict.matched_trace_ids:
+        shown = verdict.matched_trace_ids[:MAX_TRACE_IDS_IN_DETAIL]
+        more = matched - len(shown)
+        parts.append(
+            "Matched traces: "
+            + ", ".join(shown)
+            + (f" and {more} more." if more else "."),
+        )
+    values = {
+        "traces_matched": float(matched),
+        "traces_in_sample": float(sample_traces),
+    }
+    if verdict.fired in ("yes", "no"):
+        values["fired"] = 1.0 if verdict.fired == "yes" else 0.0
+    # TODO: scrub personal data from the model's reasons in the GenAI Engine before
+    # they leave it, as the design requires of free text.
+    return Finding(
+        kind=verdict.kind,
+        title=title[:MAX_TITLE_LENGTH],
+        detail=" ".join(p for p in parts if p)[:MAX_DETAIL_LENGTH] or None,
+        basis="sample",
+        values=values,
+    )
+
+
+def _sampled_traces(
+    conn: DuckDBPyConnection,
+    sample_table: str,
+) -> dict[str, list[InsightSpan]]:
+    """The sampled traces' spans, keyed by trace id, in the sample's time order."""
+    rows = conn.sql(
+        f"SELECT trace_id, spans FROM {sample_table} ORDER BY start_time, trace_id",
+    ).fetchall()
+    traces: dict[str, list[InsightSpan]] = {}
+    for trace_id, spans in rows:
+        traces[trace_id] = [
+            InsightSpan(
+                span_id=s["span_id"],
+                parent_span_id=s["parent_span_id"],
+                span_kind=s["span_kind"],
+                span_name=s["span_name"],
+                status_code=s["status_code"],
+                start_time=s["start_time"],
+                end_time=s["end_time"],
+                raw_data=_json_value(s["raw_data"]),
+                session_id=s["session_id"],
+            )
+            for s in spans or []
         ]
+    return traces
+
+
+def _json_value(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except ValueError:
+            return value
+    return value
 
 
 def trace_dataset(job_id: str, spec: OnboardingAnalysisJobSpec) -> AvailableDataset:

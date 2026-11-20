@@ -74,6 +74,7 @@ from job_executors.onboarding_analysis_executor import (
     OnboardingAnalysisExecutor,
     PlatformOnboardingResultUploader,
 )
+from job_executors.onboarding_insights import HttpInsightEngineClient
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
 from job_executors.task_management_job_executors import (
@@ -466,6 +467,7 @@ class JobExecutor:
                                 self.jobs_client.api_client,
                             ),
                             self.logger,
+                            insight_client=self._onboarding_insight_client(),
                         ).execute(
                             job.id,
                             job_run.id,
@@ -510,6 +512,19 @@ class JobExecutor:
                     exc_info=e,
                 )
                 return JobState.FAILED
+
+    def _onboarding_insight_client(self) -> HttpInsightEngineClient | None:
+        """The GenAI Engine that runs the onboarding insight prompts, or None, which
+        skips the LLM insights rather than failing the analysis."""
+        host = Config.settings.GENAI_ENGINE_INTERNAL_HOST
+        api_key = Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
+        if not host or not api_key:
+            self.logger.warning(
+                "GenAI Engine configuration missing, so onboarding analysis runs no "
+                "LLM insights.",
+            )
+            return None
+        return HttpInsightEngineClient(host, api_key)
 
     def _genai_engine_config(self) -> tuple[str, str]:
         """The GenAI Engine a discovery job talks to, from this engine's environment."""

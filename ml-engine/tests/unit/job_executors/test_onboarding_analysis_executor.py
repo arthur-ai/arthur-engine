@@ -182,7 +182,11 @@ def raw_data_enabled() -> Iterator[None]:
 class _Run:
     """One executor over a fake connector that returns `rows`, with a recording uploader."""
 
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, Any]],
+        insight_client: Any = None,
+    ) -> None:
         self.connector = MagicMock()
         self.connector.read.return_value = rows
         connector_constructor = MagicMock()
@@ -193,6 +197,7 @@ class _Run:
             self.uploader,
             logger,
             now=lambda: NOW,
+            insight_client=insight_client,
         )
         self.job_id = str(uuid.uuid4())
 
@@ -401,11 +406,12 @@ def test_completed_counts_every_trace(raw_data_enabled: None) -> None:
     assert sum(h.traces for h in totals.traces_per_hour_avg) == pytest.approx(50 / 30)
     assert totals.quietest_hour_utc == 0
     assert report.sample is not None and report.sample.traces == 50
-    # The insights are not built: each is listed as skipped, never as "nothing found".
+    # No GenAI Engine to run the prompts: each insight is listed as skipped, never as
+    # "nothing found".
     assert report.findings == []
     assert [(s.kind, s.reason) for s in report.skipped] == [
         ("rule_insights", INSIGHT_NOT_IMPLEMENTED),
-        ("llm_insights", INSIGHT_NOT_IMPLEMENTED),
+        ("llm_insights", "engine_not_configured"),
     ]
 
 
