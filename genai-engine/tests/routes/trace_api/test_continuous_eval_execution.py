@@ -104,154 +104,161 @@ def setup_test_data():
     db_session.add(task)
     db_session.commit()
 
-    # Create spans with nested attributes
-    base_time = datetime.now()
+    # The task is committed first; if anything after it fails, remove what was
+    # created so a failed setup leaves nothing behind for later tests.
+    try:
+        # Create spans with nested attributes
+        base_time = datetime.now()
 
-    # Span 1: RAG retrieval span with sqlQuery
-    span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
-        {
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "rag-retrieval-savedQueries",
-            "spanId": f"span1_{uuid.uuid4()}",
-            "traceId": trace_id,
-            "attributes": {
-                "openinference.span.kind": "RETRIEVER",
-                "input.value.sqlQuery": "SELECT * FROM users WHERE id = 1",
-                "input.value.context": "User query context",
-                "output.value.results": [
-                    {"id": 1, "name": "John"},
-                    {"id": 2, "name": "Jane"},
-                ],
+        # Span 1: RAG retrieval span with sqlQuery
+        span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
+            {
+                "kind": "SPAN_KIND_INTERNAL",
+                "name": "rag-retrieval-savedQueries",
+                "spanId": f"span1_{uuid.uuid4()}",
+                "traceId": trace_id,
+                "attributes": {
+                    "openinference.span.kind": "RETRIEVER",
+                    "input.value.sqlQuery": "SELECT * FROM users WHERE id = 1",
+                    "input.value.context": "User query context",
+                    "output.value.results": [
+                        {"id": 1, "name": "John"},
+                        {"id": 2, "name": "Jane"},
+                    ],
+                },
             },
-        },
-    )
-    span1_raw_data["arthur_span_version"] = "arthur_span_v1"
-
-    span1 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id=trace_id,
-        span_id=span1_raw_data["spanId"],
-        task_id=task_id,
-        parent_span_id=None,
-        span_kind="RETRIEVER",
-        start_time=base_time,
-        end_time=base_time,
-        session_id=None,
-        user_id=None,
-        raw_data=span1_raw_data,
-        created_at=base_time,
-        updated_at=base_time,
-    )
-
-    # Span 2: LLM span with token costs
-    span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
-        {
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "llm_call",
-            "spanId": f"span2_{uuid.uuid4()}",
-            "traceId": trace_id,
-            "attributes": {
-                "openinference.span.kind": "LLM",
-                "llm.model_name": "gpt-4",
-                "llm.token_cost": 0.05,
-                "llm.token_count.prompt": 100,
-                "llm.token_count.completion": 50,
-            },
-        },
-    )
-    span2_raw_data["arthur_span_version"] = "arthur_span_v1"
-
-    span2 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id=trace_id,
-        span_id=span2_raw_data["spanId"],
-        task_id=task_id,
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time,
-        end_time=base_time,
-        session_id=None,
-        user_id=None,
-        raw_data=span2_raw_data,
-        created_at=base_time,
-        updated_at=base_time,
-    )
-
-    # Span 3: Span with nested child
-    span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
-        {
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "agent_span",
-            "spanId": f"span3_{uuid.uuid4()}",
-            "traceId": trace_id,
-            "attributes": {
-                "openinference.span.kind": "AGENT",
-                "agent.name": "test_agent",
-            },
-        },
-    )
-    span3_raw_data["arthur_span_version"] = "arthur_span_v1"
-
-    span3 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id=trace_id,
-        span_id=span3_raw_data["spanId"],
-        task_id=task_id,
-        parent_span_id=span1_raw_data["spanId"],  # Child of span1
-        span_kind="AGENT",
-        start_time=base_time,
-        end_time=base_time,
-        session_id=None,
-        user_id=None,
-        raw_data=span3_raw_data,
-        created_at=base_time,
-        updated_at=base_time,
-    )
-
-    # Create database spans
-    spans = [span1, span2, span3]
-    database_spans = []
-    for span in spans:
-        db_span = DatabaseSpan(
-            id=span.id,
-            trace_id=span.trace_id,
-            span_id=span.span_id,
-            parent_span_id=span.parent_span_id,
-            span_name=span.raw_data.get("name"),
-            span_kind=span.span_kind,
-            start_time=span.start_time,
-            end_time=span.end_time,
-            task_id=span.task_id,
-            org_id=DEFAULT_ORG_ID,
-            session_id=span.session_id,
-            user_id=span.user_id,
-            status_code="Ok",
-            raw_data=span.raw_data,
-            created_at=span.created_at,
-            updated_at=span.updated_at,
         )
-        database_spans.append(db_span)
+        span1_raw_data["arthur_span_version"] = "arthur_span_v1"
 
-    db_session.add_all(database_spans)
-    db_session.commit()
+        span1 = InternalSpan(
+            id=str(uuid.uuid4()),
+            trace_id=trace_id,
+            span_id=span1_raw_data["spanId"],
+            task_id=task_id,
+            parent_span_id=None,
+            span_kind="RETRIEVER",
+            start_time=base_time,
+            end_time=base_time,
+            session_id=None,
+            user_id=None,
+            raw_data=span1_raw_data,
+            created_at=base_time,
+            updated_at=base_time,
+        )
 
-    # Create trace metadata
-    trace_metadata = DatabaseTraceMetadata(
-        task_id=task_id,
-        org_id=DEFAULT_ORG_ID,
-        trace_id=trace_id,
-        session_id=None,
-        user_id=None,
-        span_count=len(spans),
-        start_time=base_time,
-        end_time=base_time,
-        created_at=base_time,
-        updated_at=base_time,
-        input_content="test input",
-        output_content="test output",
-    )
-    db_session.add(trace_metadata)
-    db_session.commit()
+        # Span 2: LLM span with token costs
+        span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
+            {
+                "kind": "SPAN_KIND_INTERNAL",
+                "name": "llm_call",
+                "spanId": f"span2_{uuid.uuid4()}",
+                "traceId": trace_id,
+                "attributes": {
+                    "openinference.span.kind": "LLM",
+                    "llm.model_name": "gpt-4",
+                    "llm.token_cost": 0.05,
+                    "llm.token_count.prompt": 100,
+                    "llm.token_count.completion": 50,
+                },
+            },
+        )
+        span2_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+        span2 = InternalSpan(
+            id=str(uuid.uuid4()),
+            trace_id=trace_id,
+            span_id=span2_raw_data["spanId"],
+            task_id=task_id,
+            parent_span_id=None,
+            span_kind="LLM",
+            start_time=base_time,
+            end_time=base_time,
+            session_id=None,
+            user_id=None,
+            raw_data=span2_raw_data,
+            created_at=base_time,
+            updated_at=base_time,
+        )
+
+        # Span 3: Span with nested child
+        span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
+            {
+                "kind": "SPAN_KIND_INTERNAL",
+                "name": "agent_span",
+                "spanId": f"span3_{uuid.uuid4()}",
+                "traceId": trace_id,
+                "attributes": {
+                    "openinference.span.kind": "AGENT",
+                    "agent.name": "test_agent",
+                },
+            },
+        )
+        span3_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+        span3 = InternalSpan(
+            id=str(uuid.uuid4()),
+            trace_id=trace_id,
+            span_id=span3_raw_data["spanId"],
+            task_id=task_id,
+            parent_span_id=span1_raw_data["spanId"],  # Child of span1
+            span_kind="AGENT",
+            start_time=base_time,
+            end_time=base_time,
+            session_id=None,
+            user_id=None,
+            raw_data=span3_raw_data,
+            created_at=base_time,
+            updated_at=base_time,
+        )
+
+        # Create database spans
+        spans = [span1, span2, span3]
+        database_spans = []
+        for span in spans:
+            db_span = DatabaseSpan(
+                id=span.id,
+                trace_id=span.trace_id,
+                span_id=span.span_id,
+                parent_span_id=span.parent_span_id,
+                span_name=span.raw_data.get("name"),
+                span_kind=span.span_kind,
+                start_time=span.start_time,
+                end_time=span.end_time,
+                task_id=span.task_id,
+                org_id=DEFAULT_ORG_ID,
+                session_id=span.session_id,
+                user_id=span.user_id,
+                status_code="Ok",
+                raw_data=span.raw_data,
+                created_at=span.created_at,
+                updated_at=span.updated_at,
+            )
+            database_spans.append(db_span)
+
+        db_session.add_all(database_spans)
+        db_session.commit()
+
+        # Create trace metadata
+        trace_metadata = DatabaseTraceMetadata(
+            task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
+            trace_id=trace_id,
+            session_id=None,
+            user_id=None,
+            span_count=len(spans),
+            start_time=base_time,
+            end_time=base_time,
+            created_at=base_time,
+            updated_at=base_time,
+            input_content="test input",
+            output_content="test output",
+        )
+        db_session.add(trace_metadata)
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+        cleanup_test_data({"task_id": task_id, "trace_id": trace_id})
+        raise
 
     return {
         "task_id": task_id,
