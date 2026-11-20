@@ -1081,7 +1081,7 @@ class ContinuousEvalDailySpendEstimate(BaseModel):
     )
     judged_share: float = Field(
         default=1.0,
-        description="Share of finished runs that called the LLM rather than being skipped. Errored runs are left out. 1.0 with no finished runs.",
+        description="Share of finished runs that called the LLM rather than being skipped because the trace lacks the transform's spans or variables. Errored runs, and runs skipped by a setting on the eval, are left out. 1.0 with no finished runs.",
     )
     unpriced_run_count: int = Field(
         default=0,

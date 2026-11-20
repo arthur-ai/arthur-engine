@@ -1658,7 +1658,7 @@ export interface ContinuousEvalDailySpendEstimate {
   estimated_daily_cost?: number | null;
   /**
    * Judged Share
-   * Share of finished runs that called the LLM rather than being skipped. Errored runs are left out. 1.0 with no finished runs.
+   * Share of finished runs that called the LLM rather than being skipped because the trace lacks the transform's spans or variables. Errored runs, and runs skipped by a setting on the eval, are left out. 1.0 with no finished runs.
    * @default 1
    */
   judged_share?: number;
