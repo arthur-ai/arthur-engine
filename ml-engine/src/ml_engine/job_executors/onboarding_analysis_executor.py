@@ -70,6 +70,12 @@ SPREAD_SLICES = 6
 # The reason an insight is listed in `skipped` while the insight steps are not built.
 INSIGHT_NOT_IMPLEMENTED = "not_implemented"
 
+# The Platform's bounds on `span_names`: it refuses an upload with more names, or with a
+# longer one. A transform matches a span by its exact name, so a name too long to send
+# is dropped rather than cut, and past the count the most frequent names are kept.
+MAX_SPAN_NAMES = 2000
+MAX_SPAN_NAME_LENGTH = 512
+
 
 class OnboardingAddress(BaseModel):
     """Where the traces are, on the source side: a GenAI Engine task, or a provider's
@@ -285,10 +291,18 @@ class OnboardingAnalysisExecutor:
         self,
         job_id: str,
         job_run_id: str,
-        spec: OnboardingAnalysisJobSpec,
+        spec: OnboardingAnalysisJobSpec | dict[str, Any],
     ) -> OnboardingAnalysisResult:
+        """Run the analysis and upload its result.
+
+        `spec` may be the job spec as the Platform sent it: it is validated here, so a
+        malformed one is also reported to the wizard as a failed result.
+        """
         try:
-            result = self._analyse(job_id, spec)
+            result = self._analyse(
+                job_id,
+                OnboardingAnalysisJobSpec.model_validate(spec),
+            )
         except Exception as e:
             self._report_failure(job_id, job_run_id, e)
             raise
@@ -467,15 +481,19 @@ def _calls_validate(conn: DuckDBPyConnection, table: str) -> bool:
 
 
 def _span_names(conn: DuckDBPyConnection, table: str) -> list[str]:
-    rows = conn.sql(
+    """The distinct span names seen, within the Platform's bounds, sorted."""
+    rows = conn.execute(
         f"""
-        SELECT DISTINCT s.span_name
+        SELECT s.span_name
         FROM (SELECT unnest(spans) AS s FROM {table})
-        WHERE s.span_name IS NOT NULL
-        ORDER BY 1
+        WHERE s.span_name IS NOT NULL AND length(s.span_name) <= $max_length
+        GROUP BY s.span_name
+        ORDER BY count(*) DESC, s.span_name
+        LIMIT $max_names
         """,
+        {"max_length": MAX_SPAN_NAME_LENGTH, "max_names": MAX_SPAN_NAMES},
     ).fetchall()
-    return [row[0] for row in rows]
+    return sorted(row[0] for row in rows)
 
 
 def _totals(

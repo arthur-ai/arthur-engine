@@ -72,7 +72,6 @@ from job_executors.metrics_calculation_executor import (
 )
 from job_executors.onboarding_analysis_executor import (
     OnboardingAnalysisExecutor,
-    OnboardingAnalysisJobSpec,
     PlatformOnboardingResultUploader,
 )
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
@@ -127,8 +126,8 @@ class JobSpecRawParser:
     def to_update_model_task_spec(self) -> UpdateModelTaskRulesJobSpec:
         return UpdateModelTaskRulesJobSpec.model_validate(self._parse_job_spec_field())
 
-    def to_onboarding_analysis_spec(self) -> OnboardingAnalysisJobSpec:
-        return OnboardingAnalysisJobSpec.model_validate(self._parse_job_spec_field())
+    def job_spec(self) -> Any:
+        return self._parse_job_spec_field()
 
     def to_delete_model_task_spec(self) -> DeleteModelTaskJobSpec:
         return DeleteModelTaskJobSpec.model_validate(self._parse_job_spec_field())
@@ -470,9 +469,11 @@ class JobExecutor:
                         ).execute(
                             job.id,
                             job_run.id,
+                            # Validated by the executor, so that a malformed spec
+                            # still reaches the wizard as a failed result.
                             JobSpecRawParser(
                                 job_resp.raw_data,
-                            ).to_onboarding_analysis_spec(),
+                            ).job_spec(),
                         )
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(

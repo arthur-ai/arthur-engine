@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from arthur_client_support import ONBOARDING_ANALYSIS_SUPPORTED
 from config import Config
 from dataset_loader import DatasetLoader
+from job_executors import onboarding_analysis_executor
 from job_executors.onboarding_analysis_executor import (
     INSIGHT_NOT_IMPLEMENTED,
     OnboardingAddress,
@@ -638,3 +639,44 @@ def test_the_engine_does_not_take_jobs_it_cannot_upload() -> None:
             "job", "run", result
         )
     assert not isinstance(raised.value, NotImplementedError)
+
+
+# --- What reaches the wizard ---------------------------------------------------------------
+
+
+def test_a_malformed_spec_uploads_a_failed_result_and_fails() -> None:
+    run = _Run([])
+    # No connector_id, and min_traces not a number: the spec as the Platform sent it.
+    raw_spec = {"address": {"task_id": TASK_ID}, "min_traces": "ten"}
+
+    with pytest.raises(ValidationError):
+        run.executor.execute(run.job_id, "run-1", raw_spec)
+
+    run.connector.read.assert_not_called()
+    [result] = [c.args[2] for c in run.uploader.upload.call_args_list]
+    assert result.outcome == OnboardingOutcome.FAILED
+    assert result.error is not None
+    assert result.error.message == "The analysis failed (ValidationError)."
+
+
+def test_span_names_stay_within_the_platform_bounds(
+    raw_data_enabled: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(onboarding_analysis_executor, "MAX_SPAN_NAMES", 2)
+    too_long = "x" * (onboarding_analysis_executor.MAX_SPAN_NAME_LENGTH + 1)
+    rows = []
+    for i in range(10):
+        trace_id = uuid.uuid4().hex
+        spans = [_span(trace_id, "frequent", "CHAIN", _days_ago(i))]
+        spans.append(_span(trace_id, too_long, "CHAIN", _days_ago(i)))
+        if i < 5:
+            spans.append(_span(trace_id, "common", "CHAIN", _days_ago(i)))
+        if i == 0:
+            spans.append(_span(trace_id, "aaa_rare", "CHAIN", _days_ago(i)))
+        rows.append(_trace(trace_id, spans))
+
+    report = _report(_Run(rows)(min_traces=1))
+
+    # The most frequent names that fit, never one the Platform would refuse.
+    assert report.span_names == ["common", "frequent"]
