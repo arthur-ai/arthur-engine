@@ -27,10 +27,10 @@ from typing import Any, Final, Optional
 
 import litellm
 from arthur_common.models.llm_model_providers import ModelProvider, ReasoningEffortEnum
-from litellm.llms.anthropic.common_utils import AnthropicModelInfo
-from litellm.router_utils.reasoning_effort_capability import (
+from litellm.litellm_core_utils.reasoning_effort_capability import (
     resolve_supported_reasoning_efforts,
 )
+from litellm.llms.anthropic.common_utils import AnthropicModelInfo
 
 REASONING_EFFORT_PARAM: Final = "reasoning_effort"
 THINKING_PARAM: Final = "thinking"
