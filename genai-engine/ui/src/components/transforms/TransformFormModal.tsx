@@ -16,22 +16,47 @@ import {
   Autocomplete,
   Divider,
   CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import { useState, useEffect } from "react";
 
 import { useTransforms } from "./hooks/useTransforms";
 import { useTransformVersions } from "./hooks/useTransformVersions";
 import { TransformFormModalProps } from "./types";
+import { DEFAULT_TRACE_MAX_CHARS, MIN_TRACE_MAX_CHARS, VARIABLE_SOURCES, validateMaxChars } from "./variableSource";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
+import type { TraceTransformVariableDefinition, TransformVariableSource } from "@/lib/api-client/api-client";
 
 interface VariableMapping {
   variable_name: string;
+  source: TransformVariableSource;
   span_name: string;
   attribute_path: string;
   fallback: string;
+  // Typed text; empty means the default budget
+  max_chars: string;
 }
+
+const emptyVariable = (variable_name = ""): VariableMapping => ({
+  variable_name,
+  source: "span",
+  span_name: "",
+  attribute_path: "",
+  fallback: "",
+  max_chars: "",
+});
+
+const toVariableMapping = (variable: TraceTransformVariableDefinition): VariableMapping => ({
+  variable_name: variable.variable_name,
+  source: variable.source ?? "span",
+  span_name: variable.span_name,
+  attribute_path: variable.attribute_path,
+  fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
+  max_chars: variable.max_chars != null ? String(variable.max_chars) : "",
+});
 
 export const TransformFormModal: React.FC<TransformFormModalProps> = ({
   open,
@@ -44,7 +69,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [variables, setVariables] = useState<VariableMapping[]>([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+  const [variables, setVariables] = useState<VariableMapping[]>([emptyVariable()]);
   const [errors, setErrors] = useState<string[]>([]);
 
   // State for copying from existing transform
@@ -66,53 +91,53 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       setName(initialTransform.name);
       setDescription(initialTransform.description || "");
       if (initialTransformDefinition) {
-        setVariables(
-          initialTransformDefinition.variables.map((variable) => ({
-            variable_name: variable.variable_name,
-            span_name: variable.span_name,
-            attribute_path: variable.attribute_path,
-            fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
-          }))
-        );
+        setVariables(initialTransformDefinition.variables.map(toVariableMapping));
       }
     } else if (initialVariableNames && initialVariableNames.length > 0) {
       setName("");
       setDescription("");
-      setVariables(
-        initialVariableNames.map((name) => ({
-          variable_name: name,
-          span_name: "",
-          attribute_path: "",
-          fallback: "",
-        }))
-      );
+      setVariables(initialVariableNames.map((name) => emptyVariable(name)));
       setSelectedTransformId(null);
     } else {
       setName("");
       setDescription("");
-      setVariables([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+      setVariables([emptyVariable()]);
       setSelectedTransformId(null);
     }
     setErrors([]);
   }, [initialTransform, initialTransformDefinition, initialVariableNames, open]);
 
   const handleAddVariable = () => {
-    setVariables([...variables, { variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+    setVariables([...variables, emptyVariable()]);
   };
 
   const handleRemoveVariable = (index: number) => {
     setVariables(variables.filter((_, i) => i !== index));
   };
 
-  const handleVariableChange = (index: number, field: keyof VariableMapping, value: string) => {
+  const handleVariableChange = (index: number, field: Exclude<keyof VariableMapping, "source">, value: string) => {
     const newVariables = [...variables];
     newVariables[index][field] = value;
     setVariables(newVariables);
   };
 
+  const handleSourceChange = (index: number, source: TransformVariableSource) => {
+    setVariables(variables.map((variable, i) => (i === index ? { ...variable, source } : variable)));
+  };
+
   const buildTransformDefinition = (): TransformDefinition => {
     return {
       variables: variables.map((variable) => {
+        if (variable.source === "trace") {
+          // The whole trace names no span or attribute; the API keeps both as strings
+          return {
+            variable_name: variable.variable_name,
+            source: "trace",
+            span_name: "",
+            attribute_path: "",
+            max_chars: variable.max_chars.trim() ? Number(variable.max_chars) : undefined,
+          };
+        }
         let fallbackValue = undefined;
         if (variable.fallback && variable.fallback.trim()) {
           const parsed = JSON.parse(variable.fallback);
@@ -143,6 +168,13 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     variables.forEach((variable, idx) => {
       if (!variable.variable_name.trim()) {
         validationErrors.push(`Variable ${idx + 1}: Variable name is required`);
+      }
+      if (variable.source === "trace") {
+        const maxCharsError = validateMaxChars(variable.max_chars);
+        if (maxCharsError) {
+          validationErrors.push(`Variable ${idx + 1}: ${maxCharsError}`);
+        }
+        return;
       }
       if (!variable.span_name.trim()) {
         validationErrors.push(`Variable ${idx + 1}: Span name is required`);
@@ -195,14 +227,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     if (selectedTransform) {
       setName(selectedTransform.name);
       setDescription(selectedTransform.description || "");
-      setVariables(
-        copyTransformDefinition.variables.map((variable) => ({
-          variable_name: variable.variable_name,
-          span_name: variable.span_name,
-          attribute_path: variable.attribute_path,
-          fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
-        }))
-      );
+      setVariables(copyTransformDefinition.variables.map(toVariableMapping));
       setErrors([]);
     }
   }, [selectedTransformId, copyTransformDefinition, availableTransforms]);
@@ -355,33 +380,68 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                       required
                       fullWidth
                     />
-                    <TextField
-                      label="Span Name"
-                      value={variable.span_name}
-                      onChange={(e) => handleVariableChange(idx, "span_name", e.target.value)}
-                      placeholder="e.g., DatabaseQuery"
-                      size="small"
-                      required
-                      fullWidth
-                    />
-                    <TextField
-                      label="Attribute Path"
-                      value={variable.attribute_path}
-                      onChange={(e) => handleVariableChange(idx, "attribute_path", e.target.value)}
-                      placeholder="e.g., attributes.input.value or attributes.results.*.name"
-                      helperText="Use * to extract from all items in an array"
-                      size="small"
-                      required
-                      fullWidth
-                    />
-                    <TextField
-                      label="Fallback Value (JSON, Optional)"
-                      value={variable.fallback}
-                      onChange={(e) => handleVariableChange(idx, "fallback", e.target.value)}
-                      placeholder='e.g., null or "default"'
-                      size="small"
-                      fullWidth
-                    />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 0.5 }}>
+                        Value comes from
+                      </Typography>
+                      <ToggleButtonGroup
+                        exclusive
+                        size="small"
+                        value={variable.source}
+                        onChange={(_, source: TransformVariableSource | null) => source && handleSourceChange(idx, source)}
+                      >
+                        {VARIABLE_SOURCES.map((option) => (
+                          <ToggleButton key={option.value} value={option.value}>
+                            {option.label}
+                          </ToggleButton>
+                        ))}
+                      </ToggleButtonGroup>
+                      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
+                        {VARIABLE_SOURCES.find((option) => option.value === variable.source)?.description}
+                      </Typography>
+                    </Box>
+                    {variable.source === "trace" ? (
+                      <TextField
+                        label="Size Budget (characters, Optional)"
+                        value={variable.max_chars}
+                        onChange={(e) => handleVariableChange(idx, "max_chars", e.target.value)}
+                        placeholder={DEFAULT_TRACE_MAX_CHARS.toLocaleString()}
+                        helperText={`Default ${DEFAULT_TRACE_MAX_CHARS.toLocaleString()}, at least ${MIN_TRACE_MAX_CHARS.toLocaleString()}. Over it, long fields are shortened and middle spans left out, and the text says what was cut.`}
+                        size="small"
+                        type="number"
+                        fullWidth
+                      />
+                    ) : (
+                      <>
+                        <TextField
+                          label="Span Name"
+                          value={variable.span_name}
+                          onChange={(e) => handleVariableChange(idx, "span_name", e.target.value)}
+                          placeholder="e.g., DatabaseQuery"
+                          size="small"
+                          required
+                          fullWidth
+                        />
+                        <TextField
+                          label="Attribute Path"
+                          value={variable.attribute_path}
+                          onChange={(e) => handleVariableChange(idx, "attribute_path", e.target.value)}
+                          placeholder="e.g., attributes.input.value or attributes.results.*.name"
+                          helperText="Use * to extract from all items in an array"
+                          size="small"
+                          required
+                          fullWidth
+                        />
+                        <TextField
+                          label="Fallback Value (JSON, Optional)"
+                          value={variable.fallback}
+                          onChange={(e) => handleVariableChange(idx, "fallback", e.target.value)}
+                          placeholder='e.g., null or "default"'
+                          size="small"
+                          fullWidth
+                        />
+                      </>
+                    )}
                   </Stack>
                 </Box>
               ))}

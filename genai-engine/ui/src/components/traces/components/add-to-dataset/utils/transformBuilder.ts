@@ -1,5 +1,7 @@
 import { Column, TransformDefinition } from "../form/shared";
 
+import { MIN_TRACE_MAX_CHARS } from "@/components/transforms/variableSource";
+
 // Builds transform definition from columns using the stored span_name and attribute_path
 export function buildTransformFromColumns(columns: Column[]): TransformDefinition {
   return {
@@ -35,6 +37,14 @@ export function validateTransform(transform: TransformDefinition): string[] {
       errors.push(`Duplicate variable name: ${varDef.variable_name}`);
     }
     variableNames.add(varDef.variable_name);
+
+    // A whole-trace variable reads every span, so it names no span or attribute.
+    if (varDef.source === "trace") {
+      if (varDef.max_chars != null && varDef.max_chars < MIN_TRACE_MAX_CHARS) {
+        errors.push(`Variable ${varDef.variable_name}: max_chars must be at least ${MIN_TRACE_MAX_CHARS}`);
+      }
+      continue;
+    }
 
     if (!varDef.span_name) {
       errors.push(`Variable ${varDef.variable_name}: span_name is required`);

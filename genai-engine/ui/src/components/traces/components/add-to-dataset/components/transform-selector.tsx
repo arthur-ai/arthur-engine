@@ -9,6 +9,7 @@ import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables
 
 import { getNestedValueWildcard } from "@/components/traces/utils/spans";
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
+import { describeSpansRead, isWholeTrace } from "@/components/transforms/variableSource";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
@@ -62,6 +63,7 @@ export const TransformSelector = withFieldGroup({
 
         const transformVariablesByName = new Map(selectedTransformDefinition.variables.map((v) => [v.variable_name, v]));
         const executedValuesByName = new Map(executionResult.variables.map((v) => [v.name, v.value]));
+        const spanIdsByName = new Map((executionResult.variable_spans ?? []).map((v) => [v.variable_name, v.span_ids]));
 
         // The row schema is the source of truth: iterate its columns and fill
         // values from any matching transform variable (on a first addition the
@@ -76,6 +78,19 @@ export const TransformSelector = withFieldGroup({
               name: columnName,
               value: "",
               path: "",
+              span_name: "",
+              attribute_path: "",
+            };
+          }
+
+          // A whole-trace value, or one read from several spans: say which spans,
+          // since there is no single span and path to point at.
+          const spanIds = spanIdsByName.get(columnName) ?? [];
+          if (isWholeTrace(variableDef) || spanIds.length > 1) {
+            return {
+              name: columnName,
+              value: executedValuesByName.get(columnName) ?? "",
+              path: describeSpansRead(variableDef, spanIds),
               span_name: "",
               attribute_path: "",
             };
