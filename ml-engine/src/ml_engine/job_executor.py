@@ -44,11 +44,15 @@ from arthur_common.models.task_job_specs import (
 from pydantic import StrictBytes
 
 from arthur_client_support import (
+    ONBOARDING_ANALYSIS_JOB_KIND,
+    ONBOARDING_ANALYSIS_SUPPORTED,
+    ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
     TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
 )
 from config import Config
+from dataset_loader import DatasetLoader
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.compliance_policy_check_executor import (
     CompliancePolicyCheckExecutor,
@@ -65,6 +69,11 @@ from job_executors.list_datasets_executor import ListDatasetsExecutor
 from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
+)
+from job_executors.onboarding_analysis_executor import (
+    OnboardingAnalysisExecutor,
+    OnboardingAnalysisJobSpec,
+    PlatformOnboardingResultUploader,
 )
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
@@ -117,6 +126,9 @@ class JobSpecRawParser:
 
     def to_update_model_task_spec(self) -> UpdateModelTaskRulesJobSpec:
         return UpdateModelTaskRulesJobSpec.model_validate(self._parse_job_spec_field())
+
+    def to_onboarding_analysis_spec(self) -> OnboardingAnalysisJobSpec:
+        return OnboardingAnalysisJobSpec.model_validate(self._parse_job_spec_field())
 
     def to_delete_model_task_spec(self) -> DeleteModelTaskJobSpec:
         return DeleteModelTaskJobSpec.model_validate(self._parse_job_spec_field())
@@ -439,6 +451,29 @@ class JobExecutor:
                             self.discovery_sources_client,
                             self.logger,
                         ).execute(job, job_run.id, job.job_spec.actual_instance)
+                    # Matched by value: no published client has the member yet.
+                    case kind if kind == ONBOARDING_ANALYSIS_JOB_KIND:
+                        if not ONBOARDING_ANALYSIS_SUPPORTED:
+                            raise NotImplementedError(
+                                ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
+                            )
+                        OnboardingAnalysisExecutor(
+                            DatasetLoader(
+                                self.connector_constructor,
+                                self.datasets_client,
+                                self.logger,
+                            ),
+                            PlatformOnboardingResultUploader(
+                                self.jobs_client.api_client,
+                            ),
+                            self.logger,
+                        ).execute(
+                            job.id,
+                            job_run.id,
+                            JobSpecRawParser(
+                                job_resp.raw_data,
+                            ).to_onboarding_analysis_spec(),
+                        )
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,

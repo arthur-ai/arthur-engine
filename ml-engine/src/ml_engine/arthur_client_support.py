@@ -51,3 +51,39 @@ TEST_DISCOVERY_SOURCE_SUPPORTED = client_supports_test_discovery_source()
 DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST = (
     "discovery_source_test" in JobDequeueParameters.model_fields
 )
+
+# The wire value of the ONBOARDING_ANALYSIS job kind, compared by value: no published
+# client has the member yet.
+ONBOARDING_ANALYSIS_JOB_KIND = "onboarding_analysis"
+
+# The Platform's result route for the job, as the generator names it: the "Onboarding
+# V1" tag and the `put_onboarding_analysis_result` operation.
+ONBOARDING_RESULT_API = "OnboardingV1Api"
+ONBOARDING_RESULT_METHOD = "put_onboarding_analysis_result"
+ONBOARDING_RESULT_MODEL = "PutOnboardingAnalysisResult"
+
+
+def client_supports_onboarding_analysis() -> bool:
+    """Whether the installed client has the job kind and the route its result goes to."""
+    result_api = getattr(api_bindings, ONBOARDING_RESULT_API, None)
+    return (
+        any(kind.value == ONBOARDING_ANALYSIS_JOB_KIND for kind in JobKind)
+        and hasattr(api_bindings, ONBOARDING_RESULT_MODEL)
+        and result_api is not None
+        and hasattr(result_api, ONBOARDING_RESULT_METHOD)
+    )
+
+
+ONBOARDING_ANALYSIS_SUPPORTED = client_supports_onboarding_analysis()
+
+ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE = (
+    "This engine's arthur-client does not support onboarding analysis "
+    f"({ONBOARDING_ANALYSIS_JOB_KIND}) jobs; upgrade arthur-client."
+)
+
+# Whether this client's dequeue request can say the engine runs onboarding analysis
+# jobs. As with Test Connection, the Platform hands ONBOARDING_ANALYSIS jobs only to an
+# engine whose last dequeue said so, and refuses to start an analysis on any other.
+DEQUEUE_DECLARES_ONBOARDING_ANALYSIS = (
+    "onboarding_analysis" in JobDequeueParameters.model_fields
+)
