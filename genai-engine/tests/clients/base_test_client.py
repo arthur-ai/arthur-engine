@@ -58,8 +58,6 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalVariableMappingResponse,
     Eval,
-    ListTraceTransformsResponse,
-    TraceTransformResponse,
 )
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
@@ -149,6 +147,10 @@ from schemas.response_schemas import (
     TraceUserListResponse,
     TraceUserMetadataResponse,
     TransformExtractionResponseList,
+)
+from schemas.transform_schemas import (
+    ListTraceTransformsResponse,
+    TraceTransformResponse,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,

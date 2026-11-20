@@ -9,15 +9,14 @@ columns), but for many traces at once.
 
 from uuid import UUID
 
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
-
 from repositories.span_repository import SpanRepository
 from schemas.common_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
 )
 from schemas.response_schemas import BulkAddTraceResult
-from utils.transform_executor import execute_transform
+from schemas.transform_schemas import TraceTransformDefinition
+from utils.transform_executor import execute_transform_on_spans
 
 
 def build_bulk_add_rows(
@@ -52,14 +51,9 @@ def build_bulk_add_rows(
     results: list[BulkAddTraceResult] = []
 
     for trace_id in trace_ids:
-        trace = span_repo.get_trace_by_id(
-            trace_id=trace_id,
-            include_metrics=False,
-            compute_new_metrics=False,
-            org_scope=org_scope,
-        )
+        spans = span_repo.get_trace_spans(trace_id=trace_id, org_scope=org_scope)
 
-        if trace is None:
+        if spans is None:
             results.append(
                 BulkAddTraceResult(
                     trace_id=trace_id,
@@ -70,8 +64,8 @@ def build_bulk_add_rows(
             continue
 
         try:
-            extraction = execute_transform(
-                trace=trace,
+            extraction = execute_transform_on_spans(
+                spans=spans,
                 transform_definition=transform_definition,
             )
         except Exception as e:

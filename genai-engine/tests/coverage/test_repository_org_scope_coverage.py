@@ -36,6 +36,7 @@ TASK_SCOPED_FETCHERS: list[tuple[type, str]] = [
     (InferenceRepository, "get_inference"),
     (InferenceRepository, "get_conversation_by_id"),
     (SpanRepository, "get_trace_by_id"),
+    (SpanRepository, "get_trace_spans"),
     (SpanRepository, "get_span_by_id"),
     (SpanRepository, "get_session_traces"),
     (SpanRepository, "get_annotation_by_id"),

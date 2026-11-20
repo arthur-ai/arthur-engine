@@ -19,7 +19,6 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse as CommonContinuousEvalResponse,
 )
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
@@ -41,6 +40,7 @@ from schemas.enums import (
     SpendEstimateUnavailableReason,
     TestRunStatus,
 )
+from schemas.transform_schemas import TraceTransformDefinition
 
 
 class OrganizationResponse(BaseModel):
@@ -447,7 +447,7 @@ class ModelReasoningOptions(BaseModel):
         ),
     )
     thinking: ModelThinkingOptions = Field(
-        description="Thinking settings the model accepts"
+        description="Thinking settings the model accepts",
     )
 
 
@@ -899,6 +899,13 @@ class UnsavedPromptVariablesListResponse(BaseModel):
     )
 
 
+class TransformVariableSpans(BaseModel):
+    variable_name: str = Field(description="Name of the transform variable.")
+    span_ids: list[str] = Field(
+        description="IDs of the spans the value was read from, in tree order.",
+    )
+
+
 class TransformExtractionResponseList(BaseModel):
     variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
@@ -908,6 +915,14 @@ class TransformExtractionResponseList(BaseModel):
     )
     missing_spans: list[str] = Field(
         description="List of matching spans for the variables.",
+    )
+    variable_spans: list[TransformVariableSpans] = Field(
+        default_factory=list,
+        description=(
+            "For each variable, the ids of the spans its value was read from, in "
+            "tree order: every matching span, or every span of the trace for a "
+            "whole-trace variable. Empty when no span matched."
+        ),
     )
 
 

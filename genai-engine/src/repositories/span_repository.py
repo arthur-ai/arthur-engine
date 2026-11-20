@@ -237,6 +237,26 @@ class SpanRepository:
             traces[0],
         )
 
+    def get_trace_spans(
+        self,
+        trace_id: str,
+        org_scope: UUID | None = None,
+    ) -> Optional[list[Span]]:
+        """Every valid span of a trace as a flat list, or None if the trace has none.
+
+        Unlike get_trace_by_id, no tree is built, so spans with a missing parent or
+        caught in a parent cycle are kept; transforms put them in tree order.
+        """
+        if org_scope is not None and not self._trace_belongs_to_org(
+            trace_id,
+            org_scope,
+        ):
+            return None
+        spans, _ = self.span_query_service.query_spans_from_db(trace_ids=[trace_id])
+        if not spans:
+            return None
+        return self.span_query_service.validate_spans(spans)
+
     def get_trace_overview_for_tasks(
         self,
         task_ids: list[str],
@@ -286,7 +306,7 @@ class SpanRepository:
                             ContinuousEvalRunStatus.SKIPPED.value,
                             ContinuousEvalRunStatus.PENDING.value,
                             ContinuousEvalRunStatus.RUNNING.value,
-                        ]
+                        ],
                     ),
                 )
                 .label("eval_count"),

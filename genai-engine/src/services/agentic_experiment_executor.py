@@ -53,7 +53,7 @@ from schemas.enums import AgenticExperimentGeneratorType
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, EVAL_PASS_THRESHOLD
-from utils.transform_executor import execute_transform
+from utils.transform_executor import execute_transform_on_spans
 
 logger = logging.getLogger(__name__)
 
@@ -673,13 +673,9 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             metrics_repo = MetricRepository(db_session)
             span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
 
-            trace = span_repo.get_trace_by_id(
-                trace_id=trace_id,
-                include_metrics=False,
-                compute_new_metrics=False,
-            )
+            spans = span_repo.get_trace_spans(trace_id=trace_id)
 
-            if not trace:
+            if not spans:
                 logger.error(f"Trace {trace_id} not found")
                 return False
 
@@ -692,7 +688,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
 
             # Execute transform on trace using the latest version's definition
             transform_definition = transform_repo.get_latest_definition(transform_id)
-            transform_results = execute_transform(trace, transform_definition)
+            transform_results = execute_transform_on_spans(spans, transform_definition)
 
             # Build variable map from eval variable mappings
             variable_map = self._build_eval_variable_map(

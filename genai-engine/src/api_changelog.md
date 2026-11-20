@@ -2,6 +2,26 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/19/2026
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  when several spans share a variable's `span_name`, the value now holds every match in tree order, each block headed by `[span <span_id>]`, instead of only the first match; a single match is unchanged. Continuous evals, agentic experiments and dataset bulk add read transforms the same way.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `transforms/items/definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/max_chars`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the new optional request property `definition/variables/items/source`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/max_chars`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the new optional request property `definition/anyOf[subschema #1: TraceTransformDefinition]/variables/items/source`
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the optional property `versions/items/definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/max_chars` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the optional property `definition/variables/items/source` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property `variable_spans` to the response with the `200` status
+
 # 11/03/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
