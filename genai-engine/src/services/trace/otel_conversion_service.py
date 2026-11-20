@@ -12,6 +12,7 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_AGENT_DESCRIPTION,
     GEN_AI_AGENT_ID,
     GEN_AI_AGENT_NAME,
+    GEN_AI_CONVERSATION_ID,
     GEN_AI_INPUT_MESSAGES,
     GEN_AI_OUTPUT_MESSAGES,
     GEN_AI_PROVIDER_NAME,
@@ -30,9 +31,19 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_TOOL_DESCRIPTION,
     GEN_AI_TOOL_NAME,
     GEN_AI_TOOL_TYPE,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
 )
+
+# Tokens written to the prompt cache. The current GenAI conventions name it
+# cache_write; the semconv package still has the older cache_creation name.
+GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS = "gen_ai.usage.cache_write.input_tokens"
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
+
+# Spans exported by the Claude SDK and the Claude API (Claude Platform).
+ANTHROPIC_SPAN_PREFIX = "anthropic."
+ANTHROPIC_SESSION_ID = "anthropic.session.id"
 
 
 class OtelConversionService:
@@ -53,6 +64,17 @@ class OtelConversionService:
         GEN_AI_TOOL_TYPE,
     )
 
+    @staticmethod
+    def is_genai_span(span_attributes: dict[str, Any]) -> bool:
+        """True for a span that uses the GenAI conventions and not OpenInference.
+
+        A span that already sets openinference.span.kind is left as it is, so
+        OpenInference instrumentation that also adds gen_ai.* keys is unchanged.
+        """
+        if SpanAttributes.OPENINFERENCE_SPAN_KIND in span_attributes:
+            return False
+        return any(key.startswith("gen_ai.") for key in span_attributes)
+
     def convert_otel_span_to_openinference(
         self,
         otlp_span: dict[str, Any],
@@ -61,12 +83,16 @@ class OtelConversionService:
         openinference_span = otlp_span.copy()
         openinference_span["attributes"] = self._convert_genai_to_openinference(
             otlp_span["attributes"],
+            span_name=otlp_span.get("name"),
+            otel_span_kind=otlp_span.get("kind"),
         )
         return openinference_span
 
     def _convert_genai_to_openinference(
         self,
         span_attributes: dict[str, Any],
+        span_name: str | None = None,
+        otel_span_kind: str | None = None,
     ) -> dict[str, Any]:
         """
         Convert OpenTelemetry GenAI span attributes to OpenInference span attributes
@@ -89,6 +115,7 @@ class OtelConversionService:
             self._map_output_messages,
             self._map_token_counts,
             self._map_tool_execution,
+            self._map_session,
             self._map_input_value,
             self._map_output_value,
         ]
@@ -97,6 +124,12 @@ class OtelConversionService:
             new_attrs, keys = mapper(span_attributes)
             attrs.update(new_attrs)
             converted_keys.update(keys)
+
+        if span_name and span_name.startswith(ANTHROPIC_SPAN_PREFIX):
+            attrs[SpanAttributes.OPENINFERENCE_SPAN_KIND] = self._anthropic_span_kind(
+                span_name,
+                otel_span_kind,
+            )
 
         # Remove converted GenAI attributes
         for key in converted_keys:
@@ -179,6 +212,42 @@ class OtelConversionService:
             span_kind = OpenInferenceSpanKindValues.TOOL.value
 
         return {SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind}, set()
+
+    @staticmethod
+    def _anthropic_span_kind(span_name: str, otel_span_kind: str | None) -> str:
+        """Span kind for a span from the Claude SDK or the Claude API.
+
+        Only LLM spans are priced, so exactly one span per model call is LLM.
+        Usage repeats on several levels of the API's spans: an API request
+        (anthropic.messages.create, SERVER) has the same tokens as its
+        anthropic.model_request children, and Anthropic's guidance is to sum one
+        level only. The model requests are the level that Messages API requests
+        and Managed Agents sessions share, so they are LLM and the request span
+        is CHAIN. Compactions and outcome evaluations are model calls that no
+        model_request covers. The SDK's own request span (CLIENT) is LLM, as the
+        only usage an application has without API tracing; with SDK and API
+        tracing both sent here, a request is counted on both.
+        """
+        operation = span_name.split(" ", 1)[0]
+        if operation in (
+            "anthropic.model_request",
+            "anthropic.compaction",
+            "anthropic.session.outcome_evaluation",
+        ):
+            return OpenInferenceSpanKindValues.LLM.value
+        if operation == "anthropic.messages.create":
+            if otel_span_kind == "SPAN_KIND_CLIENT":
+                return OpenInferenceSpanKindValues.LLM.value
+            return OpenInferenceSpanKindValues.CHAIN.value
+        if operation in (
+            "anthropic.tool_use",
+            "anthropic.mcp_tool_use",
+            "anthropic.custom_tool_use",
+        ):
+            return OpenInferenceSpanKindValues.TOOL.value
+        if operation in ("anthropic.session.turn", "anthropic.messages.tool_runner"):
+            return OpenInferenceSpanKindValues.AGENT.value
+        return OpenInferenceSpanKindValues.CHAIN.value
 
     def _map_invocation_parameters(
         self,
@@ -420,7 +489,55 @@ class OtelConversionService:
                 output_tokens,
             )
 
+        # Input tokens include cache reads and writes, as the cache counts in
+        # OpenInference do, so they map across unchanged and price at cache rates.
+        cache_read = self._get_and_mark(
+            span_attributes,
+            GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+            converted_keys,
+        )
+        if cache_read is not None:
+            attrs[SpanAttributes.LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_READ] = int(
+                cache_read,
+            )
+
+        cache_write = self._get_and_mark(
+            span_attributes,
+            GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS,
+            converted_keys,
+        )
+        legacy_cache_write = self._get_and_mark(
+            span_attributes,
+            GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+            converted_keys,
+        )
+        if cache_write is None:
+            cache_write = legacy_cache_write
+        if cache_write is not None:
+            attrs[SpanAttributes.LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_WRITE] = int(
+                cache_write,
+            )
+
         return attrs, converted_keys
+
+    def _map_session(
+        self,
+        span_attributes: dict[str, Any],
+    ) -> tuple[dict[str, Any], set[str]]:
+        """Map the conversation to the OpenInference session.
+
+        A Managed Agents session (anthropic.session.id) spans all its threads, so
+        it is preferred over the thread (gen_ai.conversation.id). The source
+        attributes are kept, so a thread can still be found.
+        """
+        if SpanAttributes.SESSION_ID in span_attributes:
+            return {}, set()
+        session = span_attributes.get(ANTHROPIC_SESSION_ID) or span_attributes.get(
+            GEN_AI_CONVERSATION_ID,
+        )
+        if not session:
+            return {}, set()
+        return {SpanAttributes.SESSION_ID: str(session)}, set()
 
     def _map_tool_execution(
         self,

@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from benedict import benedict
 
+from services.trace.otel_conversion_service import OtelConversionService
 from services.trace.span_semantic_conventions import SpanSemanticConventions
 from utils.trace import value_dict_to_value
 
@@ -32,13 +33,15 @@ class SpanNormalizationService:
 
     def __init__(self) -> None:
         self.conventions = SpanSemanticConventions()
+        self.genai_converter = OtelConversionService()
 
     def normalize_span_to_nested_dict(self, span: dict[str, Any]) -> dict[str, Any]:
         """
         Normalize span data to nested dictionary structure with selective JSON deserialization.
 
         This function performs the following transformations:
-        1. Converts OTEL format (list of key-value pairs) to flat dict
+        1. Converts OTEL format (list of key-value pairs) to flat dict, and
+           GenAI-convention attributes (gen_ai.*) to OpenInference
         2. Deserializes JSON fields based on semantic conventions
         3. Handles nested message.contents with special message_content nesting
         4. Uses benedict to unflatten dot notation to nested structure
@@ -58,6 +61,14 @@ class SpanNormalizationService:
             attrs = self._convert_otel_to_flat_dict(raw_attrs)
         else:
             attrs = raw_attrs
+
+        # Spans in the OpenTelemetry GenAI conventions (gen_ai.*), such as the
+        # Claude Platform's, become OpenInference so their kind, tokens, cost
+        # and session are read like any other span's.
+        if isinstance(attrs, dict) and self.genai_converter.is_genai_span(attrs):
+            attrs = self.genai_converter.convert_otel_span_to_openinference(
+                {**result, "attributes": attrs},
+            )["attributes"]
 
         # Deserialize JSON fields based on semantic conventions
         attrs = self._deserialize_json_attributes(attrs)

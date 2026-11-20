@@ -91,6 +91,7 @@ class TraceIngestionService:
         trace_data: bytes,
         commit: bool = True,
         count_ingest_bytes: bool = False,
+        default_task_id: str | None = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data from protobuf format and return statistics.
 
@@ -110,6 +111,7 @@ class TraceIngestionService:
         spans_data, stats = self._extract_and_process_spans(
             json_traces,
             span_ingest_bytes,
+            default_task_id=default_task_id,
         )
 
         if spans_data:
@@ -179,11 +181,14 @@ class TraceIngestionService:
         self,
         json_traces: dict[str, Any],
         span_ingest_bytes: list[int] | None = None,
+        default_task_id: str | None = None,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Extract and process spans from JSON trace data.
 
         span_ingest_bytes, when given, holds each span's ingest bytes in the order
         the spans appear in the request (MessageToDict keeps that order).
+        default_task_id (the request's x-arthur-task header) stands in for a
+        resource's arthur.task attribute when the resource has none.
         """
         total_spans = 0
         accepted_spans = 0
@@ -193,8 +198,9 @@ class TraceIngestionService:
 
         for resource_span in json_traces.get("resourceSpans", []):
             # Extract task ID from resource attributes (new format)
-            resource_task_id = self._extract_task_id_from_resource_attributes(
-                resource_span,
+            resource_task_id = (
+                self._extract_task_id_from_resource_attributes(resource_span)
+                or default_task_id
             )
 
             # Extract all resource attributes
