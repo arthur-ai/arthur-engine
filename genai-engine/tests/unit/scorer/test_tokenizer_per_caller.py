@@ -1,5 +1,4 @@
 import threading
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,8 +9,30 @@ from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClass
 from scorer.checks.toxicity.toxicity import ToxicityScorer
 from utils import model_load
 
-THREADS = 4
-CALLS_PER_THREAD = 5
+
+class HoldFirstChunkerCall:
+    """Keeps the first chunker tokenizer call in progress until released.
+
+    This forces the overlap the race needs instead of hoping thread scheduling
+    produces it: while one score() is inside its chunker's tokenizer call, a second
+    score() runs its chunker and pipeline end to end.
+    """
+
+    def __init__(self) -> None:
+        self.held = threading.Event()
+        self.release = threading.Event()
+        self._taken = False
+        self._lock = threading.Lock()
+
+    def maybe_hold(self, truncation: bool) -> None:
+        if truncation:
+            return
+        with self._lock:
+            if self._taken:
+                return
+            self._taken = True
+        self.held.set()
+        self.release.wait(timeout=5)
 
 
 class FakeFastTokenizer:
@@ -22,8 +43,13 @@ class FakeFastTokenizer:
     the real Rust-backed tokenizer does. Calls with the current setting can overlap.
     """
 
-    def __init__(self, truncation: bool | None = None) -> None:
+    def __init__(
+        self,
+        truncation: bool | None = None,
+        gate: HoldFirstChunkerCall | None = None,
+    ) -> None:
         self.truncation = truncation
+        self.gate = gate
         self.calls: list[dict] = []
         self._active = 0
         self._guard = threading.Lock()
@@ -36,7 +62,8 @@ class FakeFastTokenizer:
                     raise RuntimeError("Already borrowed")
                 self.truncation = truncation
             self._active += 1
-        time.sleep(0.005)
+        if self.gate:
+            self.gate.maybe_hold(truncation)
         with self._guard:
             self._active -= 1
 
@@ -134,30 +161,30 @@ def test_pipeline_tokenizer_gets_its_truncation_setting_once(
     assert tokenizer.calls == [{"truncation": True, "max_length": 512}]
 
 
-def _run_concurrently(score) -> list[Exception]:
+def _score_during_a_chunker_call(score, gate: HoldFirstChunkerCall) -> list[Exception]:
+    """Run a second score() while the first is held inside its chunker tokenizer call."""
     errors: list[Exception] = []
-    start = threading.Barrier(THREADS)
 
-    def work() -> None:
-        start.wait()
-        for _ in range(CALLS_PER_THREAD):
-            try:
-                score()
-            except Exception as e:
-                errors.append(e)
+    def record() -> None:
+        try:
+            score()
+        except Exception as e:
+            errors.append(e)
 
-    threads = [threading.Thread(target=work) for _ in range(THREADS)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    first = threading.Thread(target=record)
+    first.start()
+    assert gate.held.wait(timeout=5), "the first chunker call never started"
+    record()
+    gate.release.set()
+    first.join(timeout=5)
     return errors
 
 
 @pytest.mark.unit_tests
 def test_prompt_injection_chunker_and_pipeline_run_concurrently_without_errors():
-    pipeline_tokenizer = FakeFastTokenizer(truncation=True)
-    chunking_tokenizer = FakeFastTokenizer(truncation=False)
+    gate = HoldFirstChunkerCall()
+    pipeline_tokenizer = FakeFastTokenizer(truncation=True, gate=gate)
+    chunking_tokenizer = FakeFastTokenizer(truncation=False, gate=gate)
 
     def pipeline(chunk):
         pipeline_tokenizer(chunk, truncation=True, max_length=512)
@@ -182,7 +209,7 @@ def test_prompt_injection_chunker_and_pipeline_run_concurrently_without_errors()
             create=True,
         ),
     ):
-        errors = _run_concurrently(lambda: classifier.score(request))
+        errors = _score_during_a_chunker_call(lambda: classifier.score(request), gate)
 
     assert errors == []
     assert pipeline_tokenizer.truncation is True
@@ -191,8 +218,9 @@ def test_prompt_injection_chunker_and_pipeline_run_concurrently_without_errors()
 
 @pytest.mark.unit_tests
 def test_toxicity_chunker_and_pipeline_run_concurrently_without_errors():
-    pipeline_tokenizer = FakeFastTokenizer(truncation=True)
-    chunking_tokenizer = FakeFastTokenizer(truncation=False)
+    gate = HoldFirstChunkerCall()
+    pipeline_tokenizer = FakeFastTokenizer(truncation=True, gate=gate)
+    chunking_tokenizer = FakeFastTokenizer(truncation=False, gate=gate)
 
     def pipeline(texts, **kwargs):
         pipeline_tokenizer(texts[0], truncation=True, max_length=512)
@@ -218,8 +246,9 @@ def test_toxicity_chunker_and_pipeline_run_concurrently_without_errors():
         ),
         patch.object(ToxicityScorer, "detect_profanity", return_value=False),
     ):
-        errors = _run_concurrently(
+        errors = _score_during_a_chunker_call(
             lambda: results.append(scorer.score(request).result),
+            gate,
         )
 
     assert errors == []
