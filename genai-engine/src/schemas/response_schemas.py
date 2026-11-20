@@ -464,6 +464,10 @@ class ContinuousEvalResponse(CommonContinuousEvalResponse):
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
     )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        description="Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.",
+    )
 
 
 class ListContinuousEvalsResponse(BaseModel):
@@ -1105,6 +1109,16 @@ class ContinuousEvalSpendResponse(BaseModel):
     )
     estimate: ContinuousEvalDailySpendEstimate = Field(
         description="Projected daily cost at the current sample rate.",
+    )
+    spent_today: float = Field(
+        description="Total cost of the live runs judged since midnight, counted against the daily cap.",
+    )
+    daily_cost_cap_usd: Optional[float] = Field(
+        default=None,
+        description="The eval's daily spend cap. Null means no cap.",
+    )
+    cap_reached: bool = Field(
+        description="Whether today's spend has reached the cap, so new runs are skipped until midnight.",
     )
 
 

@@ -12,6 +12,7 @@ from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
+from repositories.continuous_eval_spend_repository import ContinuousEvalSpendRepository
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
@@ -333,6 +334,46 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     ContinuousEvalRunStatus.SKIPPED.value,
                     annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match eval variables: {', '.join(expected_vars)}",
                 )
+                return
+
+            # Checked right before the judge call rather than when the run is queued:
+            # a burst queues every trace before any of their costs exist, so only a
+            # check here sees the spend of the runs that went before it. Runs already
+            # calling the judge can still finish past the cap: at most one per worker
+            # thread, in every engine process.
+            # Test runs are started by hand and don't count toward the cap, so they
+            # aren't held back by it either.
+            cap = db_continuous_eval.daily_cost_cap_usd
+            if (
+                cap is not None
+                and annotation.test_run_id is None
+                and ContinuousEvalSpendRepository(db_session).spent_today(
+                    db_continuous_eval.id,
+                )
+                >= cap
+            ):
+                logger.info(
+                    f"Skipping run {job.annotation_id}: continuous eval "
+                    f"{db_continuous_eval.id} reached its daily spend cap of ${cap:g}",
+                )
+                # Only a still-pending run is skipped, so a worker that has already
+                # claimed this run keeps its result.
+                db_session.query(DatabaseAgenticAnnotation).filter(
+                    DatabaseAgenticAnnotation.id == job.annotation_id,
+                    DatabaseAgenticAnnotation.run_status
+                    == ContinuousEvalRunStatus.PENDING.value,
+                ).update(
+                    {
+                        "run_status": ContinuousEvalRunStatus.SKIPPED.value,
+                        "annotation_description": (
+                            f"Daily spend cap of ${cap:g} reached; runs resume at midnight "
+                            "(engine clock, UTC by default)."
+                        ),
+                        "updated_at": datetime.now(),
+                    },
+                    synchronize_session=False,
+                )
+                db_session.commit()
                 return
 
             # Update annotation status to running

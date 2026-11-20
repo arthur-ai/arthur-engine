@@ -9,6 +9,7 @@ import z from "zod";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
+import { DailyCapField, dailyCapSchema, dailyCapToUsd } from "../daily-cap";
 import { percentToSampleRate, SampleRateField, samplePercentSchema } from "../sample-rate";
 import { SpendEstimateLine } from "../spend";
 import { VariableMappingSection } from "../variable-mapping";
@@ -42,6 +43,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
       description: "",
       enabled: true,
       samplePercent: "",
+      dailyCap: "",
       evaluator: {
         name: null as string | null,
         version: null as string | null,
@@ -59,6 +61,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         description: z.string(),
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
+        dailyCap: dailyCapSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -80,6 +83,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         description: z.string(),
         enabled: z.boolean(),
         samplePercent: samplePercentSchema,
+        dailyCap: dailyCapSchema,
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -104,6 +108,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         sample_rate: percentToSampleRate(value.samplePercent),
+        daily_cost_cap_usd: dailyCapToUsd(value.dailyCap),
         eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version ?? "latest",
@@ -224,6 +229,11 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
             <form.Field name="samplePercent">
               {(field) => (
                 <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
+              )}
+            </form.Field>
+            <form.Field name="dailyCap">
+              {(field) => (
+                <DailyCapField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
               )}
             </form.Field>
           </Stack>
