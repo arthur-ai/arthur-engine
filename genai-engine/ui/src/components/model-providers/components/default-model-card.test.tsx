@@ -31,6 +31,13 @@ describe("DefaultModelCard", () => {
     expect(refetchAvailableModels).toHaveBeenCalled();
   });
 
+  it("shows no failure when the model list loaded empty", () => {
+    availableModels.mockReturnValue({ availableModels: new Map([["openai", []]]), failedProviders: [], refetchAvailableModels });
+    renderCard();
+
+    expect(screen.queryByText(/Couldn't load the models/)).toBeNull();
+  });
+
   it("shows no failure when the model list loaded", () => {
     availableModels.mockReturnValue({ availableModels: new Map([["openai", ["gpt-4.1-mini"]]]), failedProviders: [], refetchAvailableModels });
     renderCard();
