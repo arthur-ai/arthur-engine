@@ -5,6 +5,7 @@ import { Skeleton, Stack, Typography } from "@mui/material";
 import { StatCard } from "../../[evalId]/StatCard";
 import { useContinuousEvalSpend, useContinuousEvalSpendEstimate } from "../../hooks/useContinuousEvalSpend";
 import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
+import { completeTraceFilterRows, rowsToTraceFilter, type TraceFilterRow } from "../trace-filter";
 
 import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
 
@@ -82,19 +83,40 @@ type SpendEstimateLineProps = {
   taskId: string;
   llmEvalName: string | null;
   samplePercent: string;
+  traceFilter?: TraceFilterRow[];
 };
 
 // Estimate shown under the evaluator on the create forms; follows the evaluator and sample rate fields.
-export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent }: SpendEstimateLineProps) => {
+export const SpendEstimateLine = ({ taskId, llmEvalName, samplePercent, traceFilter = [] }: SpendEstimateLineProps) => {
   const { defaultCurrency } = useDisplaySettings();
   const debouncedPercent = useDebouncedValue(samplePercent);
+  const debouncedFilter = useDebouncedValue(traceFilter);
   const sampleRate = samplePercentSchema.safeParse(debouncedPercent).success ? percentToSampleRate(debouncedPercent) : undefined;
-  const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(taskId, llmEvalName, sampleRate);
+  // A half-filled condition isn't sent; the estimate covers the complete ones and says so.
+  const completeRows = completeTraceFilterRows(debouncedFilter);
+  const conditions = rowsToTraceFilter(completeRows);
+  const incompleteCount = debouncedFilter.length - completeRows.length;
+  const { data: estimate, isFetching } = useContinuousEvalSpendEstimate(
+    taskId,
+    llmEvalName,
+    sampleRate,
+    conditions ? JSON.stringify(conditions) : null
+  );
 
   if (!llmEvalName || sampleRate === undefined) return null;
   if (!estimate) {
     return isFetching ? <Skeleton variant="text" width={360} /> : null;
   }
   if (!isSpendEstimate(estimate)) return null;
-  return <SpendEstimateText estimate={estimate} currency={defaultCurrency} />;
+  return (
+    <Stack sx={{ gap: 0.5 }}>
+      <SpendEstimateText estimate={estimate} currency={defaultCurrency} />
+      {incompleteCount > 0 && (
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          {incompleteCount === 1 ? "1 trace filter condition isn't" : `${incompleteCount} trace filter conditions aren't`} filled in yet, so the
+          estimate leaves {incompleteCount === 1 ? "it" : "them"} out.
+        </Typography>
+      )}
+    </Stack>
+  );
 };

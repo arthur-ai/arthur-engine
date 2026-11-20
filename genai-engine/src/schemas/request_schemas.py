@@ -37,6 +37,7 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from schemas.common_schemas import (
+    ContinuousEvalTraceFilterCondition,
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
@@ -1230,6 +1231,14 @@ class ContinuousEvalCreateRequest(BaseModel):
             "evaluates every trace."
         ),
     )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description=(
+            "Conditions a trace must meet to be judged; all must hold. A trace that "
+            "doesn't match is skipped before the judge is called. Null or empty judges "
+            "every sampled trace."
+        ),
+    )
 
 
 class UpdateContinuousEvalRequest(BaseModel):
@@ -1272,6 +1281,13 @@ class UpdateContinuousEvalRequest(BaseModel):
         description=(
             "Fraction of traces to evaluate, in (0, 1]. Omit to leave it unchanged; "
             "send null to evaluate every trace."
+        ),
+    )
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]] = Field(
+        default=None,
+        description=(
+            "Conditions a trace must meet to be judged; all must hold. Omit to leave "
+            "it unchanged; send null or an empty list to judge every sampled trace."
         ),
     )
 

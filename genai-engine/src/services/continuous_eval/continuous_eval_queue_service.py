@@ -22,10 +22,11 @@ from repositories.organizations_repository import (
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
 from schemas.enums import EvalKind, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
-from utils.transform_executor import execute_transform
+from utils.transform_executor import execute_transform, trace_matches_filter
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,9 @@ _LLM_CALL_RUN_STATUSES = (
     ContinuousEvalRunStatus.PASSED.value,
     ContinuousEvalRunStatus.FAILED.value,
 )
+
+# Start of the run description for a trace the eval's trace filter left out
+TRACE_FILTER_SKIP_DESCRIPTION = "Trace did not match the trace filter"
 
 # A prompt cache write costs 1.25x the uncached input price and lasts 5 minutes, so
 # a continuous eval only gets a cache breakpoint once it runs often enough to read
@@ -246,6 +250,25 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             trace = span_repository.get_trace_by_id(job.trace_id)
             if not trace:
                 raise ValueError(f"Trace {job.trace_id} not found")
+
+            # Checked here rather than at enqueue: the worker sees the whole trace,
+            # so conditions on child spans (a model name, a tool's output) work too.
+            if db_continuous_eval.trace_filter and not trace_matches_filter(
+                trace,
+                [
+                    ContinuousEvalTraceFilterCondition.model_validate(condition)
+                    for condition in db_continuous_eval.trace_filter
+                ],
+            ):
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    ContinuousEvalRunStatus.SKIPPED.value,
+                    annotation_description=(
+                        f"{TRACE_FILTER_SKIP_DESCRIPTION} for eval {job.continuous_eval_id}"
+                    ),
+                )
+                return
 
             # Verify the transform exists
             trace_transform_repository = TraceTransformRepository(db_session)

@@ -14,18 +14,25 @@ export const useContinuousEvalSpend = (evalId?: string) => {
   });
 };
 
-export const useContinuousEvalSpendEstimate = (taskId?: string, llmEvalName?: string | null, sampleRate?: number | null) => {
+// traceFilter is the new eval's filter as JSON; null estimates without one.
+export const useContinuousEvalSpendEstimate = (
+  taskId?: string,
+  llmEvalName?: string | null,
+  sampleRate?: number | null,
+  traceFilter: string | null = null
+) => {
   const api = useApi()!;
 
   return useQuery({
     // undefined means the sample rate field is invalid, so there is nothing to estimate
     enabled: !!taskId && !!llmEvalName && sampleRate !== undefined,
-    queryKey: [queryKeys.continuousEvals.spendEstimate(taskId!, llmEvalName!, sampleRate ?? null)],
+    queryKey: [queryKeys.continuousEvals.spendEstimate(taskId!, llmEvalName!, sampleRate ?? null, traceFilter)],
     queryFn: () =>
       api.api.estimateContinuousEvalSpendApiV1TasksTaskIdContinuousEvalsSpendEstimateGet({
         taskId: taskId!,
         llm_eval_name: llmEvalName!,
         sample_rate: sampleRate ?? undefined,
+        trace_filter: traceFilter ?? undefined,
       }),
     select: (data) => data.data,
   });
