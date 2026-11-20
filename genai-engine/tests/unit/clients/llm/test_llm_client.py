@@ -1,11 +1,17 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import litellm
 import pytest
 from arthur_common.models.llm_model_providers import ModelProvider
 from litellm.types.utils import ModelResponse, TokenCountResponse
 from pydantic import BaseModel, Field
 
-from clients.llm.llm_client import LLMClient, LLMModelResponse
+from clients.llm.llm_client import (
+    PROMPT_TOO_LONG_DETAIL,
+    LLMClient,
+    LLMModelResponse,
+    PromptTooLongError,
+)
 from utils.constants import DEFAULT_ORG_ID
 
 
@@ -331,3 +337,47 @@ async def test_acount_tokens_forwards_provider_credentials():
         assert kwargs["aws_access_key_id"] == "AKIAFAKE", case
         assert kwargs["aws_secret_access_key"] == "SECRET", case
         assert kwargs["aws_region_name"] == "us-east-1", case
+
+
+# ---------------------------------------------------------------------------
+# A prompt over the model's context window: a 400 a user can act on, not the
+# provider's raw text.
+# ---------------------------------------------------------------------------
+def _context_window_error() -> litellm.ContextWindowExceededError:
+    return litellm.ContextWindowExceededError(
+        message="prompt is too long: 2556402 tokens > 1000000 maximum",
+        model="claude-opus-5-5",
+        llm_provider="anthropic",
+    )
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.enforce_token_quota")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_llm_client_completion_prompt_too_long(mock_completion, _):
+    mock_completion.side_effect = _context_window_error()
+    llm_client = LLMClient(provider=ModelProvider.ANTHROPIC, api_key="test-key")
+
+    with pytest.raises(PromptTooLongError) as exc_info:
+        llm_client.completion(model="anthropic/claude-opus-5-5", org_id=DEFAULT_ORG_ID)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == PROMPT_TOO_LONG_DETAIL
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("clients.llm.llm_client.enforce_token_quota")
+@patch("clients.llm.llm_client.litellm.acompletion", new_callable=AsyncMock)
+async def test_llm_client_acompletion_prompt_too_long(mock_acompletion, _):
+    mock_acompletion.side_effect = _context_window_error()
+    llm_client = LLMClient(provider=ModelProvider.ANTHROPIC, api_key="test-key")
+
+    with pytest.raises(PromptTooLongError) as exc_info:
+        await llm_client.acompletion(
+            model="anthropic/claude-opus-5-5",
+            org_id=DEFAULT_ORG_ID,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "2556402" not in exc_info.value.detail

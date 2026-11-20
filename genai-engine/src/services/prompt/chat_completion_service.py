@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
+    ContextWindowExceededError,
     CustomStreamWrapper,
     Message,
     stream_chunk_builder,
@@ -25,7 +26,12 @@ from litellm.types.utils import (
     ModelResponseStream,
 )
 
-from clients.llm.llm_client import LLMClient, LLMModelResponse
+from clients.llm.llm_client import (
+    PROMPT_TOO_LONG_DETAIL,
+    LLMClient,
+    LLMModelResponse,
+    PromptTooLongError,
+)
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import SSEEventType
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
@@ -457,6 +463,14 @@ class ChatCompletionService:
                 ).model_dump_json()
 
                 yield format_sse(SSEEventType.FINAL_RESPONSE, data)
+        except PromptTooLongError:
+            # str(e) would prefix the status code ("400: ...")
+            yield format_sse_error(PROMPT_TOO_LONG_DETAIL, wrap=False)
+        except ContextWindowExceededError as e:
+            # litellm can defer the provider request until the stream is first read,
+            # past LLMClient.acompletion's mapping
+            logger.warning("Prompt too long while streaming: %s", e)
+            yield format_sse_error(PROMPT_TOO_LONG_DETAIL, wrap=False)
         except Exception as e:
             yield format_sse_error(str(e), wrap=False)
 
