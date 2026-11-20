@@ -2,6 +2,18 @@
 # in a checkout, and raw.githubusercontent.com serves the blob. A checkout that rewrote their line
 # endings (core.autocrlf on Windows) would pin bytes no URL serves, so they are LF everywhere.
 dist/collect-linux.sh                   text eol=lf
+# Downloaded by Deckard's scan-local.ps1 and pinned by sha256 the same way, and it is the one
+# file here a Windows checkout is likely to hold.
+dist/collect-windows.ps1                text eol=lf
 deploy/report-guest-attributes.sh       text eol=lf
 deploy/arthur-ai-discovery.service      text eol=lf
 deploy/arthur-ai-discovery.timer        text eol=lf
+
+# THE BUILD READS vendor/ AND COMPARES ITS RESULT WITH dist/, BYTE FOR BYTE. A checkout that rewrote
+# line endings would hand tools/build-collector.py a tree its own SHA256SUMS no longer describes:
+# the Windows build refuses a member that holds a carriage return, the shell builds would pack one,
+# and `--check` would fail on all three. So the vendored tree is never converted, in either
+# direction -- it is upstream's bytes, whatever they are -- and the third build is LF like the
+# other two.
+vendor/ai-detection-spec/**             -text
+dist/collect.sh                         text eol=lf

@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1106"
+version = "2.1.1125"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -11,41 +11,41 @@ dependencies = [
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
-  "fastapi==0.162.0",
+  "fastapi==0.163.0",
   "uvicorn==0.54.0",
-  "pydantic==2.14.2",
-  "sse-starlette==3.6.0",
+  "pydantic==2.14.3",
+  "sse-starlette==3.7.0",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.20.1",
-  "boto3==1.43.122",
+  "boto3==1.44.3",
   "python-dotenv==1.2.4",
   "psycopg2-binary==2.9.13",
-  # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b1)
+  # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b2)
   # declares sqlalchemy<2.1.0 and skips instrumenting outside it, so DB tracing would silently
   # stop. See the sqlalchemy rule in /renovate.json.
-  "sqlalchemy==2.0.55",
+  "sqlalchemy==2.0.57",
   "pgvector==0.5.1",
-  "python-multipart==0.0.32",
-  "pypdf==6.21.4",
+  "python-multipart==0.0.33",
+  "pypdf==7.1.0",
   "httpx==0.28.1",
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
   "transformers==5.13.1",
-  "authlib==1.9.1",
+  "authlib==1.9.6",
   "requests==2.34.2",
   "starlette==1.10.0",
   "pyjwt==2.15.1",
   "azure-storage-blob==12.31.1",
   "itsdangerous==2.2.0",
-  "newrelic==14.2.0",
+  "newrelic==14.3.0",
   # Held below 9.0: litellm 1.106.2 requires importlib-metadata>=8.0.0,<9.0. See the
   # importlib-metadata rule in /renovate.json. Raise once litellm widens its ceiling.
   "importlib-metadata==8.9.0",
-  "opentelemetry-instrumentation-logging>=0.65b0,<0.66",
-  "opentelemetry-instrumentation>=0.65b0,<0.66",
-  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-logging>=0.65b0,<0.67",
+  "opentelemetry-instrumentation>=0.65b0,<0.67",
+  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.67",
   "opentelemetry-exporter-otlp>=1.39.1,<2",
-  "opentelemetry-instrumentation-sqlalchemy>=0.65b0,<0.66",
+  "opentelemetry-instrumentation-sqlalchemy>=0.65b0,<0.67",
   "tiktoken==0.14.0",
   "nltk==3.10.4",
   "more-itertools==11.2.1",
@@ -53,41 +53,41 @@ dependencies = [
   "presidio-anonymizer==2.2.366",
   "python-keycloak==7.1.1",
   "bcrypt==5.0.0",
-  "cachetools==7.2.7",
-  "sentence-transformers==6.2.0",
+  "cachetools==7.3.2",
+  "sentence-transformers==6.3.0",
   "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
   "torch==2.13.0 ; sys_platform == 'darwin'",
   "torch==2.13.0+cpu ; sys_platform == 'linux' or sys_platform == 'win32'",
   "commonmark==0.9.2",
   "gunicorn>=26,<27",
-  "fastapi-pagination==0.16.1",
+  "fastapi-pagination==0.16.3",
   "pydantic-settings>=2.3.4,<3",
   "spacy>=3.8.3",
   "date-spacy>=0.0.1,<0.1",
   "bert-score==0.3.13",
-  "langchain==1.4.8",
+  "langchain==1.5.0",
   "langchain-community==0.4.2",
-  "langchain-openai==1.7.3",
+  "langchain-openai==1.8.0",
   "langsmith==0.14.17",
   "msgpack==1.2.4",
   "cloudpickle==3.1.2",
   "amplitude-analytics>=1.1.5,<2",
   "sentencepiece==0.2.2",
-  "gliner==0.2.29",
+  "gliner==0.2.30",
   "openinference-semantic-conventions>=0.1.12,<0.2",
   # The [mcp] extra is required, not optional: since 1.106.0 litellm imports `mcp` on every
   # completion() that passes tools, so without it every tool-calling feature returns a 500
   # (UP-5288). Drop the extra once litellm makes that import lazy.
-  "litellm[mcp]==1.106.6",
+  "litellm[mcp]==1.109.1",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.106",
+  "arthur-common==2.4.111",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
-  "opentelemetry-semantic-conventions>=0.65b0,<0.66",
-  "arthur-client==1.4.2961",
+  "opentelemetry-semantic-conventions>=0.65b0,<0.67",
+  "arthur-client==1.4.3043",
 ]
 
 [project.scripts]
@@ -98,7 +98,7 @@ routes_security_check = "routes_security_check:main"
 [dependency-groups]
 dev = [
   "pytest==9.2.0",
-  "pytest-asyncio==1.4.1",
+  "pytest-asyncio==1.5.0",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",
   "pre-commit==4.7.0",
@@ -128,7 +128,7 @@ exclude-newer-package = { torch = false, arthur-common = false, arthur-client = 
 # as of hf-xet 1.5.2 (xet-core v1.5.2 bumped the vendored quinn-proto 0.11.14 -> 0.11.15).
 # SOC-222: certifi < 2026.10.19 and grpcio's bundled roots.pem (< 1.78.2 / 1.84.1 / 1.85.0)
 # still trust the compromised "emSign ECC Root CA - G3" root. Neither is a direct dependency.
-# litellm < 1.106.3 has the same problem in its Rust extension; that bump waits on arthur-common.
+# litellm < 1.106.3 has the same problem in its Rust extension; keep this floor even though the pin is above it.
 constraint-dependencies = ["hf-xet>=1.5.2", "certifi>=2026.10.19", "grpcio>=1.78.2", "litellm>=1.106.3"]
 # Security: force transitive cryptography past presidio-anonymizer 2.2.364 (latest), which
 # requires cryptography>=48.0.1,<49.0.0 and so pinned us to 48.0.1 — a version with three open

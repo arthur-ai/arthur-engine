@@ -15,7 +15,7 @@ COPY pyproject.toml /app/
 COPY uv.lock /app/
 
 # Install Python dependencies
-RUN pip3 install uv==0.13.6
+RUN pip3 install uv==0.13.8
 # Set working directory
 WORKDIR /app
 
@@ -29,6 +29,18 @@ RUN uv export --frozen \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     --index-strategy unsafe-best-match \
     -r /tmp/requirements.txt
+
+# pip's only job here was installing uv; the runtime never calls it (the entrypoint
+# runs everything through `uv run`). Uninstall it so it does not ship in the final
+# image, which copies this stage's /usr/local wholesale. Beyond the attack surface,
+# pip >= 25.3 carries pip/_vendor/bom.cdx.json, a CycloneDX SBOM of its vendored
+# libraries, and Trivy reads it as installed packages: it flagged CVE-2025-47273
+# against the setuptools 70.3.0 that pip vendors pkg_resources from, although
+# setuptools.package_index, where the bug lives, is not in the image at all.
+# ml-engine/Dockerfile strips its build tooling the same way; uv stays here
+# because the entrypoint runs through it. The base image's `pip -> pip3` symlink
+# is not in pip's RECORD, so it goes separately.
+RUN uv pip uninstall --system pip && rm -f /usr/local/bin/pip
 
 # Upgrade OS packages to pick up Debian security fixes (libssl3, libc6, ...) and
 # install lsof for healthchecks. These libraries live in /usr/lib and are copied
@@ -173,8 +185,9 @@ RUN TIKTOKEN_CACHE_DIR=/home/nonroot/tiktoken \
 #     current ca-certificates package and does not include G3.
 #   - Python packages that carry their own bundle are filtered in place: grpcio's
 #     grpc/_cython/_credentials/roots.pem (Vertex AI, Cloud Trace, OTLP/gRPC) still
-#     trusts G3 in every release, as do pip's vendored certifi and every certifi
-#     release before 2026.10.19.
+#     trusts G3 in every release, as does every certifi release before 2026.10.19.
+#     (pip's vendored copy used to be filtered here too; pip is uninstalled in the
+#     preinstall stage now.)
 # Matched by content: every PEM copy of G3 starts with the base64 line below. Each
 # file holding it loses that certificate block (and its comment header), and the
 # build fails if any copy survives. A no-op once upstream drops the cert.
