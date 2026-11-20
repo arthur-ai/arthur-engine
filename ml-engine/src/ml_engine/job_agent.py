@@ -21,6 +21,7 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings.exceptions import ApiException
 
 from arthur_client_support import (
+    DEQUEUE_DECLARES_AGENT_TASK_SYNC,
     DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
 )
@@ -152,16 +153,19 @@ class JobAgent:
             )
 
     def _dequeue_parameters(self) -> JobDequeueParameters:
-        """What this engine can take, including whether it runs Test Connection jobs.
+        """What this engine can take, including whether it runs Test Connection jobs
+        and task syncs.
 
-        `discovery_source_test` is sent only when the installed client both has the
-        field and can run the job; otherwise the request is exactly what it was before
-        the field existed. Built from a dict because the pinned client's model does
-        not declare the field, and a keyword it does not know would not type-check.
+        Each capability is sent only when the installed client both has the field and
+        can run the job; otherwise the request is exactly what it was before the field
+        existed. Built from a dict because the pinned client's model does not declare
+        the fields, and a keyword it does not know would not type-check.
         """
         params: dict[str, Any] = {"memory_limit_mb": self._dequeue_memory_limit_mb()}
         if TEST_DISCOVERY_SOURCE_SUPPORTED and DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST:
             params["discovery_source_test"] = True
+        if DEQUEUE_DECLARES_AGENT_TASK_SYNC:
+            params["agent_task_sync"] = True
         return JobDequeueParameters(**params)
 
     def _read_job(self, job_run: JobRun) -> Job | None:

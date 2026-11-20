@@ -397,10 +397,9 @@ class GenaiEngineTestClientBase(httpx.Client):
         unreported: bool | None = None,
         after_task_id: str | None = None,
         page_size: int | None = None,
+        include_span_details: bool | None = None,
     ) -> tuple[int, list[EnrichedTaskResponse]]:
-        """Get agentic tasks with enriched agent metadata.
-
-        Returns only agentic tasks.
+        """Get tasks with enriched agent metadata.
 
         Args:
             discovery_source_id: Only tasks this discovery source reported
@@ -408,6 +407,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             unreported: Only tasks no discovery source has reported
             after_task_id: The last task of the previous page, if any
             page_size: Tasks per page
+            include_span_details: Whether to read tools, sub-agents and models from spans
 
         Returns:
             Tuple of (status_code, list of EnrichedTaskResponse)
@@ -424,6 +424,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["after_task_id"] = after_task_id
         if page_size is not None:
             params["page_size"] = str(page_size)
+        if include_span_details is not None:
+            params["include_span_details"] = str(include_span_details).lower()
 
         resp = self.base_client.get(
             path,

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
@@ -30,11 +30,12 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session, get_org_scope
+from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_provenance_repository import TaskProvenanceRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from repositories.tasks_repository import TaskRepository
+from repositories.tasks_repository import TaskRepository, TraceActivity
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -51,6 +52,7 @@ from schemas.internal_schemas import (
     Task,
     User,
 )
+from schemas.response_schemas import InferenceOverviewResponse
 from services.task.discovery_task_resolution_service import (
     DiscoveryTaskResolutionService,
 )
@@ -217,8 +219,10 @@ def get_task(
 
 @task_management_routes.get(
     "/agent-tasks",
-    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models) "
-    "and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and "
+    description="Get tasks with enriched agent metadata (tools, sub-agents, models), "
+    "provenance, and activity: trace and inference counts and the time of the newest "
+    "trace or inference. Set `include_span_details` to false to list many tasks "
+    "without reading their spans. Filter by `discovery_source_id` and "
     "`reported_since` to get the tasks one discovery source reported in a window, or "
     "set `unreported` to get the tasks no discovery source has reported. "
     "Paged by cursor: a caller that needs every matching task passes the last task's ID "
@@ -258,18 +262,28 @@ def get_agent_tasks(
         le=AGENT_TASKS_MAX_PAGE_SIZE,
         description="Tasks per page. A page shorter than this is the last one.",
     ),
+    include_span_details: bool = Query(
+        True,
+        description="Read each task's tools, sub-agents, models and data sources from "
+        "its spans. False leaves them null and reads no spans, which keeps a listing of "
+        "many busy tasks cheap; `num_spans` then comes from the tasks' trace metadata.",
+    ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[EnrichedTaskResponse]:
-    """Get agentic tasks with enriched agent metadata.
+    """Get tasks with enriched agent metadata.
 
-    Returns tasks with additional metadata computed from spans:
+    Returns tasks with additional metadata computed from spans, unless
+    `include_span_details` is false:
     - tools: List of tools used by the agent
     - sub_agents: List of sub-agents used
     - models: List of models used
     - num_spans: Total number of spans
+
+    And their activity: trace and inference counts, and the time of the newest trace or
+    inference.
 
     Also includes creation_source information (GCP, OTEL, or manual), and provenance:
     every sensor that has reported the agent, and where upstream.
@@ -280,12 +294,13 @@ def get_agent_tasks(
         unreported: Only tasks no discovery source has reported
         after_task_id: The last task of the previous page, if any
         page_size: Tasks per page
+        include_span_details: Whether to read tools, sub-agents and models from spans
         db_session: Database session
         application_config: Application configuration
         current_user: Current authenticated user
 
     Returns:
-        List of EnrichedTaskResponse objects (agentic tasks only)
+        List of EnrichedTaskResponse objects
     """
     # The source filters select from reported tasks and `unreported` from the rest, so
     # together they would match nothing. Say so rather than answer with an empty page
@@ -331,10 +346,18 @@ def get_agent_tasks(
     # query or more per task.
     task_ids = [task.id for task in tasks]
     provenance_rows = TaskProvenanceRepository(db_session).get_by_task_ids(task_ids)
-    agent_metadata_by_task = tasks_repo._extract_agent_metadata_for_tasks(task_ids)
-    # last_fetched carries when each task last sent a trace. The Platform shows it as when
-    # an agent no discovery source reported was last seen.
-    last_trace_by_task = tasks_repo.get_last_trace_end_times(task_ids)
+    agent_metadata_by_task = (
+        tasks_repo._extract_agent_metadata_for_tasks(task_ids)
+        if include_span_details
+        else {}
+    )
+    trace_activity_by_task = tasks_repo.get_trace_activity(task_ids)
+    inference_overview_by_task = {
+        overview.task_id: overview
+        for overview in InferenceRepository(db_session)
+        .get_inference_overview_for_tasks(task_ids)
+        .overviews
+    }
     enriched_responses = []
     for task in tasks:
         creation_source = tasks_repo._get_task_creation_source(task)
@@ -343,7 +366,9 @@ def get_agent_tasks(
             provenance_rows.get(task.id, []),
         )
 
-        agent_metadata = agent_metadata_by_task[task.id]
+        agent_metadata = agent_metadata_by_task.get(task.id)
+        trace_activity = trace_activity_by_task.get(task.id)
+        inference_overview = inference_overview_by_task.get(task.id)
 
         # Convert rule links to response models
         response_rules = []
@@ -359,18 +384,46 @@ def get_agent_tasks(
             updated_at=task.updated_at,
             is_autocreated=task.is_autocreated,
             creation_source=creation_source,
-            last_fetched=last_trace_by_task.get(task.id),
-            tools=agent_metadata["tools"],
-            sub_agents=agent_metadata["sub_agents"],
-            models=agent_metadata["models"],
-            data_sources=agent_metadata["data_sources"],
-            num_spans=agent_metadata["num_spans"],
+            # The Platform shows it as when an agent no discovery source reported was
+            # last seen.
+            last_fetched=trace_activity.last_trace_end if trace_activity else None,
+            tools=agent_metadata["tools"] if agent_metadata else None,
+            sub_agents=agent_metadata["sub_agents"] if agent_metadata else None,
+            models=agent_metadata["models"] if agent_metadata else None,
+            data_sources=agent_metadata["data_sources"] if agent_metadata else None,
+            num_spans=(
+                agent_metadata["num_spans"]
+                if agent_metadata
+                else trace_activity.span_count if trace_activity else 0
+            ),
+            trace_count=trace_activity.trace_count if trace_activity else 0,
+            inference_count=(
+                inference_overview.inference_count if inference_overview else 0
+            ),
+            last_activity_at=_last_activity_at(trace_activity, inference_overview),
             rules=response_rules,
             provenance=provenance,
         )
         enriched_responses.append(enriched_response)
 
     return enriched_responses
+
+
+def _last_activity_at(
+    trace_activity: TraceActivity | None,
+    inference_overview: InferenceOverviewResponse | None,
+) -> datetime | None:
+    """The later of the newest trace's end and the newest inference, as the dataset
+    listing defines a task's last activity. Trace times are stored as naive UTC."""
+    times = [
+        (
+            trace_activity.last_trace_end.replace(tzinfo=timezone.utc)
+            if trace_activity
+            else None
+        ),
+        inference_overview.last_inference_at if inference_overview else None,
+    ]
+    return max((time for time in times if time is not None), default=None)
 
 
 @task_management_routes.post(

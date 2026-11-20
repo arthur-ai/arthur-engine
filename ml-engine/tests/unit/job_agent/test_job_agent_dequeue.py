@@ -1,8 +1,9 @@
 """What the job agent says about itself when it asks the Platform for work.
 
 The Platform hands TEST_DISCOVERY_SOURCE jobs only to an engine whose last dequeue
-declared `discovery_source_test=true`. The declaration must be made exactly when the
-installed arthur-client can both send it and run the job, and never otherwise.
+declared `discovery_source_test=true`, and task syncs only to one that declared
+`agent_task_sync=true`. Each declaration must be made exactly when the installed
+arthur-client can both send it and run the job, and never otherwise.
 """
 
 import json
@@ -12,6 +13,7 @@ from job_agent import JobAgent
 from pytest_httpserver import HTTPServer
 
 from arthur_client_support import (
+    DEQUEUE_DECLARES_AGENT_TASK_SYNC,
     DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
 )
@@ -48,4 +50,15 @@ def test_the_dequeue_declares_test_connection_only_when_the_client_can(
     else:
         # Exactly the request an engine sent before the field existed.
         assert "discovery_source_test" not in body
-        assert set(body) == {"memory_limit_mb"}
+
+
+def test_the_dequeue_declares_task_sync_only_when_the_client_can(
+    app_plane_http_server: HTTPServer,
+    test_data_plane_user: User,
+) -> None:
+    body = _dequeue_body(app_plane_http_server, test_data_plane_user)
+
+    if DEQUEUE_DECLARES_AGENT_TASK_SYNC:
+        assert body["agent_task_sync"] is True
+    else:
+        assert "agent_task_sync" not in body
