@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-17T02:40:19.538797Z"
+exclude-newer = "2026-11-17T05:54:40.148054Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.3029"
+version = "1.4.3043"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -164,9 +164,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/79/322421489b35a9ee1b66f258aee1d3611d3b6aa7980ff685ca444f7aea3b/arthur_client-1.4.3029.tar.gz", hash = "sha256:3a4df7925127002efabf3f08fc9a24885d1a05ecd93022c228869a080b96a3ac", size = 599820, upload-time = "2026-11-16T16:16:45.672Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/ed/bd609e2fd9b30321b2ac2a7b5da63028391817fc5fb5fcdc07cf4d1b039d/arthur_client-1.4.3043.tar.gz", hash = "sha256:b0e220ba1d6e3bd248fab59b26c4c61f81074b23209dad20937b527721510954", size = 608928, upload-time = "2026-11-20T05:10:18.207Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/26/4382e0f637bdfb91a327466f6a331c7b1f6d3147db19ed3ddcfc1d56ce93/arthur_client-1.4.3029-py3-none-any.whl", hash = "sha256:83138bfff5bd1bc59a1a0cba57f07aac0d369990c7d3b6071fe87b9564de6f4f", size = 2020600, upload-time = "2026-11-16T16:16:47.912Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/88/775fea414414f6fe5935312a9542120b5ca19ff7609d53a06c316b785af7/arthur_client-1.4.3043-py3-none-any.whl", hash = "sha256:42e0b064822c760a2d09fd073410ff70a7af97c8a72d75a7a3d4e92288586e04", size = 2043220, upload-time = "2026-11-20T05:10:16.211Z" },
 ]
 
 [[package]]
@@ -290,7 +290,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.20.1" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.3029" },
+    { name = "arthur-client", specifier = "==1.4.3043" },
     { name = "arthur-common", specifier = "==2.4.111" },
     { name = "authlib", specifier = "==1.9.6" },
     { name = "azure-storage-blob", specifier = "==12.31.1" },
