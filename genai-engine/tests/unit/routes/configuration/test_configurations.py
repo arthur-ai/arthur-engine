@@ -120,10 +120,10 @@ def test_trace_retention_days_config(client: GenaiEngineTestClientBase):
 def test_insights_generation_enabled_config(client: GenaiEngineTestClientBase):
     """Insights generation is off until an admin turns it on, and other updates leave it alone."""
     headers = {"Authorization": "Bearer admin_0"}
-    assert (
-        client.get_configs(headers=headers).json()["insights_generation_enabled"]
-        is False
-    )
+    configs = client.get_configs(headers=headers).json()
+    assert configs["insights_generation_enabled"] is False
+    prior_retention = configs["trace_retention_days"]
+    other_retention = 30 if prior_retention != 30 else 14
 
     try:
         update_resp = client.update_configs(
@@ -134,7 +134,7 @@ def test_insights_generation_enabled_config(client: GenaiEngineTestClientBase):
         assert update_resp.json()["insights_generation_enabled"] is True
 
         retention_resp = client.update_configs(
-            {"trace_retention_days": 90},
+            {"trace_retention_days": other_retention},
             headers=headers,
         )
         assert retention_resp.status_code == 200
@@ -149,7 +149,13 @@ def test_insights_generation_enabled_config(client: GenaiEngineTestClientBase):
         )
         assert update_resp.json()["insights_generation_enabled"] is False
     finally:
-        client.update_configs({"insights_generation_enabled": False}, headers=headers)
+        client.update_configs(
+            {
+                "insights_generation_enabled": False,
+                "trace_retention_days": prior_retention,
+            },
+            headers=headers,
+        )
 
 
 @pytest.mark.unit_tests
