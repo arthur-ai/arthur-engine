@@ -127,8 +127,12 @@ def _cut_middle(text: str, cap: int) -> str:
     return f"{text[:head]} …[{len(text) - cap:,} chars cut]… {text[len(text) - (cap - head):]}"
 
 
-def _join_values(values: list[tuple[str, str]], max_chars: int) -> str:
-    """Every matching span's value, each headed by its span id, within max_chars.
+def _join_values(
+    values: list[tuple[str, str]],
+    max_chars: int,
+) -> tuple[str, list[str]]:
+    """Every matching span's value, each headed by its span id, within max_chars,
+    and the ids of the spans whose blocks it keeps.
 
     Over budget, every value is first cut to an equal share (head and tail kept);
     if that is still too long, whole spans are left out from the middle outwards,
@@ -147,7 +151,7 @@ def _join_values(values: list[tuple[str, str]], max_chars: int) -> str:
     every = list(range(len(values)))
     full = render(every, [text for _, text in values])
     if len(full) <= max_chars:
-        return full
+        return full, [span_id for span_id, _ in values]
 
     budget = max_chars - JOIN_FOOTER_RESERVE
     headers = sum(len(f"[span {span_id}]\n") + 2 for span_id, _ in values)
@@ -162,10 +166,11 @@ def _join_values(values: list[tuple[str, str]], max_chars: int) -> str:
         kept.pop(min(range(1, len(kept) - 1), key=lambda i: (abs(i - middle), i)))
         text = render(kept, texts)
     text = text[:budget]
-    return text + (
+    text += (
         f"\n[TRUNCATED view of {len(values)} matching spans, {len(full):,} chars "
         f"in full: {shortened} values shortened, {len(values) - len(kept)} spans omitted]"
     )
+    return text, [values[index][0] for index in kept]
 
 
 def _read_spans(
@@ -173,7 +178,7 @@ def _read_spans(
     attribute_path: str,
     max_chars: int,
 ) -> tuple[Any, list[str]]:
-    """The value and the ids of the spans it was read from.
+    """The value and the ids of the spans it shows.
 
     One matching span: its value, as before. Several: the value of every match that
     has the attribute, in tree order, each headed by its span id so a judge can say
@@ -189,7 +194,7 @@ def _read_spans(
             values.append((span.span_id, stringify_value(value)))
     if not values:
         return None, []
-    return _join_values(values, max_chars), [span_id for span_id, _ in values]
+    return _join_values(values, max_chars)
 
 
 def execute_transform_on_spans(

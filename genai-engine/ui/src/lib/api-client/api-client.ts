@@ -12541,7 +12541,7 @@ export interface TransformExtractionResponseList {
   missing_variables: string[];
   /**
    * Variable Spans
-   * For each variable, the ids of the spans its value was read from, in tree order: every matching span that has the attribute, or every span of the trace for a whole-trace variable. Empty when none was read.
+   * For each variable, the ids of the spans its value shows, in tree order: every matching span that has the attribute and is kept within max_chars (its value possibly shortened), or every span of the trace for a whole-trace variable. Empty when none was read.
    */
   variable_spans?: TransformVariableSpans[];
   /**

@@ -919,9 +919,10 @@ class TransformExtractionResponseList(BaseModel):
     variable_spans: list[TransformVariableSpans] = Field(
         default_factory=list,
         description=(
-            "For each variable, the ids of the spans its value was read from, in "
-            "tree order: every matching span that has the attribute, or every span "
-            "of the trace for a whole-trace variable. Empty when none was read."
+            "For each variable, the ids of the spans its value shows, in tree "
+            "order: every matching span that has the attribute and is kept within "
+            "max_chars (its value possibly shortened), or every span of the trace "
+            "for a whole-trace variable. Empty when none was read."
         ),
     )
 

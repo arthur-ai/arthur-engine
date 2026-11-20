@@ -273,20 +273,21 @@ def test_too_many_matches_for_the_budget_leave_out_middle_spans():
         )
         for i in range(40)
     ]
-    value = (
-        execute_transform_on_spans(
-            spans(retries),
-            definition({**SEARCH_OUTPUT, "max_chars": MIN_MAX_CHARS}),
-        )
-        .variables[0]
-        .value
+    result = execute_transform_on_spans(
+        spans(retries),
+        definition({**SEARCH_OUTPUT, "max_chars": MIN_MAX_CHARS}),
     )
+    value = result.variables[0].value
     assert len(value) <= MIN_MAX_CHARS
     # the first and last attempts stay; the gap is named where it is
     assert value.startswith("[span search-0]\nattempt 0")
     assert "[span search-39]\nattempt 39" in value
     assert "matching spans omitted]" in value
     assert value.endswith("spans omitted]") and "of 40 matching spans" in value
+    # variable_spans lists only the spans whose blocks are in the value
+    shown = result.variable_spans[0].span_ids
+    assert shown[0] == "search-0" and shown[-1] == "search-39"
+    assert len(shown) < 40 and all(f"[span {span_id}]" in value for span_id in shown)
 
 
 @pytest.mark.unit_tests
