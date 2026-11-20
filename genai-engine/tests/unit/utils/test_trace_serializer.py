@@ -371,3 +371,145 @@ def test_budget_below_minimum_is_refused():
 def test_empty_trace():
     text, stats = serialize_trace([])
     assert text == f"TRACE v{FORMAT_VERSION} spans=0" and stats.spans == 0
+
+
+@pytest.mark.unit_tests
+def test_tool_calls_in_earlier_turns_are_kept_as_history():
+    history = messages(("user", "Find order C3001."))
+    history.append(
+        {
+            "message": {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "tool_call": {
+                            "function": {
+                                "name": "lookup_order",
+                                "arguments": '{"order_id": "C3001"}',
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+    )
+    history += messages(("user", "Refund it."))
+    spans = [
+        span("root", None, "AGENT", "agent", 0.0, {"input": {"value": "Refund it."}}),
+        span(
+            "plan",
+            "root",
+            "LLM",
+            "plan",
+            0.1,
+            {"llm": {"input_messages": history}},
+        ),
+    ]
+    text, _ = serialize_trace(spans)
+    assert 'history.call lookup_order: {"order_id":"C3001"}' in text
+    assert "in.user: Refund it." in text
+
+
+@pytest.mark.unit_tests
+def test_a_long_tool_list_is_cut_at_the_budget_stage_and_reported():
+    tools = [{"name": f"tool_number_{i:03d}"} for i in range(150)]
+    spans = [
+        span("root", None, "AGENT", "agent", 0.0, {"input": {"value": "go"}}),
+        span(
+            "plan",
+            "root",
+            "LLM",
+            "plan",
+            0.1,
+            {
+                "llm": {
+                    "tools": [{"tool": {"json_schema": json.dumps(t)}} for t in tools],
+                    "input_messages": messages(("user", "go")),
+                },
+            },
+        ),
+    ]
+    text, stats = serialize_trace(spans, max_chars=MIN_MAX_CHARS)
+    assert len(text) <= MIN_MAX_CHARS
+    assert stats.truncated and stats.fields_shortened >= 1
+    assert "[TRUNCATED view of 2 spans" in text
+    assert stats.full_chars > len("\n".join(t["name"] for t in tools))
+
+
+@pytest.mark.unit_tests
+def test_a_repeat_shows_its_value_when_the_target_body_is_left_out():
+    """The long value first appears in a middle span, whose body is left out first;
+    the last span repeats it and must show it, not point at a missing body."""
+    shared = "the shared report text " * 20
+    spans = [
+        span(
+            "root",
+            None,
+            "AGENT",
+            "agent",
+            0.0,
+            {"input": {"value": "go"}, "output": {"value": "done"}},
+        ),
+    ]
+    for i in range(30):
+        output = shared if i in (14, 29) else f"file {i}: " + "x" * 900
+        spans.append(
+            span(
+                f"t{i}",
+                "root",
+                "TOOL",
+                "read",
+                1.0 + i,
+                {"input": {"value": f"{i}"}, "output": {"value": output}},
+            ),
+        )
+    full, _ = serialize_trace(spans)
+    assert "result: (same as [16] result)" in full  # t29 points at t14
+    omitted_any = False
+    for max_chars in (MIN_MAX_CHARS, 2500, 3000, 3500):
+        text, stats = serialize_trace(spans, max_chars=max_chars)
+        omitted_any = omitted_any or stats.bodies_omitted > 0
+        # every reference left in the text points at a span whose body is shown
+        for line in text.splitlines():
+            if "(same as [" in line:
+                target = line.split("(same as [")[1].split("]")[0]
+                head = next(
+                    h for h in text.splitlines() if h.strip().startswith(f"[{target}] ")
+                )
+                body_start = text.splitlines().index(head) + 1
+                assert (
+                    text.splitlines()[body_start]
+                    .strip()
+                    .startswith(
+                        ("args:", "result:", "input:", "output:"),
+                    )
+                ), (max_chars, target)
+    assert omitted_any
+
+
+@pytest.mark.unit_tests
+def test_an_exception_on_an_unset_status_counts_as_an_error():
+    spans = [
+        span("root", None, "AGENT", "agent", 0.0, {"input": {"value": "go"}}),
+        span(
+            "t",
+            "root",
+            "TOOL",
+            "fetch",
+            0.1,
+            {"input": {"value": "{}"}},
+            raw_extra={
+                "events": [
+                    {
+                        "name": "exception",
+                        "attributes": {
+                            "exception": {"type": "TimeoutError", "message": "30 s"},
+                        },
+                    },
+                ],
+            },
+        ),
+    ]
+    text, _ = serialize_trace(spans)
+    assert "errors=1" in text.splitlines()[0]
+    assert "[2] TOOL fetch +0.1s dur=0.5s ERROR" in text

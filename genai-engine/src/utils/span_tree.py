@@ -5,8 +5,8 @@ Tree order: depth-first from the roots, with siblings (and roots) sorted by
 parent, and two spans can share a start time.
 
 The order is built from the flat span list, so it does not depend on a tree built
-elsewhere. Spans whose parent is not in the trace become roots, and spans caught in
-a parent cycle are promoted to roots too; no span is ever dropped.
+elsewhere. Spans whose parent is not in the trace become roots, and one member of each
+parent cycle is promoted to a root too; no span is ever dropped.
 """
 
 from datetime import datetime
@@ -61,15 +61,29 @@ def tree_order(spans: Sequence[SpanT]) -> list[SpanT]:
             stack.extend(reversed(children.get(span.span_id, [])))
         return found
 
-    # Spans no root reaches sit in a parent cycle: promote the earliest unreached
-    # span to a root, take its subtree, and repeat until every span is placed.
+    def cycle_member(span: SpanT) -> SpanT:
+        """The earliest span of the parent cycle above an unreached span: walking up
+        from any span no root reaches always loops, and its descendants (even one
+        that starts before them) stay below it."""
+        path: list[SpanT] = []
+        on_path: dict[str, int] = {}
+        while span.span_id not in on_path:
+            on_path[span.span_id] = len(path)
+            path.append(span)
+            span = by_id[span.parent_span_id]  # type: ignore[index]
+        return min(path[on_path[span.span_id] :], key=_sibling_key)
+
+    # Spans no root reaches sit in or under a parent cycle: promote the cycle's
+    # earliest member to a root, take its subtree, and repeat until all are placed.
+    by_id = {span.span_id: span for span in spans}
     seen: set[int] = set()
     for root in roots:
         subtree(root)
     for span in sorted(spans, key=_sibling_key):
         if id(span) not in seen:
-            roots.append(span)
-            subtree(span)
+            member = cycle_member(span)
+            roots.append(member)
+            subtree(member)
 
     seen = set()
     ordered: list[SpanT] = []

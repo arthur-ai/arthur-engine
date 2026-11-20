@@ -78,3 +78,11 @@ def test_same_order_whatever_the_row_order():
 @pytest.mark.unit_tests
 def test_empty():
     assert tree_order([]) == []
+
+
+@pytest.mark.unit_tests
+def test_a_cycle_is_broken_at_a_member_not_at_an_earlier_child():
+    """a and b point at each other; c is a's child but starts first. c must stay
+    under a rather than become the promoted root."""
+    spans = [span("a", "b", 10), span("b", "a", 11), span("c", "a", 0)]
+    assert ids(tree_order(spans)) == ["a", "c", "b"]
