@@ -34,6 +34,11 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/configuration  added the optional property `insights_generation_enabled` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v2/configuration  added the new optional request property `insights_generation_enabled`
 - **CHANGE** for **URL**: /api/v2/configuration  added the optional property `insights_generation_enabled` to the response with the `200` status
+# 11/18/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `include_span_details`
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/inference_count` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/last_activity_at` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/trace_count` to the response with the `200` status
 
 # 11/03/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/default_rules  api path removed without deprecation
