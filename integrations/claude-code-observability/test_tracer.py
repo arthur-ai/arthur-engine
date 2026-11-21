@@ -3843,6 +3843,7 @@ class TestBuildAndExportSpansAttributes:
     def _no_slack_metadata(self, monkeypatch):
         # Running the suite inside a Claude Tag session would otherwise route
         # these spans by Slack channel.
+        monkeypatch.delenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_EXTRA_METADATA", raising=False)
 
     def _exported_spans(self, monkeypatch, span_record):
@@ -3893,9 +3894,27 @@ class TestBuildAndExportSpansAttributes:
         assert resource_attrs.get("arthur.task") == self.CONFIG["task_id"]
 
     def test_slack_session_routes_by_channel(self, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", "C0123ABCDE")
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "C0123ABCDE"
+        assert "arthur.task" not in resource_attrs
+
+    def test_channel_env_var_wins_over_extra_metadata(self, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", "C0123ABCDE")
         monkeypatch.setenv(
             "CLAUDE_CODE_EXTRA_METADATA",
-            json.dumps({"slack_channel": "CMZ24H71Q", "slack_thread": "1.2"}),
+            json.dumps({"slack_channel": "CMZ24H71Q"}),
+        )
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "C0123ABCDE"
+
+    def test_falls_back_to_extra_metadata_channel(self, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", "")
+        monkeypatch.setenv(
+            "CLAUDE_CODE_EXTRA_METADATA",
+            json.dumps({"slack_channel": "CMZ24H71Q", "other": "ignored"}),
         )
         spans = self._exported_spans(monkeypatch, self._simple_record())
         resource_attrs = dict(spans[0].resource.attributes)
@@ -3904,7 +3923,7 @@ class TestBuildAndExportSpansAttributes:
 
     @pytest.mark.parametrize(
         "metadata",
-        ['{"slack_thread": "1.2"}', '{"slack_channel": ""}', "not json", "[1, 2]"],
+        ['{"other": "x"}', '{"slack_channel": ""}', "not json", "[1, 2]"],
     )
     def test_metadata_without_channel_uses_configured_task(
         self,

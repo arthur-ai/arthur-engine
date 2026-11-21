@@ -237,7 +237,7 @@ fi
 "$CLONE_DIR/integrations/claude-code-observability/install.sh"
 ```
 
-**Task per channel.** Claude Tag passes the launching Slack channel to the session in `CLAUDE_CODE_EXTRA_METADATA` (`{"slack_channel": "C0123ABCD", ...}`). When it's there, the tracer sends the channel ID as `service.name` and leaves `arthur.task` out, so the engine maps each channel to its own task, creating it on the channel's first trace. Rename those tasks in the engine UI to give them readable names. Sessions with no channel, such as DMs, go to `GENAI_ENGINE_TASK_ID` as usual.
+**Task per channel.** Claude Tag gives the session its Slack channel ID in `CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID`; if that's unset, the tracer falls back to the `slack_channel` key of the JSON in `CLAUDE_CODE_EXTRA_METADATA`. When a channel is found, the tracer sends the channel ID as `service.name` and leaves `arthur.task` out, so the engine maps each channel to its own task, creating it on the channel's first trace. Rename those tasks in the engine UI to give them readable names. Sessions with no channel ID go to `GENAI_ENGINE_TASK_ID` as usual. A DM can carry its own ID (starting with `D`), in which case it gets its own task like a channel.
 
 **Egress proxy.** Exports go through `requests`, which honors `HTTPS_PROXY`, `NO_PROXY` and `REQUESTS_CA_BUNDLE`. If the proxy intercepts TLS, set `REQUESTS_CA_BUNDLE` to its CA bundle. The engine host must also be on the environment's egress allowlist, because a denied export fails without any error in the session.
 

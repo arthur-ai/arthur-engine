@@ -93,8 +93,13 @@ def discover_config() -> Optional[dict]:
 def _slack_channel() -> Optional[str]:
     """Slack channel ID of the Claude Tag session, or None outside Slack.
 
-    Claude Tag exposes launch context as JSON in CLAUDE_CODE_EXTRA_METADATA,
-    e.g. {"slack_channel": "CMZ24H71Q", ...}. DMs may omit slack_channel."""
+    Claude Tag sets CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID (documented; can be
+    unset). Falls back to the slack_channel key of the JSON in
+    CLAUDE_CODE_EXTRA_METADATA, which sessions have been seen to carry but
+    which isn't documented."""
+    channel = os.environ.get("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID")
+    if channel:
+        return channel
     try:
         meta = json.loads(os.environ.get("CLAUDE_CODE_EXTRA_METADATA") or "{}")
         channel = meta.get("slack_channel") if isinstance(meta, dict) else None
