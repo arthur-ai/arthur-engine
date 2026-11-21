@@ -90,6 +90,37 @@ def discover_config() -> Optional[dict]:
     return {"api_key": api_key, "task_id": task_id, "endpoint": endpoint}
 
 
+def _slack_channel() -> Optional[str]:
+    """Slack channel ID of the Claude Tag session, or None outside Slack.
+
+    Claude Tag sets CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID (documented; can be
+    unset). Falls back to the slack_channel key of the JSON in
+    CLAUDE_CODE_EXTRA_METADATA, which sessions have been seen to carry but
+    which isn't documented."""
+    channel = os.environ.get("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID")
+    if channel:
+        return channel
+    try:
+        meta = json.loads(os.environ.get("CLAUDE_CODE_EXTRA_METADATA") or "{}")
+        channel = meta.get("slack_channel") if isinstance(meta, dict) else None
+        return channel if isinstance(channel, str) and channel else None
+    except Exception:
+        return None
+
+
+def _resource_routing_attributes(config: dict) -> dict:
+    """service.name / arthur.task resource attributes that pick the engine task.
+
+    The engine uses arthur.task whenever it is present and only falls back to
+    mapping (or auto-creating) a task by service.name when it is absent. So a
+    Slack session sends the channel ID as service.name and omits arthur.task,
+    giving one task per channel; anything else lands in the configured task."""
+    channel = _slack_channel()
+    if channel:
+        return {"service.name": channel}
+    return {"service.name": "claude-code", "arthur.task": config["task_id"]}
+
+
 # ---------------------------------------------------------------------------
 # State file helpers
 # ---------------------------------------------------------------------------
@@ -1528,19 +1559,28 @@ def _build_and_export_spans(
 
     resource = Resource.create(
         {
-            "service.name": "claude-code",
-            "arthur.task": config["task_id"],
+            **_resource_routing_attributes(config),
             "arthur.session": session_id,
             "arthur.user": username,
         },
     )
 
+    # One requests session for the whole batch: connections are reused across
+    # the per-span exporters, and requests honors HTTPS_PROXY / NO_PROXY /
+    # REQUESTS_CA_BUNDLE, which egress-proxied sandboxes depend on.
+    import requests
+
+    session = requests.Session()
+
     for rec in span_records:
         # Each span gets its own exporter so that provider.shutdown() on span N
         # doesn't mark the shared exporter as closed before span N+1 is sent.
+        # (Shutdown also closes the shared session; requests reopens its
+        # connection pools on the next post, so later spans still go out.)
         exporter = OTLPSpanExporter(
             endpoint=config["endpoint"],
             headers={"Authorization": f"Bearer {config['api_key']}"},
+            session=session,
         )
         # Resolve None kind (used for LLM spans set by caller)
         kind = rec.get("kind") or SpanKind.CLIENT

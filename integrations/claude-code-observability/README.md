@@ -23,7 +23,7 @@ Subagents write their API calls to their own transcript (`<session>/subagents/ag
 
 LLM span timing comes from the transcript: a span runs from the entry the call answers (the prompt or tool result, written when the request is sent) to the last response entry written before any tool ran.
 
-Traces are linked to a task in Arthur Engine via the `arthur.task` resource attribute and share a `arthur.session` attribute so you can filter by session across traces.
+Traces are linked to a task in Arthur Engine via the `arthur.task` resource attribute and share a `arthur.session` attribute so you can filter by session across traces. Sessions launched from Slack by Claude Tag are the exception: they get one task per channel (see [Claude Tag setup](#claude-tag-claude-in-slack-setup)).
 
 ---
 
@@ -218,6 +218,28 @@ checks that the key can read spans and that the engine's span times read right i
 Time filters go out in `engine_timezone` without an offset, the form the engine compares against its stored values.
 
 Caveat: spend lands in the engine when the tracer emits LLM spans, which happens at each tool call and at the end of the turn, so a single very long generation is only visible once it finishes.
+
+---
+
+## Claude Tag (Claude in Slack) setup
+
+To trace the sessions Claude Tag runs in a cloud environment, install the hooks from the environment's setup script and supply credentials as environment variables (`GENAI_ENGINE_API_KEY`, `GENAI_ENGINE_TASK_ID`, `GENAI_ENGINE_TRACE_ENDPOINT`). The script doesn't need to write them anywhere:
+
+```bash
+set -euo pipefail
+CLONE_DIR="$HOME/arthur-engine"
+if [ -d "$CLONE_DIR/.git" ]; then
+  git -C "$CLONE_DIR" fetch --depth 1 origin dev
+  git -C "$CLONE_DIR" reset --hard origin/dev
+else
+  git clone --depth 1 --branch dev https://github.com/arthur-ai/arthur-engine.git "$CLONE_DIR"
+fi
+"$CLONE_DIR/integrations/claude-code-observability/install.sh"
+```
+
+**Task per channel.** Claude Tag gives the session its Slack channel ID in `CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID`; if that's unset, the tracer falls back to the `slack_channel` key of the JSON in `CLAUDE_CODE_EXTRA_METADATA`. When a channel is found, the tracer sends the channel ID as `service.name` and leaves `arthur.task` out, so the engine maps each channel to its own task, creating it on the channel's first trace. Rename those tasks in the engine UI to give them readable names. Sessions with no channel ID go to `GENAI_ENGINE_TASK_ID` as usual. A DM can carry its own ID (starting with `D`), in which case it gets its own task like a channel.
+
+**Egress proxy.** Exports go through `requests`, which honors `HTTPS_PROXY`, `NO_PROXY` and `REQUESTS_CA_BUNDLE`. If the proxy intercepts TLS, set `REQUESTS_CA_BUNDLE` to its CA bundle. The engine host must also be on the environment's egress allowlist, because a denied export fails without any error in the session.
 
 ---
 
