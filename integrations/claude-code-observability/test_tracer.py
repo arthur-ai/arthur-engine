@@ -3839,6 +3839,13 @@ class TestBuildAndExportSpansAttributes:
         "endpoint": "https://x.example.com",
     }
 
+    @pytest.fixture(autouse=True)
+    def _no_slack_metadata(self, monkeypatch):
+        # Running the suite inside a Claude Tag session would otherwise route
+        # these spans by Slack channel.
+        monkeypatch.delenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", raising=False)
+        monkeypatch.delenv("CLAUDE_CODE_EXTRA_METADATA", raising=False)
+
     def _exported_spans(self, monkeypatch, span_record):
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
             InMemorySpanExporter,
@@ -3885,6 +3892,102 @@ class TestBuildAndExportSpansAttributes:
         spans = self._exported_spans(monkeypatch, self._simple_record())
         resource_attrs = dict(spans[0].resource.attributes)
         assert resource_attrs.get("arthur.task") == self.CONFIG["task_id"]
+
+    def test_slack_session_routes_by_channel(self, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", "C0123ABCDE")
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "C0123ABCDE"
+        assert "arthur.task" not in resource_attrs
+
+    def test_channel_env_var_wins_over_extra_metadata(self, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", "C0123ABCDE")
+        monkeypatch.setenv(
+            "CLAUDE_CODE_EXTRA_METADATA",
+            json.dumps({"slack_channel": "CMZ24H71Q"}),
+        )
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "C0123ABCDE"
+
+    def test_falls_back_to_extra_metadata_channel(self, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE_SLACK_CHANNEL_ID", "")
+        monkeypatch.setenv(
+            "CLAUDE_CODE_EXTRA_METADATA",
+            json.dumps({"slack_channel": "CMZ24H71Q", "other": "ignored"}),
+        )
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "CMZ24H71Q"
+        assert "arthur.task" not in resource_attrs
+
+    @pytest.mark.parametrize(
+        "metadata",
+        ['{"other": "x"}', '{"slack_channel": ""}', "not json", "[1, 2]"],
+    )
+    def test_metadata_without_channel_uses_configured_task(
+        self,
+        monkeypatch,
+        metadata,
+    ):
+        monkeypatch.setenv("CLAUDE_CODE_EXTRA_METADATA", metadata)
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "claude-code"
+        assert resource_attrs.get("arthur.task") == self.CONFIG["task_id"]
+
+    def test_exporters_share_one_session_across_spans(self, monkeypatch):
+        """Every span's exporter reuses one session, and spans after the first
+        provider shutdown (which closes that session) still reach the server."""
+        import threading
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
+        received = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers["Content-Length"]))
+                received.append(self.path)
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *_args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        from opentelemetry.exporter.otlp.proto.http import trace_exporter
+
+        real_exporter = trace_exporter.OTLPSpanExporter
+        sessions = []
+
+        def recording_exporter(**kw):
+            sessions.append(kw.get("session"))
+            return real_exporter(**kw)
+
+        monkeypatch.setattr(trace_exporter, "OTLPSpanExporter", recording_exporter)
+        monkeypatch.delenv("HTTP_PROXY", raising=False)
+        monkeypatch.delenv("http_proxy", raising=False)
+        try:
+            config = dict(
+                self.CONFIG,
+                endpoint=f"http://127.0.0.1:{server.server_port}/v1/traces",
+            )
+            first, second = self._simple_record(), self._simple_record()
+            second["span_id_hex"] = "c" * 16
+            tracer._build_and_export_spans(
+                config=config,
+                session_id="sess-export",
+                username="export-user",
+                span_records=[first, second],
+            )
+        finally:
+            server.shutdown()
+
+        assert len(sessions) == 2
+        assert sessions[0] is not None and sessions[0] is sessions[1]
+        assert received == ["/v1/traces", "/v1/traces"]
 
     def test_resource_arthur_session_and_user(self, monkeypatch):
         spans = self._exported_spans(monkeypatch, self._simple_record())
