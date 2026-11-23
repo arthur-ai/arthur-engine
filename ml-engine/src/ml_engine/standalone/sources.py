@@ -67,7 +67,16 @@ def try_source(
     """
     if not isinstance(raw, dict):
         raise StandaloneConfigError("The source must be a JSON object")
-    raw = {**raw, "fields": list(raw.get("fields") or [])}
+    fields = raw.get("fields")
+    fields = [] if fields is None else fields
+    # Checked before the secrets are merged in, which reads each field's key.
+    if not isinstance(fields, list) or not all(
+        isinstance(f, dict) and isinstance(f.get("key"), str) for f in fields
+    ):
+        raise StandaloneConfigError(
+            "The source's fields must be a list of {key, value} objects",
+        )
+    raw = {**raw, "fields": list(fields)}
     vendor = raw.get("vendor")
     if keep_secrets_from is not None:
         kept = next(

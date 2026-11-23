@@ -60,6 +60,8 @@ DEFAULT_HOST = "0.0.0.0"
 MIN_TOKEN_LENGTH = 32
 # A source with a service account key in it is a few KB; nothing sent here is larger.
 MAX_BODY_BYTES = 256 * 1024
+# What asking for a scan takes: two short strings.
+MAX_SCAN_REQUEST_BYTES = 4 * 1024
 # Source IDs are UUIDs and config names are short; anything longer is not one.
 MAX_FIELD_LENGTH = 200
 
@@ -128,6 +130,7 @@ class ControlServer:
 
         @app.post("/scans/run")
         def run() -> ResponseReturnValue:
+            request.max_content_length = MAX_SCAN_REQUEST_BYTES
             body = request.get_json(silent=True)
             if not isinstance(body, dict):
                 return jsonify(error="the body must be a JSON object"), 400

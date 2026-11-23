@@ -31,6 +31,7 @@ from memory_limits import ContainerMemory
 from standalone.agent import StandaloneDiscoveryAgent
 from standalone.discovery_config import (
     StandaloneConfigError,
+    config_fingerprint,
     load_config,
     standalone_config_path,
 )
@@ -366,6 +367,9 @@ def main() -> None:
     """
     path = standalone_config_path()
     if path is not None:
+        # Before the load, so an edit made while it loads is seen as a change and
+        # reloaded, rather than taken for the file the engine is running.
+        fingerprint = config_fingerprint(path)
         try:
             config = load_config(path)
         except StandaloneConfigError as e:
@@ -379,7 +383,12 @@ def main() -> None:
                 )
             except ValueError as e:
                 raise SystemExit(str(e)) from None
-            StandaloneDiscoveryAgent(config, sink, config_path=path).run()
+            StandaloneDiscoveryAgent(
+                config,
+                sink,
+                config_path=path,
+                fingerprint=fingerprint,
+            ).run()
             return
         logger.info(f"Standalone discovery is disabled in {path}; polling the Platform")
     JobAgent().run()

@@ -100,6 +100,24 @@ def test_secrets_are_kept_only_from_a_source_of_the_same_vendor(
         try_source(vertex(project_id="p"), None, [], "vertex")
 
 
+@pytest.mark.parametrize(
+    "fields",
+    [1, "project_id", [1], [{"value": "p"}], [{"key": ["project_id"], "value": "p"}]],
+)
+@pytest.mark.parametrize("keep", [None, "vertex"])
+def test_fields_that_are_not_key_value_objects_are_refused(
+    previewed: list[dict[str, Any]], fields: Any, keep: Any
+) -> None:
+    configured = resolve_source(
+        source_from_values(vertex(project_id="p", service_account_key="KEY")),
+    )
+    raw = {**vertex(), "fields": fields}
+
+    with pytest.raises(StandaloneConfigError, match="list of {key, value} objects"):
+        try_source(raw, None, configured, keep)
+    assert previewed == []
+
+
 def test_validate_only_runs_no_connector(previewed: list[dict[str, Any]]) -> None:
     result = try_source(vertex(project_id="p"), None, [], validate_only=True)
 

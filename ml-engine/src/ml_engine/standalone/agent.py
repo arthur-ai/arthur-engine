@@ -139,6 +139,7 @@ class StandaloneDiscoveryAgent:
         control: Optional[ControlServer] = None,
         wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         config_path: Optional[Path] = None,
+        fingerprint: Optional[str] = None,
     ) -> None:
         self._config = config
         self._config_path = config_path
@@ -167,7 +168,12 @@ class StandaloneDiscoveryAgent:
         # Pairs removed from the config while running, kept until shutdown so it can
         # wait for them as for any other.
         self._retired: list[_Slot] = []
-        self._fingerprint = config_fingerprint(config_path) if config_path else ""
+        # The file as it was when `config` was loaded. A caller that loaded it passes the
+        # fingerprint it took first: taken here, after the load, it could describe an
+        # edit made in between, which would then never be reloaded.
+        if fingerprint is None:
+            fingerprint = config_fingerprint(config_path) if config_path else ""
+        self._fingerprint = fingerprint
         self._next_reload_check = now + RELOAD_CHECK_SECONDS
         self._config_status = ConfigStatus(
             path=str(config_path) if config_path else None,
@@ -347,12 +353,26 @@ class StandaloneDiscoveryAgent:
 
     def _tick(self) -> None:
         now = self._clock()
-        for slot in self._slots:
+        # A pair removed while it ran is still running until it reaches a point where
+        # it can stop: it times out, and holds a slot until then, as any other does.
+        self._retired = [slot for slot in self._retired if slot.alive()]
+        for slot in [*self._slots, *self._retired]:
             if slot.running() and now >= slot.deadline:
                 self._time_out(slot)
-        room = self._capacity - sum(slot.running() for slot in self._slots)
+        room = self._capacity - sum(
+            slot.running() for slot in [*self._slots, *self._retired]
+        )
+        # And a pair added back before it has ended waits for it, as it would have had
+        # it not been removed: the same pair never runs twice at once.
+        ending = {slot.scan.discovery_source_config_id for slot in self._retired}
         due = sorted(
-            (s for s in self._slots if not s.alive() and s.next_due <= now),
+            (
+                s
+                for s in self._slots
+                if not s.alive()
+                and s.next_due <= now
+                and s.scan.discovery_source_config_id not in ending
+            ),
             key=lambda s: s.next_due,
         )
         for slot in due[: max(room, 0)]:

@@ -281,6 +281,28 @@ def test_tests_a_source(base: str, monkeypatch: pytest.MonkeyPatch) -> None:
     assert seen == [({"name": "w"}, "c", "w", False)]
 
 
+def test_a_scan_request_over_4_kb_is_refused(base: str, fake: FakeAgent) -> None:
+    body = {"source_id": "src-1", "padding": "x" * 5000}
+
+    response = requests.post(f"{base}/scans/run", headers=AUTH, json=body, timeout=5)
+
+    assert response.status_code == 413
+    assert fake.asked == []
+
+
+def test_a_source_test_may_be_larger_than_a_scan_request(
+    base: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        control, "try_source", lambda *a, **k: {"outcome": "succeeded"}
+    )
+    body = {"source": {"name": "w", "key": "k" * 20_000}}
+
+    response = requests.post(f"{base}/sources/test", headers=AUTH, json=body, timeout=5)
+
+    assert response.status_code == 200
+
+
 def test_a_source_that_cannot_be_tested_says_why(base: str) -> None:
     body = {"source": {"name": "w", "vendor": "no-such-vendor"}}
 

@@ -32,12 +32,12 @@ def source(name: str, project: str = "p", key_file: str = "") -> str:
       - {{name: c, query: "", query_language: none, lookback_window_seconds: 86400}}"""
 
 
-def config_text(*sources: str, interval: str = "1h") -> str:
+def config_text(*sources: str, interval: str = "1h", capacity: int = 4) -> str:
     return textwrap.dedent(f"""\
             version: 1
             schedule:
               interval: {interval}
-              max_concurrent_scans: 4
+              max_concurrent_scans: {capacity}
             destination:
               type: webhook
               url: https://hooks.example.com/in
@@ -83,12 +83,14 @@ def test_an_added_source_is_scanned_at_once(
     path.write_text(config_text(source("a")))
     clock = Clock()
     subject = start(path, runner, clock)
+    runner.wait_for("a")
     assert runner.started == ["a"]
 
     path.write_text(config_text(source("a"), source("b")))
     settle(subject, clock)
 
     assert names(subject) == ["a", "b"]
+    runner.wait_for("b")
     assert runner.started == ["a", "b"]  # a, still running, not doubled up
     assert subject.config_status().error is None
 
@@ -104,6 +106,8 @@ def test_asked_to_apply_the_file_an_added_source_starts_before_it_returns(
     path.write_text(config_text(source("a"), source("b")))
     status, states = subject.apply_config_now()  # no time passes: no check is due
 
+    runner.wait_for("a")
+    runner.wait_for("b")
     assert runner.started == ["a", "b"]
     assert status.error is None
     assert {(s.source_name, s.status) for s in states} == {
@@ -155,6 +159,7 @@ def test_a_changed_source_runs_again_with_the_change(
     path.write_text(config_text(source("a", project="other")))
     settle(subject, clock)
 
+    runner.wait_for("a", runs=2)
     assert runner.started == ["a", "a"]
     assert subject._slots[0].scan.source_fields == {"project_id": "other"}
 
@@ -167,12 +172,65 @@ def test_a_removed_source_is_told_to_stop(
     clock = Clock()
     subject = start(path, runner, clock)
 
+    runner.wait_for("a")
+    runner.wait_for("b")
     path.write_text(config_text(source("a")))
     settle(subject, clock)
 
     assert names(subject) == ["a"]
     stops = dict(zip(runner.started, runner.stop_checks))
     assert stops["b"]() and not stops["a"]()
+
+
+def retired_thread_ends(subject: StandaloneDiscoveryAgent) -> None:
+    for slot in subject._retired:
+        assert slot.thread is not None
+        slot.thread.join(5)
+
+
+def test_a_source_added_back_while_its_removed_scan_ends_waits_for_it(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a"), source("b")))
+    clock = Clock()
+    subject = start(path, runner, clock)
+    runner.wait_for("b")
+
+    path.write_text(config_text(source("a")))
+    settle(subject, clock)
+    path.write_text(config_text(source("a"), source("b")))
+    settle(subject, clock)
+
+    # b's removed run hasn't reached a point where it can stop: not started again.
+    assert runner.started.count("b") == 1
+    assert ("b", "waiting") in {(s.source_name, s.status) for s in subject.scan_states()}
+
+    runner.release("b")
+    retired_thread_ends(subject)
+    subject.tick()
+    runner.wait_for("b", runs=2)
+
+
+def test_a_removed_scan_still_ending_holds_its_slot(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a"), capacity=1))
+    clock = Clock()
+    subject = start(path, runner, clock)
+    runner.wait_for("a")
+
+    path.write_text(config_text(source("b"), capacity=1))
+    settle(subject, clock)
+
+    assert runner.started == ["a"]  # b waits for the one slot a still holds
+
+    runner.release("a")
+    retired_thread_ends(subject)
+    subject.tick()
+    runner.wait_for("b")
+    assert subject._retired == []
 
 
 def test_a_changed_secret_file_counts_as_a_change(
@@ -186,6 +244,48 @@ def test_a_changed_secret_file_counts_as_a_change(
     (tmp_path / "key.json").write_text('{"k": 2}')
 
     assert config_fingerprint(path) != before
+
+
+def test_a_changed_secret_file_named_through_a_variable_counts_as_a_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "key.json").write_text('{"k": 1}')
+    monkeypatch.setenv("KEY_FILE", "key.json")
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a", key_file='"${KEY_FILE}"')))
+    before = config_fingerprint(path)
+
+    (tmp_path / "key.json").write_text('{"k": 2}')
+
+    assert config_fingerprint(path) != before
+
+
+def test_fields_or_configs_that_are_not_lists_are_reported_not_raised(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a")))
+    clock = Clock()
+    subject = start(path, runner, clock)
+
+    broken_sources = (
+        """
+  - name: b
+    vendor: gcp_vertex
+    fields: 1
+    configs: []""",
+        """
+  - name: b
+    vendor: gcp_vertex
+    fields: []
+    configs: true""",
+    )
+    for broken in broken_sources:
+        path.write_text(config_text(source("a"), broken))
+        status, _ = subject.apply_config_now()
+
+        assert status.error, broken
+        assert names(subject) == ["a"]
 
 
 def test_a_file_that_cannot_be_used_leaves_the_engine_as_it_was(

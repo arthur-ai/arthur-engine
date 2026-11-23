@@ -61,6 +61,7 @@ from standalone.config_values import (
     BASE_DIR_CONTEXT,
     StrictModel,
     read_file_reference,
+    resolve_path,
 )
 from standalone.sinks import Destination
 
@@ -351,17 +352,20 @@ def config_fingerprint(path: Path) -> str:
         raw = yaml.safe_load(text)
     except yaml.YAMLError:
         return digest.hexdigest()
+    # The paths the loader reads: `${NAME}` expanded first, as it does. One that isn't
+    # set expands to nothing here; the load reports it.
+    raw = _interpolate(raw, [])
     sources = raw.get("sources") if isinstance(raw, dict) else None
     for source in sources if isinstance(sources, list) else []:
         if not isinstance(source, dict):
             continue
-        entries = [*(source.get("fields") or []), *(source.get("configs") or [])]
+        entries = [*_entries(source, "fields"), *_entries(source, "configs")]
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
             for value in (entry.get("value"), entry.get("query")):
                 if isinstance(value, dict) and isinstance(value.get("file"), str):
-                    referenced = path.parent / value["file"]
+                    referenced = resolve_path(value["file"], path.parent)
                     digest.update(referenced.as_posix().encode())
                     try:
                         digest.update(referenced.read_bytes())
@@ -479,10 +483,10 @@ def _read_source_files(raw: dict[str, Any], base_dir: Path) -> list[str]:
             continue
         targets = [
             (entry, "value", f"sources.{i}.fields.{j}.value", True)
-            for j, entry in enumerate(source.get("fields") or [])
+            for j, entry in enumerate(_entries(source, "fields"))
         ] + [
             (entry, "query", f"sources.{i}.configs.{j}.query", False)
-            for j, entry in enumerate(source.get("configs") or [])
+            for j, entry in enumerate(_entries(source, "configs"))
         ]
         for entry, key, location, strip in targets:
             if isinstance(entry, dict) and isinstance(entry.get(key), dict):
@@ -491,6 +495,13 @@ def _read_source_files(raw: dict[str, Any], base_dir: Path) -> list[str]:
                 except ValueError as e:
                     problems.append(f"  {location}: {e}")
     return problems
+
+
+def _entries(source: dict[str, Any], key: str) -> list[Any]:
+    """A source's `fields` or `configs`, or none when it isn't a list: what it is then
+    is for validation to report, not for reading files to trip over."""
+    value = source.get(key)
+    return value if isinstance(value, list) else []
 
 
 def _describe(error: ValidationError) -> str:
