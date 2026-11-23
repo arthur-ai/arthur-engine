@@ -71,5 +71,11 @@ destination:
 #   headers:
 #     Authorization: "Bearer ${WEBHOOK_TOKEN}"
 
+# Or a CSV file, one row per agent per scan, appended. /var/lib/arthur/discovery is
+# ./output on the host (see docker-compose.yaml); scan outcomes are logged, not written.
+# destination:
+#   type: csv
+#   path: /var/lib/arthur/discovery/agents.csv
+
 # Also send each scan's outcome, so a broken source shows up at the destination.
 emit_scan_outcomes: true
