@@ -16,6 +16,7 @@ from litellm.types.utils import (
     TokenCountResponse,
 )
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.status import HTTP_413_CONTENT_TOO_LARGE
 
 from repositories.organizations_repository import (
     enforce_token_quota,
@@ -238,6 +239,17 @@ class LLMClient:
             **kwargs,
         )
 
+    def _input_too_long(self, kwargs: dict[str, Any]) -> HTTPException:
+        # Its own status (413), apart from other bad requests, so a caller can send less
+        # instead of giving up. The provider's message is left out: it can quote the input.
+        return HTTPException(
+            status_code=HTTP_413_CONTENT_TOO_LARGE,
+            detail=(
+                f"The request is longer than the input window of model "
+                f"'{kwargs.get('model', 'unknown')}' (provider '{self.provider}')."
+            ),
+        )
+
     def completion(
         self,
         *args: Any,
@@ -253,6 +265,8 @@ class LLMClient:
 
         try:
             response = litellm.completion(*args, **kwargs)
+        except litellm.ContextWindowExceededError:
+            raise self._input_too_long(kwargs)
         except litellm.BadRequestError as e:
             if "requires at least one non-system message" in str(e):
                 raise HTTPException(
@@ -365,6 +379,8 @@ class LLMClient:
             if isinstance(response, ModelResponse):
                 self.record_token_usage(org_id, response)
             return response
+        except litellm.ContextWindowExceededError:
+            raise self._input_too_long(kwargs)
         except litellm.BadRequestError as e:
             if "requires at least one non-system message" in str(e):
                 raise HTTPException(

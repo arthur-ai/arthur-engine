@@ -2,9 +2,17 @@ import copy
 import uuid
 from typing import List, Type, cast
 
+from arthur_common.models.llm_model_providers import (
+    LLMConfigSettings,
+    LLMResponseFormat,
+    LLMResponseFormatEnum,
+)
+from fastapi import HTTPException
+from litellm import supports_response_schema
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from db_models.agentic_prompt_models import (
     DatabaseAgenticPrompt,
@@ -25,6 +33,7 @@ from schemas.response_schemas import (
     AgenticPromptVersionResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils.constants import EMPTY_MODEL_PROVIDER
 
 
 class AgenticPromptRepository(
@@ -138,10 +147,12 @@ class AgenticPromptRepository(
         completion_request: PromptCompletionRequest,
         org_id: uuid.UUID,
     ) -> AgenticPromptRunResponse | StreamingResponse:
-        prompt = self.get_llm_item(
-            task_id,
-            prompt_name,
-            prompt_version,
+        prompt = self._with_resolved_model(
+            self.get_llm_item(
+                task_id,
+                prompt_name,
+                prompt_version,
+            ),
         )
         llm_client = self.model_provider_repo.get_model_provider_client(
             provider=prompt.require_configured_provider(),
@@ -151,6 +162,45 @@ class AgenticPromptRepository(
             prompt,
             completion_request,
             org_id=org_id,
+        )
+
+    def _with_resolved_model(self, prompt: AgenticPrompt) -> AgenticPrompt:
+        """The prompt with the model it runs on. A prompt saved with the 'empty'
+        placeholder runs on the instance's default model provider, with that provider's
+        reasoning defaults where the model takes them, as an eval would; one that names
+        its model keeps it, and its own settings."""
+        if prompt.model_provider != EMPTY_MODEL_PROVIDER:
+            return prompt
+        provider, model_name = self.model_provider_repo.resolve_model(None, None)
+        response_format = prompt.config.response_format if prompt.config else None
+        # The prompt's author could not see which model would answer, so a schema
+        # it asks for is checked here rather than left to fail inside the provider.
+        if (
+            isinstance(response_format, LLMResponseFormat)
+            and response_format.type == LLMResponseFormatEnum.JSON_SCHEMA
+            and not supports_response_schema(
+                model=model_name,
+                custom_llm_provider=provider.value,
+            )
+        ):
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Prompt '{prompt.name}' needs structured output, which the "
+                    f"default model {model_name} ({provider.value}) does not support. "
+                    "Choose a default model that does on the Model Providers page."
+                ),
+            )
+        # The prompt's author could not pick reasoning settings for an unknown model, so
+        # the provider's defaults fill them, only for a model that accepts them.
+        config = prompt.config.model_dump(exclude_none=True) if prompt.config else {}
+        self.model_provider_repo.apply_eval_defaults(provider, model_name, config)
+        return prompt.model_copy(
+            update={
+                "model_provider": provider.value,
+                "model_name": model_name,
+                "config": LLMConfigSettings(**config) if config else None,
+            },
         )
 
     def render_saved_prompt(

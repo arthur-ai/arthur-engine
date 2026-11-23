@@ -2,6 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from arthur_common.models.llm_model_providers import ModelProvider
+from fastapi import HTTPException
+from litellm import ContextWindowExceededError
 from litellm.types.utils import ModelResponse, TokenCountResponse
 from pydantic import BaseModel, Field
 
@@ -171,6 +173,60 @@ async def test_llm_client_acompletion_with_tools(
     )
 
     assert response.choices[0].message.get("content") == "Test response"
+
+
+def _too_long() -> ContextWindowExceededError:
+    return ContextWindowExceededError(
+        "prompt is too long: the user's text ...",
+        model="gpt-4o",
+        llm_provider="openai",
+    )
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.enforce_token_quota")
+@patch("clients.llm.llm_client.litellm.completion", side_effect=_too_long())
+def test_llm_client_completion_input_too_long_is_413(
+    mock_completion,
+    mock_enforce_token_quota,
+):
+    llm_client = LLMClient(provider=ModelProvider.OPENAI, api_key="test-key")
+
+    with pytest.raises(HTTPException) as error:
+        llm_client.completion(
+            model="openai/gpt-4o",
+            messages=[{"role": "user", "content": "Hello"}],
+            org_id=DEFAULT_ORG_ID,
+        )
+
+    assert error.value.status_code == 413
+    assert "openai/gpt-4o" in error.value.detail
+    # The provider's message can quote the input, so it is not passed on.
+    assert "user's text" not in error.value.detail
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("clients.llm.llm_client.enforce_token_quota")
+@patch(
+    "clients.llm.llm_client.litellm.acompletion",
+    new_callable=AsyncMock,
+    side_effect=_too_long(),
+)
+async def test_llm_client_acompletion_input_too_long_is_413(
+    mock_acompletion,
+    mock_enforce_token_quota,
+):
+    llm_client = LLMClient(provider=ModelProvider.OPENAI, api_key="test-key")
+
+    with pytest.raises(HTTPException) as error:
+        await llm_client.acompletion(
+            model="openai/gpt-4o",
+            messages=[{"role": "user", "content": "Hello"}],
+            org_id=DEFAULT_ORG_ID,
+        )
+
+    assert error.value.status_code == 413
 
 
 # ---------------------------------------------------------------------------
