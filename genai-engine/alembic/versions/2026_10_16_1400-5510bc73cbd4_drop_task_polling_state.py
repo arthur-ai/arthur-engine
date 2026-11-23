@@ -1,7 +1,7 @@
 """drop task_polling_state
 
 Revision ID: 5510bc73cbd4
-Revises: e5a9c3b71f04
+Revises: b1194cd9c938
 Create Date: 2026-10-16 14:00:00.000000
 
 The GCP trace poller was the table's only writer, and it is gone, along with the model and
@@ -21,7 +21,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5510bc73cbd4"
-down_revision = "e5a9c3b71f04"
+down_revision = "b1194cd9c938"
 branch_labels = None
 depends_on = None
 
