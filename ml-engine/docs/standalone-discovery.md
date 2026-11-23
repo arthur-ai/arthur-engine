@@ -12,6 +12,7 @@ to a SIEM or webhook. In this mode it talks to no Arthur Platform and no GenAI E
 - [What the destination receives](#what-the-destination-receives)
 - [Running it](#running-it)
 - [How scans are scheduled](#how-scans-are-scheduled)
+- [Changing the config while it runs](#changing-the-config-while-it-runs)
 - [Asking for a scan now](#asking-for-a-scan-now)
 
 ## Turning it on
@@ -1232,6 +1233,26 @@ The health check on port `7492` (`GET /health`) works as it does in Platform mod
   without an outcome. Give the container more than that to stop — Docker's default is
   10 seconds, so use `--stop-timeout 30` or `stop_grace_period: 30s`.
 
+## Changing the config while it runs
+
+The engine checks its config file every 5 seconds, and with it every file a
+`{file: path}` reference reads, so a changed secret file counts too. A changed file is
+loaded and validated whole, as at startup.
+
+- **Sources apply at once.** A new (source, config) pair is scanned right away. A changed
+  one is scanned again right away, or on its next run if it is running. A removed one
+  that is running is told to stop.
+- **`schedule`, `destination` and `emit_scan_outcomes` need a restart.** The engine
+  logs that they changed and applies the file's sources anyway.
+- **A file it can't use is ignored.** The engine logs why and keeps scanning with what
+  it had, and tries again when the file next changes.
+- **Edit the file in place.** A single file bind-mounted into a container stays the
+  file the container started with if an editor saves by replacing it. Mount its folder
+  instead, or use an editor that writes in place.
+- **`.env` changes still need the container recreated.** A container's environment is
+  fixed when it is created, so a new `${NAME}` value isn't seen until then. A secret
+  in a `{file: path}` is seen at once.
+
 ## Asking for a scan now
 
 Give the engine a token and it serves a small API for bringing a scan
@@ -1255,11 +1276,32 @@ Every request needs `Authorization: Bearer <token>`.
   pairs -- or only the one named -- due now, and answers `202` with each one's status.
   `404` means no configured scan matches.
 
+- `GET /config` gives the config file the engine runs: `path`, `loaded_at`, `error`
+  (why the file as it is now couldn't be used, or `null`) and `restart_required` (the
+  sections changed that wait for a restart).
+- `POST /config/reload` applies the config file now if it has changed, rather than at
+  the engine's next check (every 5 s), and starts every scan that is due and has a free
+  slot. It answers with `config` (as `GET /config` gives it) and `scans` (as `GET /scans`
+  does), so a dashboard that has just added a source sees it `running`, or `waiting` for
+  a slot. A file the engine can't use is reported in `config.error`, as on a check.
+- `GET /source-types` gives each vendor's form, from the Platform's discovery source
+  types: its fields with their descriptions, which are secret and which are optional.
+  `scripts/snapshot_discovery_source_types.py` refreshes the snapshot it serves.
+- `POST /sources/test` with `{"source": {...}, "config_name": "...",
+  "keep_secrets_from": "..."}` runs Test Connection: the same bounded, redacted preview
+  the Platform's has, without publishing anything. `source` is a `sources` entry as the
+  config file holds one, but its values are taken as they are: a `${NAME}` is text, and
+  a `{file: path}` is refused. `keep_secrets_from` names a configured source of the same
+  vendor whose secrets fill the ones `source` leaves blank, so a form that edits a source
+  can test it without reading its secrets back. `"validate_only": true` checks `source`
+  as the config file's loader would, without running a connector.
+
 An asked-for scan is an ordinary run. It waits for a free slot, a pair already running is
 not started again (its status says `running`), and its next scheduled run is one
-`interval` after it starts. The API takes no config, credentials or destination, so the
-token lets its holder scan the configured sources more often, and nothing else. Publish
-the port only to what needs it.
+`interval` after it starts. The API changes no config. The token's
+holder can scan the configured sources more often, and test a source; with
+`keep_secrets_from` that can send a configured source's secrets to a host the holder
+names, so treat the token like those secrets. Publish the port only to what needs it.
 
 ```bash
 curl -s -H "Authorization: Bearer $ML_ENGINE_CONTROL_TOKEN" \
