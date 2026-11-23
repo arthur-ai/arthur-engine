@@ -448,14 +448,15 @@ def _render(
 ) -> tuple[str, int, int]:
     """Returns (text, fields shortened, chars cut).
 
-    A back-reference points at the first copy of its value still shown. When none is
-    shown (its target row has no body), the first such reference shows the value
-    itself, cut at its target field's cap, and later ones point at it. So leaving out
-    a body never makes the text longer: the value moves, it is not shown twice, and it
-    keeps the length the target had. With expand_references every back-reference
-    shows its value (for the final cut, which may drop any target)."""
+    A back-reference always reads "(same as [n] label)", naming the value's first
+    field, so its length never depends on what else is shown. When that field's row
+    has no body, the first reference still shown carries the value instead, tagged
+    "(value of [n] label)" so the others resolve to it, and cut at the first field's
+    cap. So leaving out a body never makes the text longer: the value moves to one
+    place, at the length it had, and no reference grows. With expand_references every
+    back-reference shows its value (for the final cut, which may drop any target)."""
     lines, fields_cut, chars_cut = [header], 0, 0
-    shown_at: dict[str, str] = {}  # group -> "[n] label" of the first copy shown
+    shown: set[str] = set()  # groups whose value is shown somewhere above
     i = 0
     while i < len(rows):
         row = rows[i]
@@ -480,24 +481,22 @@ def _render(
         lines.append(pad + row.head)
         if row.number not in bodiless:
             for field in row.fields:
-                text, field_class = field.text, field.field_class
-                where = f"[{row.number}] {field.label}"
+                text, field_class, tag = field.text, field.field_class, ""
                 if field.target is None:
                     if field.group is not None:
-                        shown_at.setdefault(field.group, where)
+                        shown.add(field.group)
                 elif expand_references:
                     text, field_class = field.value, field.value_class
-                elif field.group in shown_at:
-                    text = f"(same as {shown_at[field.group]})"
-                else:
+                elif field.group is not None and field.group not in shown:
                     text, field_class = field.value, field.target_class
-                    shown_at[field.group or where] = where
-                shown, removed = _cut(text, caps[field_class])
+                    tag = "(value of" + field.text[len("(same as") :] + " "
+                    shown.add(field.group)
+                cut_text, removed = _cut(text, caps[field_class])
                 if removed:
                     fields_cut += 1
                     chars_cut += removed
-                shown = shown.replace("\n", "\n" + pad + "    ")
-                lines.append(f"{pad}  {field.label}: {shown}")
+                cut_text = (tag + cut_text).replace("\n", "\n" + pad + "    ")
+                lines.append(f"{pad}  {field.label}: {cut_text}")
         i += 1
     return "\n".join(lines), fields_cut, chars_cut
 

@@ -470,21 +470,25 @@ def test_a_repeat_shows_its_value_when_the_target_body_is_left_out():
     for max_chars in (MIN_MAX_CHARS, 2500, 3000, 3500):
         text, stats = serialize_trace(spans, max_chars=max_chars)
         omitted_any = omitted_any or stats.bodies_omitted > 0
-        # every reference left in the text points at a span whose body is shown
-        for line in text.splitlines():
-            if "(same as [" in line:
-                target = line.split("(same as [")[1].split("]")[0]
-                head = next(
-                    h for h in text.splitlines() if h.strip().startswith(f"[{target}] ")
+        # every reference left in the text resolves: its target's body is shown, or a
+        # "(value of [n] ...)" copy of the value appears above it
+        lines = text.splitlines()
+        for at, line in enumerate(lines):
+            if "(same as [" not in line:
+                continue
+            target = line.split("(same as [")[1].split("]")[0]
+            head = next(
+                i for i, h in enumerate(lines) if h.strip().startswith(f"[{target}] ")
+            )
+            body_shown = (
+                lines[head + 1]
+                .strip()
+                .startswith(
+                    ("args:", "result:", "input:", "output:"),
                 )
-                body_start = text.splitlines().index(head) + 1
-                assert (
-                    text.splitlines()[body_start]
-                    .strip()
-                    .startswith(
-                        ("args:", "result:", "input:", "output:"),
-                    )
-                ), (max_chars, target)
+            )
+            copy_above = any(f"(value of [{target}] " in l for l in lines[:at])
+            assert body_shown or copy_above, (max_chars, target)
     assert omitted_any
 
 
@@ -557,6 +561,12 @@ def test_leaving_out_a_body_never_makes_the_text_longer(monkeypatch):
         ),
     )
 
+    assert_smallest_omission(spans, (2000, 3050, 3500), monkeypatch)
+
+
+def assert_smallest_omission(spans, budgets, monkeypatch) -> None:
+    """Brute force: leaving out more bodies never makes the text longer, and
+    serialize_trace leaves out the smallest number of bodies that fits."""
     captured: dict = {}
     real_render = trace_serializer._render
 
@@ -565,7 +575,7 @@ def test_leaving_out_a_body_never_makes_the_text_longer(monkeypatch):
             captured["args"] = (header, rows, dict(caps))
         return real_render(header, rows, caps, bodiless, collapse, expand_references)
 
-    for max_chars in (2000, 3050, 3500):
+    for max_chars in budgets:
         monkeypatch.setattr(trace_serializer, "_render", spy)
         _, stats = serialize_trace(spans, max_chars=max_chars)
         monkeypatch.setattr(trace_serializer, "_render", real_render)
@@ -589,3 +599,54 @@ def test_leaving_out_a_body_never_makes_the_text_longer(monkeypatch):
             if size + trace_serializer.FOOTER_RESERVE <= max_chars
         )
         assert stats.bodies_omitted == smallest, (max_chars, smallest)
+
+
+@pytest.mark.unit_tests
+def test_many_repeats_under_a_long_label_never_grow_the_text(monkeypatch):
+    """A tool result repeats as the arguments of 12 later tool calls with a long
+    function name. References keep naming the first field, so leaving out its body
+    moves the value to one tagged copy and no reference gets longer."""
+    shared = "shared report " + "z" * 900
+    long_fn = "lookup_customer_order_history_with_full_audit_trail_and_metadata"
+    spans = [
+        span(
+            "root",
+            None,
+            "AGENT",
+            "agent",
+            0.0,
+            {"input": {"value": "go"}, "output": {"value": "done"}},
+        ),
+    ]
+    for i in range(14):
+        output = shared if i == 7 else f"file {i} " + "x" * 900
+        spans.append(
+            span(
+                f"t{i}",
+                "root",
+                "TOOL",
+                "read",
+                1.0 + i,
+                {"input": {"value": str(i)}, "output": {"value": output}},
+            ),
+        )
+    call = {
+        "message": {
+            "role": "assistant",
+            "tool_calls": [
+                {"tool_call": {"function": {"name": long_fn, "arguments": shared}}},
+            ],
+        },
+    }
+    for j in range(12):
+        spans.append(
+            span(
+                f"llm{j}",
+                "root",
+                "LLM",
+                "plan",
+                50.0 + j,
+                {"llm": {"output_messages": [call]}},
+            ),
+        )
+    assert_smallest_omission(spans, (2000, 4000, 6000, 8000), monkeypatch)
