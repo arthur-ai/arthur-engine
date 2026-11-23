@@ -686,3 +686,75 @@ def test_a_multiline_value_moved_to_a_deeper_repeat_never_grows_the_text(monkeyp
         span("deep", "c3", "TOOL", "send", 63.0, {"input": {"value": shared}}),
     ]
     assert_smallest_omission(spans, (2000, 3000, 4000, 6000), monkeypatch)
+
+
+@pytest.mark.unit_tests
+def test_a_multiline_tool_name_is_one_short_label_and_never_grows_the_text(monkeypatch):
+    """A tool-call name with hundreds of newlines (raw data) becomes a one-line label
+    of at most 80 chars, in field labels and span names, so a moved value's tag is no
+    longer than the reference it replaces."""
+    shared = "shared report " + "z" * 900
+    weird = "a" * 670 + "\n" * 500 + "b" * 420
+    call = {
+        "message": {
+            "role": "assistant",
+            "tool_calls": [
+                {"tool_call": {"function": {"name": weird, "arguments": shared}}},
+            ],
+        },
+    }
+    spans = [
+        span(
+            "root",
+            None,
+            "AGENT",
+            "agent",
+            0.0,
+            {"input": {"value": "go"}, "output": {"value": "done"}},
+        ),
+    ]
+    for i in range(14):
+        if i == 7:
+            spans.append(
+                span(
+                    f"t{i}",
+                    "root",
+                    "LLM",
+                    weird,
+                    1.0 + i,
+                    {"llm": {"output_messages": [call]}},
+                ),
+            )
+        else:
+            spans.append(
+                span(
+                    f"t{i}",
+                    "root",
+                    "TOOL",
+                    "read",
+                    1.0 + i,
+                    {
+                        "input": {"value": str(i)},
+                        "output": {"value": f"file {i} " + "x" * 900},
+                    },
+                ),
+            )
+    for j in range(3):
+        spans.append(
+            span(
+                f"r{j}",
+                "root",
+                "TOOL",
+                "send",
+                50.0 + j,
+                {"input": {"value": shared}},
+            ),
+        )
+    text, _ = serialize_trace(spans)
+    label_line = next(line for line in text.splitlines() if "out.call " in line)
+    assert len(label_line.split(":", 1)[0].strip()) <= 80 and "…" in label_line
+    head = next(
+        line for line in text.splitlines() if line.strip().startswith("[9] LLM")
+    )
+    assert "\n" not in head and len(head) < 200
+    assert_smallest_omission(spans, (2000, 4000, 6000, 8000), monkeypatch)

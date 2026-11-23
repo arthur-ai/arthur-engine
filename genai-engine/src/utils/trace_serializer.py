@@ -46,6 +46,9 @@ PROTECTED_CAP = 4000  # root input/output, error text, tools
 DEDUPE_MIN_CHARS = 80
 TOOLS_FIELD_CAP = 1000
 FOOTER_RESERVE = 160
+LABEL_MAX_CHARS = (
+    80  # field labels and span names come from raw data (tool names, roles)
+)
 
 # Field classes, least important first: each ladder step shortens them in this order.
 (
@@ -151,6 +154,13 @@ def _get(data: Any, path: str) -> Any:
             return None
         data = data[part]
     return data
+
+
+def _one_line(text: str, cap: int = LABEL_MAX_CHARS) -> str:
+    """A name from raw data on one line and at most cap chars, so a label or span name
+    cannot break the tree layout or grow when it is repeated."""
+    text = " ".join(str(text).split())
+    return text if len(text) <= cap else text[: cap - 1] + "…"
 
 
 def _cut(text: str, cap: int) -> tuple[str, int]:
@@ -347,7 +357,7 @@ def _head_line(
     attributes = raw.get("attributes") or {}
     start, end = _seconds(span.start_time), _seconds(span.end_time)
     kind = (span.span_kind or "SPAN").upper()
-    name = span.span_name or "?"
+    name = _one_line(span.span_name or "?")
     parts = [
         f"[{number}]",
         kind,
@@ -557,7 +567,8 @@ def serialize_trace(
         is_root = span.parent_span_id is None
         is_error = _is_error(span)
         fields: list[_RowField] = []
-        for label, value, field_class in _span_fields(span, is_root=is_root):
+        for raw_label, value, field_class in _span_fields(span, is_root=is_root):
+            label = _one_line(raw_label)
             text = _text(value)
             if dedupe and len(text) >= DEDUPE_MIN_CHARS:
                 digest = hashlib.sha256(text.encode()).hexdigest()
@@ -592,7 +603,10 @@ def serialize_trace(
                 fields=fields,
                 is_error=is_error,
                 is_root=is_root,
-                signature=((span.span_kind or "SPAN").upper(), span.span_name or "?"),
+                signature=(
+                    (span.span_kind or "SPAN").upper(),
+                    _one_line(span.span_name or "?"),
+                ),
             ),
         )
 
