@@ -18,6 +18,9 @@
 # string, or as PEM text (Go's gocertifi, Node's node_root_certs.h), matched by
 # two lines of the certificate body.
 #
+# Finally flags any file that contains the root's public key as raw bytes, whatever
+# name the entry or certificate carries.
+#
 # Usage: .github/scripts/check_no_emsign_g3.sh <image>
 #   e.g. .github/scripts/check_no_emsign_g3.sh arthurplatform/genai-engine-cpu:2.1.1040
 # Needs: docker, awk, GNU tar, openssl.
@@ -120,6 +123,26 @@ while IFS= read -r p; do
   printf 'FAIL: %s embeds emSign ECC Root CA - G3 as PEM text (compiled-in root store or unlabelled bundle)\n' "$p"
   FOUND=1
 done < "$WORK/embed-pem.list"
+
+# The key is what is compromised, so also look for it directly: the root's P-384
+# public key (the 97-byte uncompressed point) as raw bytes, in every file. This is
+# independent of the certificate's name and of how much DER framing a store keeps,
+# so it catches a compiled-in entry that was only renamed, a certificate re-issued
+# for the same key, and a DER-encoded *.crt / *.cer / *.der file, none of which the
+# scans above see. grep works line by line and byte 90 of the key is a newline, so
+# the pattern is the first 90 bytes of the key. LC_ALL=C makes grep -P match bytes,
+# not UTF-8 code points.
+G3_KEY='\x04\x23\xa5\x0c\xb8\x2d\x12\xf5\x28\xf3\xb1\xb2\xdd\xe2\x02\x12\x80\x9e\x39\x5f\x49\x4d\x9f\xc9\x25\x34\x59\x74\xec'\
+'\xbb\x06\x1c\xe7\xc0\x72\xaf\xe8\xae\x2f\xe1\x41\x54\x87\x14\xa8\x4a\xb2\xe8\x7c\x82\xe6\x5b\x6a\xb5\xdc\xb3\x75\xce'\
+'\x8b\x06\xd0\x86\x23\xbf\x46\xd5\x8e\x0f\x3f\x04\xf4\xd7\x1c\x92\x7e\xf6\xa5\x63\xc2\xf5\x5f\x8e\x2e\x4f\xa1\x18\x19'\
+'\x02\x2b\x32'
+( cd "$WORK/fs" && find . -type f -size +89c \
+    -exec env LC_ALL=C grep -laP -- "$G3_KEY" {} + ) 2>> "$WORK/scan.err" | sed 's|^\.||' > "$WORK/embed-key.list" || true
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  printf 'FAIL: %s contains the public key of emSign ECC Root CA - G3\n' "$p"
+  FOUND=1
+done < "$WORK/embed-key.list"
 
 # grep and find report a file or directory they cannot read on stderr and move
 # on, so the scans above would pass an image they never fully inspected (the
