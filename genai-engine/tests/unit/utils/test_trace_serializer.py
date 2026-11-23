@@ -650,3 +650,39 @@ def test_many_repeats_under_a_long_label_never_grow_the_text(monkeypatch):
             ),
         )
     assert_smallest_omission(spans, (2000, 4000, 6000, 8000), monkeypatch)
+
+
+@pytest.mark.unit_tests
+def test_a_multiline_value_moved_to_a_deeper_repeat_never_grows_the_text(monkeypatch):
+    """A multi-line tool result repeats as the args of a TOOL span four levels deep.
+    The moved copy keeps a fixed indent, so the extra depth cannot make it longer."""
+    shared = "a\n" * 100 + "z"
+    spans = [
+        span(
+            "root",
+            None,
+            "AGENT",
+            "agent",
+            0.0,
+            {"input": {"value": "go"}, "output": {"value": "done"}},
+        ),
+    ]
+    for i in range(14):
+        output = shared if i == 7 else f"file {i} " + "x" * 900
+        spans.append(
+            span(
+                f"t{i}",
+                "root",
+                "TOOL",
+                "read",
+                1.0 + i,
+                {"input": {"value": str(i)}, "output": {"value": output}},
+            ),
+        )
+    spans += [
+        span("c1", "root", "CHAIN", "step", 60.0, {}),
+        span("c2", "c1", "CHAIN", "step", 61.0, {}),
+        span("c3", "c2", "CHAIN", "step", 62.0, {}),
+        span("deep", "c3", "TOOL", "send", 63.0, {"input": {"value": shared}}),
+    ]
+    assert_smallest_omission(spans, (2000, 3000, 4000, 6000), monkeypatch)

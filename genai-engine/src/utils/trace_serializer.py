@@ -451,9 +451,10 @@ def _render(
     A back-reference always reads "(same as [n] label)", naming the value's first
     field, so its length never depends on what else is shown. When that field's row
     has no body, the first reference still shown carries the value instead, tagged
-    "(value of [n] label)" so the others resolve to it, and cut at the first field's
-    cap. So leaving out a body never makes the text longer: the value moves to one
-    place, at the length it had, and no reference grows. With expand_references every
+    "(value of [n] label)" so the others resolve to it, cut at the first field's cap
+    and with its continuation lines indented by a fixed four spaces, whatever its
+    depth. So leaving out a body never makes the text longer: the value moves to one
+    place, at the length it had and with no more indentation, and no reference grows. With expand_references every
     back-reference shows its value (for the final cut, which may drop any target)."""
     lines, fields_cut, chars_cut = [header], 0, 0
     shown: set[str] = set()  # groups whose value is shown somewhere above
@@ -495,7 +496,9 @@ def _render(
                 if removed:
                     fields_cut += 1
                     chars_cut += removed
-                cut_text = (tag + cut_text).replace("\n", "\n" + pad + "    ")
+                # A moved value keeps a fixed indent, so a deeper row cannot make it longer.
+                indent = "    " if tag else pad + "    "
+                cut_text = (tag + cut_text).replace("\n", "\n" + indent)
                 lines.append(f"{pad}  {field.label}: {cut_text}")
         i += 1
     return "\n".join(lines), fields_cut, chars_cut
