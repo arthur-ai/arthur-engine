@@ -13,8 +13,13 @@
 # looks at every PEM file rather than only certifi, and does not skip pip's
 # vendored certifi (the Dockerfiles filter that one too).
 #
-# Also flags any other file that embeds the root as DER (compiled-in root stores
-# such as litellm's Rust extension or Go binaries), matched by the subject string.
+# Also flags any other file that embeds the root: as DER (compiled-in root stores
+# such as litellm's Rust extension or Go's x509 bundles), matched by the subject
+# string, or as PEM text (Go's gocertifi, Node's node_root_certs.h), matched by
+# two lines of the certificate body.
+#
+# Finally flags any file that contains the root's public key as raw bytes, whatever
+# name the entry or certificate carries.
 #
 # Usage: .github/scripts/check_no_emsign_g3.sh <image>
 #   e.g. .github/scripts/check_no_emsign_g3.sh arthurplatform/genai-engine-cpu:2.1.1040
@@ -91,12 +96,62 @@ done < "$WORK/links.list"
 # name, so source files and comments that merely mention the root do not match.
 DER_CN='\x06\x03\x55\x04\x03\x13\x17emSign ECC Root CA - G3'
 ( cd "$WORK/fs" && find . -type f ! -name '*.pem' ! -name '*.crt' -size +1k \
-    -exec grep -laP -- "$DER_CN" {} + ) | sed 's|^\.||' > "$WORK/embed.list" || true
+    -exec grep -laP -- "$DER_CN" {} + ) 2>> "$WORK/scan.err" | sed 's|^\.||' > "$WORK/embed.list" || true
 while IFS= read -r p; do
   [ -n "$p" ] || continue
   printf 'FAIL: %s embeds emSign ECC Root CA - G3 (compiled-in root store)\n' "$p"
   FOUND=1
 done < "$WORK/embed.list"
+
+# The same root store can be compiled in as PEM text instead: Go's gocertifi
+# (linked into spicedb) and Node's node_root_certs.h keep the Mozilla bundle as
+# strings, and the DER search above cannot see base64. Match the first and a
+# middle 64-column line of the certificate body as fixed strings; they are the
+# same whether the binary stores real or escaped ("\n") line breaks. Both lines
+# must be in the file, so a Dockerfile or script that quotes only the first
+# line in order to strip the root (as ours do) does not match. A PEM bundle
+# that is simply not named *.pem / *.crt is caught here too, whatever its size
+# (a lone certificate is under 1k, so this scan has no size floor). Same check as arthur-scope's.
+G3_PEM_LINE_1='MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBrMQswCQYDVQQG'
+G3_PEM_LINE_2='WXTsuwYc58Byr+iuL+FBVIcUqEqy6HyC5ltqtdyzdc6LBtCGI79G1Y4PPwT01xyS'
+( cd "$WORK/fs" && find . -type f ! -name '*.pem' ! -name '*.crt' \
+    -exec grep -laF -e "$G3_PEM_LINE_1" {} + | while IFS= read -r f; do
+      if grep -qaF -e "$G3_PEM_LINE_2" "$f"; then printf '%s\n' "$f"; fi
+    done ) 2>> "$WORK/scan.err" | sed 's|^\.||' > "$WORK/embed-pem.list" || true
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  printf 'FAIL: %s embeds emSign ECC Root CA - G3 as PEM text (compiled-in root store or unlabelled bundle)\n' "$p"
+  FOUND=1
+done < "$WORK/embed-pem.list"
+
+# The key is what is compromised, so also look for it directly: the root's P-384
+# public key (the 97-byte uncompressed point) as raw bytes, in every file. This is
+# independent of the certificate's name and of how much DER framing a store keeps,
+# so it catches a compiled-in entry that was only renamed, a certificate re-issued
+# for the same key, and a DER-encoded *.crt / *.cer / *.der file, none of which the
+# scans above see. grep works line by line and byte 90 of the key is a newline, so
+# the pattern is the first 90 bytes of the key. LC_ALL=C makes grep -P match bytes,
+# not UTF-8 code points.
+G3_KEY='\x04\x23\xa5\x0c\xb8\x2d\x12\xf5\x28\xf3\xb1\xb2\xdd\xe2\x02\x12\x80\x9e\x39\x5f\x49\x4d\x9f\xc9\x25\x34\x59\x74\xec'\
+'\xbb\x06\x1c\xe7\xc0\x72\xaf\xe8\xae\x2f\xe1\x41\x54\x87\x14\xa8\x4a\xb2\xe8\x7c\x82\xe6\x5b\x6a\xb5\xdc\xb3\x75\xce'\
+'\x8b\x06\xd0\x86\x23\xbf\x46\xd5\x8e\x0f\x3f\x04\xf4\xd7\x1c\x92\x7e\xf6\xa5\x63\xc2\xf5\x5f\x8e\x2e\x4f\xa1\x18\x19'\
+'\x02\x2b\x32'
+( cd "$WORK/fs" && find . -type f -size +89c \
+    -exec env LC_ALL=C grep -laP -- "$G3_KEY" {} + ) 2>> "$WORK/scan.err" | sed 's|^\.||' > "$WORK/embed-key.list" || true
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  printf 'FAIL: %s contains the public key of emSign ECC Root CA - G3\n' "$p"
+  FOUND=1
+done < "$WORK/embed-key.list"
+
+# grep and find report a file or directory they cannot read on stderr and move
+# on, so the scans above would pass an image they never fully inspected (the
+# checks run unprivileged on some runners). Treat that like an unreadable bundle.
+if [ -s "$WORK/scan.err" ]; then
+  printf 'FAIL: %s has files that could not be read, so they were not checked:\n' "$IMAGE"
+  head -n 20 "$WORK/scan.err"
+  FOUND=1
+fi
 
 if [ "$FOUND" -ne 0 ]; then
   echo "ERROR: $IMAGE still trusts emSign ECC Root CA - G3 or has an unreadable bundle (SOC-222)"
