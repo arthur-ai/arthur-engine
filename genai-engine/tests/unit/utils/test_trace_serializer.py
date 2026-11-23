@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 import pytest
 
+from utils import trace_serializer
 from utils.trace_serializer import (
     FORMAT_VERSION,
     MIN_MAX_CHARS,
@@ -513,3 +514,78 @@ def test_an_exception_on_an_unset_status_counts_as_an_error():
     text, _ = serialize_trace(spans)
     assert "errors=1" in text.splitlines()[0]
     assert "[2] TOOL fetch +0.1s dur=0.5s ERROR" in text
+
+
+@pytest.mark.unit_tests
+def test_leaving_out_a_body_never_makes_the_text_longer(monkeypatch):
+    """A middle tool's long result repeats in a later span's (protected) error text.
+    Leaving out the tool's body moves the value to the repeat without growing the
+    text, so the omission search picks the smallest number of bodies that fits."""
+    shared = "shared report " + "z" * 900
+    spans = [
+        span(
+            "root",
+            None,
+            "AGENT",
+            "agent",
+            0.0,
+            {"input": {"value": "go"}, "output": {"value": "done"}},
+        ),
+    ]
+    for i in range(14):
+        output = shared if i == 7 else f"file {i} " + "x" * 900
+        spans.append(
+            span(
+                f"t{i}",
+                "root",
+                "TOOL",
+                "read",
+                1.0 + i,
+                {"input": {"value": str(i)}, "output": {"value": output}},
+            ),
+        )
+    spans.append(
+        span(
+            "err",
+            "root",
+            "TOOL",
+            "send",
+            100.0,
+            {"input": {"value": "x"}},
+            status="Error",
+            raw_extra={"status": {"message": shared}},
+        ),
+    )
+
+    captured: dict = {}
+    real_render = trace_serializer._render
+
+    def spy(header, rows, caps, bodiless, collapse=False, expand_references=False):
+        if not collapse and not expand_references:
+            captured["args"] = (header, rows, dict(caps))
+        return real_render(header, rows, caps, bodiless, collapse, expand_references)
+
+    for max_chars in (2000, 3050, 3500):
+        monkeypatch.setattr(trace_serializer, "_render", spy)
+        _, stats = serialize_trace(spans, max_chars=max_chars)
+        monkeypatch.setattr(trace_serializer, "_render", real_render)
+        header, rows, caps = captured["args"]
+        middle = (len(rows) + 1) / 2
+        droppable = [
+            row.number
+            for row in sorted(
+                (row for row in rows if not row.is_root),
+                key=lambda row: (row.is_error, abs(row.number - middle), row.number),
+            )
+        ]
+        sizes = [
+            len(real_render(header, rows, caps, set(droppable[:k]))[0])
+            for k in range(len(droppable) + 1)
+        ]
+        assert all(b <= a for a, b in zip(sizes, sizes[1:])), (max_chars, sizes)
+        smallest = next(
+            k
+            for k, size in enumerate(sizes)
+            if size + trace_serializer.FOOTER_RESERVE <= max_chars
+        )
+        assert stats.bodies_omitted == smallest, (max_chars, smallest)

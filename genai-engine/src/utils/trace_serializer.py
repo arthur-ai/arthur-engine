@@ -371,10 +371,21 @@ def _head_line(
 
 
 class _RowField:
-    """One field of a row. A back-reference also keeps the value it stands for, so
-    the value can be shown again when its target row's body is left out."""
+    """One field of a row. A long value that repeats has a group (its digest). A
+    back-reference also keeps the value it stands for and the class of the field it
+    points at, so the value can be shown again when its target row's body is left out.
+    """
 
-    __slots__ = ("label", "text", "field_class", "target", "value", "value_class")
+    __slots__ = (
+        "label",
+        "text",
+        "field_class",
+        "target",
+        "value",
+        "value_class",
+        "group",
+        "target_class",
+    )
 
     def __init__(
         self,
@@ -384,6 +395,8 @@ class _RowField:
         target: Optional[int] = None,
         value: str = "",
         value_class: int = C_PROTECTED,
+        group: Optional[str] = None,
+        target_class: int = C_PROTECTED,
     ) -> None:
         self.label = label
         self.text = text
@@ -391,6 +404,8 @@ class _RowField:
         self.target = target
         self.value = value
         self.value_class = value_class
+        self.group = group
+        self.target_class = target_class
 
 
 class _Row:
@@ -433,10 +448,14 @@ def _render(
 ) -> tuple[str, int, int]:
     """Returns (text, fields shortened, chars cut).
 
-    A back-reference whose target row has no body shows the value itself; with
-    expand_references every back-reference does (for the final cut, which may drop
-    any target)."""
+    A back-reference points at the first copy of its value still shown. When none is
+    shown (its target row has no body), the first such reference shows the value
+    itself, cut at its target field's cap, and later ones point at it. So leaving out
+    a body never makes the text longer: the value moves, it is not shown twice, and it
+    keeps the length the target had. With expand_references every back-reference
+    shows its value (for the final cut, which may drop any target)."""
     lines, fields_cut, chars_cut = [header], 0, 0
+    shown_at: dict[str, str] = {}  # group -> "[n] label" of the first copy shown
     i = 0
     while i < len(rows):
         row = rows[i]
@@ -462,10 +481,17 @@ def _render(
         if row.number not in bodiless:
             for field in row.fields:
                 text, field_class = field.text, field.field_class
-                if field.target is not None and (
-                    expand_references or field.target in bodiless
-                ):
+                where = f"[{row.number}] {field.label}"
+                if field.target is None:
+                    if field.group is not None:
+                        shown_at.setdefault(field.group, where)
+                elif expand_references:
                     text, field_class = field.value, field.value_class
+                elif field.group in shown_at:
+                    text = f"(same as {shown_at[field.group]})"
+                else:
+                    text, field_class = field.value, field.target_class
+                    shown_at[field.group or where] = where
                 shown, removed = _cut(text, caps[field_class])
                 if removed:
                     fields_cut += 1
@@ -522,7 +548,7 @@ def serialize_trace(
     trace_end = max(_seconds(span.end_time) for span in spans)
 
     # 2. Fields per span, with back-references for exact repeats of long values.
-    seen: dict[str, tuple[int, str]] = {}
+    seen: dict[str, tuple[int, str, int]] = {}
     rows: list[_Row] = []
     duplicate_chars = 0
     for number, (span, level, is_detached) in enumerate(placed, 1):
@@ -534,7 +560,7 @@ def serialize_trace(
             if dedupe and len(text) >= DEDUPE_MIN_CHARS:
                 digest = hashlib.sha256(text.encode()).hexdigest()
                 if digest in seen:
-                    target, target_label = seen[digest]
+                    target, target_label, target_class = seen[digest]
                     duplicate_chars += len(text)
                     fields.append(
                         _RowField(
@@ -544,10 +570,14 @@ def serialize_trace(
                             target=target,
                             value=text,
                             value_class=field_class,
+                            group=digest,
+                            target_class=target_class,
                         ),
                     )
                     continue
-                seen[digest] = (number, label)
+                seen[digest] = (number, label, field_class)
+                fields.append(_RowField(label, text, field_class, group=digest))
+                continue
             fields.append(_RowField(label, text, field_class))
         head = _head_line(span, number, trace_start, is_error)
         if is_detached:
