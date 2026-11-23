@@ -10,7 +10,6 @@ from clients.telemetry.telemetry_client import (
     TelemetryEventTypes,
     get_public_ip,
     send_telemetry_event,
-    send_telemetry_event_for_default_rule_create_completed,
     send_telemetry_event_for_task_rule_create_completed,
 )
 
@@ -138,41 +137,4 @@ def test_get_public_ip_error():
 def test_send_telemetry_event_for_task_rule_create_completed(rule_type, expected_event):
     with patch("clients.telemetry.telemetry_client.send_telemetry_event") as mock_send:
         send_telemetry_event_for_task_rule_create_completed(rule_type)
-        mock_send.assert_called_once_with(expected_event)
-
-
-@pytest.mark.unit_tests
-@pytest.mark.parametrize(
-    "rule_type,expected_event",
-    [
-        (RuleType.REGEX, TelemetryEventTypes.DEFAULT_RULE_FOR_REGEX_CREATE_COMPLETED),
-        (
-            RuleType.KEYWORD,
-            TelemetryEventTypes.DEFAULT_RULE_FOR_KEYWORD_CREATE_COMPLETED,
-        ),
-        (
-            RuleType.MODEL_HALLUCINATION_V2,
-            TelemetryEventTypes.DEFAULT_RULE_FOR_HALLUCINATION_V2_CREATE_COMPLETED,
-        ),
-        (RuleType.PII_DATA, TelemetryEventTypes.DEFAULT_RULE_FOR_PII_CREATE_COMPLETED),
-        (
-            RuleType.PROMPT_INJECTION,
-            TelemetryEventTypes.DEFAULT_RULE_FOR_PROMPT_INJECTION_CREATE_COMPLETED,
-        ),
-        (
-            RuleType.MODEL_SENSITIVE_DATA,
-            TelemetryEventTypes.DEFAULT_RULE_FOR_SENSITIVE_DATA_CREATE_COMPLETED,
-        ),
-        (
-            RuleType.TOXICITY,
-            TelemetryEventTypes.DEFAULT_RULE_FOR_TOXICITY_CREATE_COMPLETED,
-        ),
-    ],
-)
-def test_send_telemetry_event_for_default_rule_create_completed(
-    rule_type,
-    expected_event,
-):
-    with patch("clients.telemetry.telemetry_client.send_telemetry_event") as mock_send:
-        send_telemetry_event_for_default_rule_create_completed(rule_type)
         mock_send.assert_called_once_with(expected_event)

@@ -21,6 +21,7 @@ import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
+import { percentToSampleRate, SampleRateField, samplePercentSchema, sampleRateToPercent } from "../sample-rate";
 import { VariableMappingSection } from "../variable-mapping";
 
 import { useMLEval } from "@/components/evaluators/hooks/useEval";
@@ -63,6 +64,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       name: data.name,
       description: data.description ?? "",
       enabled: data.enabled,
+      samplePercent: sampleRateToPercent(data.sample_rate),
       transform: {
         transformId: data.transform_id,
         transformVersionId: data.transform_version_id ?? null,
@@ -83,6 +85,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        // null resets the rate to every trace.
+        sample_rate: percentToSampleRate(value.samplePercent),
         transform_id: value.transform.transformId,
         transform_version_id: value.transform.transformVersionId ?? undefined,
         ...(isML
@@ -201,6 +205,11 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
                   label="Enable continuous eval"
                   slotProps={{ typography: { color: "text.primary" } }}
                 />
+              )}
+            </form.Field>
+            <form.Field name="samplePercent" validators={{ onChange: samplePercentSchema }}>
+              {(field) => (
+                <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
               )}
             </form.Field>
           </Stack>

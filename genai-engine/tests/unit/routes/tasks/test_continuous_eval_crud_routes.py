@@ -9,6 +9,10 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
+from repositories.continuous_evals_repository import (
+    ContinuousEvalsRepository,
+    is_trace_sampled,
+)
 from schemas.internal_schemas import Span as InternalSpan
 from schemas.internal_schemas import TraceTransform
 from schemas.llm_eval_schemas import Eval
@@ -2386,3 +2390,202 @@ def test_get_daily_annotation_analytics_default_time_range(
     finally:
         # Cleanup base test data (task, trace, spans)
         cleanup_test_data(test_data)
+
+
+def _create_sampled_continuous_eval(
+    client: GenaiEngineTestClientBase,
+    task_id: str,
+    name: str,
+    sample_rate: Optional[float],
+) -> tuple[int, object]:
+    status_code, llm_eval = create_test_llm_eval(client, task_id, llm_eval_name=name)
+    assert status_code == 200
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+    data = {
+        "name": name,
+        "llm_eval_name": llm_eval.name,
+        "llm_eval_version": llm_eval.version,
+        "transform_id": str(transform.id),
+        "transform_variable_mapping": [
+            {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+        ],
+    }
+    if sample_rate is not None:
+        data["sample_rate"] = sample_rate
+    return client.save_continuous_eval(task_id=task_id, continuous_eval_data=data)
+
+
+@pytest.mark.unit_tests
+def test_continuous_eval_sample_rate_create_update_get(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, agentic_task = client.create_task(
+        name="test_continuous_eval_sample_rate",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Unset reads back as null: every trace is evaluated.
+        status_code, unsampled = _create_sampled_continuous_eval(
+            client,
+            agentic_task.id,
+            "unsampled",
+            None,
+        )
+        assert status_code == 200
+        assert unsampled.sample_rate is None
+
+        status_code, sampled = _create_sampled_continuous_eval(
+            client,
+            agentic_task.id,
+            "sampled",
+            0.25,
+        )
+        assert status_code == 200
+        assert sampled.sample_rate == 0.25
+
+        status_code, fetched = client.get_continuous_eval_by_id(sampled.id)
+        assert status_code == 200
+        assert fetched.sample_rate == 0.25
+
+        status_code, listed = client.list_continuous_evals(agentic_task.id)
+        assert status_code == 200
+        rates = {e.name: e.sample_rate for e in listed.evals}
+        assert rates == {"unsampled": None, "sampled": 0.25}
+
+        # An update that leaves sample_rate out keeps it.
+        status_code, updated = client.update_continuous_eval(
+            continuous_eval_id=sampled.id,
+            continuous_eval_data={"description": "still sampled"},
+        )
+        assert status_code == 200
+        assert updated.sample_rate == 0.25
+
+        status_code, updated = client.update_continuous_eval(
+            continuous_eval_id=sampled.id,
+            continuous_eval_data={"sample_rate": 1.0},
+        )
+        assert status_code == 200
+        assert updated.sample_rate == 1.0
+
+        # An explicit null clears it.
+        status_code, updated = client.update_continuous_eval(
+            continuous_eval_id=sampled.id,
+            continuous_eval_data={"sample_rate": None},
+        )
+        assert status_code == 200
+        assert updated.sample_rate is None
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("sample_rate", [0, 0.0, -0.1, 1.01, 2])
+def test_continuous_eval_sample_rate_out_of_range_is_rejected(
+    client: GenaiEngineTestClientBase,
+    sample_rate: float,
+):
+    status_code, agentic_task = client.create_task(
+        name="test_continuous_eval_sample_rate_validation",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, error = _create_sampled_continuous_eval(
+            client,
+            agentic_task.id,
+            "out_of_range",
+            sample_rate,
+        )
+        assert status_code == 400
+        assert "sample_rate" in str(error)
+
+        status_code, valid = _create_sampled_continuous_eval(
+            client,
+            agentic_task.id,
+            "in_range",
+            0.5,
+        )
+        assert status_code == 200
+        status_code, error = client.update_continuous_eval(
+            continuous_eval_id=valid.id,
+            continuous_eval_data={"sample_rate": sample_rate},
+        )
+        assert status_code == 400
+        assert "sample_rate" in str(error)
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_enqueue_skips_traces_outside_sample_rate(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, agentic_task = client.create_task(
+        name="test_enqueue_sample_rate",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        evals = {}
+        for name, rate in (("every", None), ("half", 0.5), ("half_too", 0.5)):
+            status_code, continuous_eval = _create_sampled_continuous_eval(
+                client,
+                agentic_task.id,
+                name,
+                rate,
+            )
+            assert status_code == 200
+            evals[continuous_eval.id] = name
+
+        trace_ids = [
+            uuid.uuid5(uuid.NAMESPACE_OID, f"up-5351-{i}").hex for i in range(200)
+        ]
+        queue_service = MagicMock()
+        db_session = override_get_db_session()
+        with patch(
+            "repositories.continuous_evals_repository.get_continuous_eval_queue_service",
+            return_value=queue_service,
+        ):
+            repo = ContinuousEvalsRepository(db_session)
+            for trace_id in trace_ids:
+                repo._enqueue_continuous_evals_for_trace(
+                    trace_id,
+                    agentic_task.id,
+                )
+
+        enqueued: dict[str, set[str]] = {name: set() for name in evals.values()}
+        for call in queue_service.enqueue.call_args_list:
+            job = call.args[0]
+            enqueued[evals[job.continuous_eval_id]].add(job.trace_id)
+
+        # No rate: every trace.
+        assert enqueued["every"] == set(trace_ids)
+        # The rate picks the traces the hash says, and the same ones for both evals.
+        expected = {t for t in trace_ids if is_trace_sampled(t, 0.5)}
+        assert enqueued["half"] == expected
+        assert enqueued["half_too"] == expected
+        assert 0 < len(expected) < len(trace_ids)
+
+        # Skipped traces get no pending annotation either.
+        annotated = {
+            row.trace_id
+            for row in db_session.query(DatabaseAgenticAnnotation)
+            .filter(
+                DatabaseAgenticAnnotation.continuous_eval_id.in_(
+                    [eval_id for eval_id, name in evals.items() if name == "half"],
+                ),
+            )
+            .all()
+        }
+        assert annotated == expected
+        db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.trace_id.in_(trace_ids),
+        ).delete(synchronize_session=False)
+        db_session.commit()
+    finally:
+        client.delete_task(agentic_task.id)

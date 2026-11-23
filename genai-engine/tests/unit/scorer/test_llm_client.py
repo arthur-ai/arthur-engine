@@ -101,10 +101,10 @@ def test_execute_raise_rate_limit_error(openai_executor: LLMExecutor):
 
     with pytest.raises(LLMExecutionException) as err:
         openai_executor.execute(f, "anything")
-        assert (
-            err.message
-            == "GenAI Engine was unable to evaluate due to an upstream API rate limit"
-        )
+    assert (
+        str(err.value)
+        == "GenAI Engine was unable to evaluate due to an upstream API rate limit"
+    )
 
 
 @pytest.mark.parametrize(
@@ -120,10 +120,10 @@ def test_execute_raise_api_connection_error(openai_executor: LLMExecutor):
 
     with pytest.raises(LLMExecutionException) as err:
         openai_executor.execute(f, "anything")
-        assert (
-            err.message
-            == "GenAI Engine was unable to evaluate due to an upstream API connection error"
-        )
+    assert (
+        str(err.value)
+        == "GenAI Engine was unable to evaluate due to an upstream API connection error"
+    )
 
 
 @pytest.mark.parametrize(
@@ -150,11 +150,17 @@ def test_execute_raise_api_connection_error(openai_executor: LLMExecutor):
         (
             "content_filter",
             LLMContentFilterException,
-            "",
+            "GenAI Engine was unable to evaluate due to an upstream content policy",
             DEFAULT_AZURE_OPENAI_SETTINGS,
         ),
         (
             "unknown",
+            LLMExecutionException,
+            "GenAI Engine was unable to evaluate due to an upstream API request error (code: unknown)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+        (
+            None,
             LLMExecutionException,
             "GenAI Engine was unable to evaluate due to an upstream API request error",
             DEFAULT_AZURE_OPENAI_SETTINGS,
@@ -175,7 +181,84 @@ def test_execute_raise_error_with_code(
 
     with pytest.raises(expected_exception) as err:
         openai_executor.execute(f, "anything")
-        assert err.message == expected_message
+    assert str(err.value) == expected_message
+
+
+@pytest.mark.parametrize(
+    "error_class, status_code, body, expected_details, openai_executor",
+    [
+        (
+            openai.AuthenticationError,
+            401,
+            {"code": "invalid_api_key"},
+            " (HTTP 401, code: invalid_api_key)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+        (
+            openai.NotFoundError,
+            404,
+            {"code": "DeploymentNotFound"},
+            " (HTTP 404, code: DeploymentNotFound)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+        (
+            openai.BadRequestError,
+            400,
+            {"code": "unsupported_value", "param": "temperature"},
+            " (HTTP 400, code: unsupported_value, param: temperature)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+        (
+            openai.PermissionDeniedError,
+            403,
+            None,
+            " (HTTP 403)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+        # LiteLLM proxies send the status as the code and "None" for an absent param.
+        (
+            openai.BadRequestError,
+            400,
+            {"code": "400", "param": "None"},
+            " (HTTP 400, code: 400)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+        # Free text in an identifier field is not echoed.
+        (
+            openai.AuthenticationError,
+            401,
+            {"code": "Access denied for https://my-resource.example.com"},
+            " (HTTP 401)",
+            DEFAULT_AZURE_OPENAI_SETTINGS,
+        ),
+    ],
+    indirect=["openai_executor"],
+)
+@pytest.mark.unit_tests
+def test_execute_request_error_reports_upstream_status(
+    error_class,
+    status_code,
+    body,
+    expected_details,
+    openai_executor: LLMExecutor,
+):
+    def f():
+        request = httpx.Request(method="POST", url="http://example.com")
+        response = httpx.Response(status_code=status_code, request=request)
+        # The upstream message text must not reach the caller, only its identifiers.
+        raise error_class(
+            message="Incorrect key sk-abc for https://my-resource.example.com",
+            response=response,
+            body=body,
+        )
+
+    with pytest.raises(LLMExecutionException) as err:
+        openai_executor.execute(f, "anything")
+    assert (
+        str(err.value)
+        == "GenAI Engine was unable to evaluate due to an upstream API request error"
+        + expected_details
+    )
 
 
 @pytest.mark.unit_tests

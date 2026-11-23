@@ -4,19 +4,12 @@ from unittest.mock import patch
 
 import pytest
 from cachetools import TTLCache
+
 from repositories.tasks_rules_repository import TasksRulesRepository
 from schemas.internal_schemas import Rule, Task
 from tests.clients.base_test_client import override_get_db_session
 
 LOGGER = logging.getLogger(__name__)
-
-
-# Every test here creates a task and counts or caps its rules, so default rules
-# that other tests left active must not be linked to it. Autouse fixtures set up
-# before the other fixtures in their scope, so this runs before create_task.
-@pytest.fixture(autouse=True)
-def _without_leftover_default_rules(without_leftover_default_rules: None) -> None:
-    pass
 
 
 @pytest.mark.unit_tests

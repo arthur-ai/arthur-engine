@@ -78,9 +78,10 @@ def test_package_is_in_the_all_extra(instrumentor: Instrumentor):
 def test_all_extra_repeats_the_individual_marker(instrumentor: Instrumentor):
     """A marked requirement must carry the same marker inside ``all``.
 
-    ``beeai`` is 3.11+ only.  Dropping its marker from ``all`` would make
-    ``pip install arthur-observability-sdk[all]`` unresolvable on 3.10, which
-    the SDK still supports.
+    Nothing is marked today (``beeai`` lost its 3.11+ marker when the SDK
+    dropped 3.10), but dropping a marker from ``all`` would make
+    ``pip install arthur-observability-sdk[all]`` unresolvable on the
+    interpreters the marker excludes.
     """
     individual = {
         requirement.split(";")[0].strip(): marker_of(requirement)

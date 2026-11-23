@@ -41,10 +41,10 @@ from schemas.agent_discovery_schemas import (
     TaskResolutionMethod,
 )
 from schemas.enums import MappingKeyKind
+from schemas.internal_schemas import Task
 from services.task.discovery_task_resolution_service import (
     DiscoveryTaskResolutionService,
 )
-from schemas.internal_schemas import Task
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from utils.constants import DEFAULT_ORG_ID
@@ -442,7 +442,8 @@ def test_trace_named_like_an_external_id_does_not_join_its_task(
     external_id = f"{run}-shared-string"
 
     [resolved] = resolver.resolve_records(
-        [_siem_record(external_id)], source_id=SOURCE_ID
+        [_siem_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(resolved.task_id)
 
@@ -457,7 +458,8 @@ def test_trace_named_like_an_external_id_does_not_join_its_task(
 
     # Both rows now exist under the one string, and each still routes its own kind.
     [rescanned] = resolver.resolve_records(
-        [_siem_record(external_id)], source_id=SOURCE_ID
+        [_siem_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
     assert rescanned.task_id == resolved.task_id
     assert rescanned.resolved_by is TaskResolutionMethod.EXTERNAL_ID
@@ -525,7 +527,8 @@ def test_explicit_task_id_routes_to_that_task_and_keys_the_identity_to_it(
     external_id = f"{run}-splunk-1"
 
     [existing] = resolver.resolve_records(
-        [_siem_record(f"{run}-existing")], source_id=SOURCE_ID
+        [_siem_record(f"{run}-existing")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(existing.task_id)
 
@@ -563,10 +566,12 @@ def test_explicit_task_id_cannot_move_an_identity_already_mapped(
     new_service_name = f"openclaw-{run}"
 
     [first] = resolver.resolve_records(
-        [_endpoint_record(external_id)], source_id=SOURCE_ID
+        [_endpoint_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
     [other] = resolver.resolve_records(
-        [_siem_record(f"{run}-other")], source_id=SOURCE_ID
+        [_siem_record(f"{run}-other")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.extend([first.task_id, other.task_id])
 
@@ -595,7 +600,8 @@ def test_explicit_task_id_cannot_move_an_identity_already_mapped(
     assert mapping_repo.get_task_id_by_service_name(new_service_name) == first.task_id
 
     [next_scan] = resolver.resolve_records(
-        [_endpoint_record(external_id)], source_id=SOURCE_ID
+        [_endpoint_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
     assert next_scan.task_id == first.task_id
 
@@ -679,7 +685,8 @@ def test_task_deleted_mid_batch_fails_only_its_record(
     """
     run = _run_id()
     [target] = resolver.resolve_records(
-        [_siem_record(f"{run}-target")], source_id=SOURCE_ID
+        [_siem_record(f"{run}-target")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(target.task_id)
 
@@ -719,7 +726,8 @@ def test_archived_task_still_wins_its_identity(resolver, db_session, tracked_tas
     external_id = f"{run}-openclaw"
 
     [first] = resolver.resolve_records(
-        [_endpoint_record(external_id)], source_id=SOURCE_ID
+        [_endpoint_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(first.task_id)
     db_session.query(DatabaseTask).filter_by(id=first.task_id).update(
@@ -728,7 +736,8 @@ def test_archived_task_still_wins_its_identity(resolver, db_session, tracked_tas
     db_session.commit()
 
     [second] = resolver.resolve_records(
-        [_endpoint_record(external_id)], source_id=SOURCE_ID
+        [_endpoint_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert second.task_id == first.task_id
@@ -828,7 +837,8 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
     external_id = f"{run}-contested"
 
     [winner] = resolver.resolve_records(
-        [_siem_record(f"{run}-winner")], source_id=SOURCE_ID
+        [_siem_record(f"{run}-winner")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.append(winner.task_id)
 
@@ -844,7 +854,8 @@ def test_losing_a_concurrent_identity_claim_yields_to_the_winner(
     resolver.mapping_repo.create_mapping = claim_first
 
     [resolved] = resolver.resolve_records(
-        [_endpoint_record(external_id)], source_id=SOURCE_ID
+        [_endpoint_record(external_id)],
+        source_id=SOURCE_ID,
     ).resolved
 
     assert resolved.task_id == winner.task_id
@@ -881,7 +892,8 @@ def test_losing_the_identity_claim_after_a_service_name_match_yields_to_the_winn
         source_id=SOURCE_ID,
     ).resolved
     [winner] = resolver.resolve_records(
-        [_siem_record(f"{run}-winner")], source_id=SOURCE_ID
+        [_siem_record(f"{run}-winner")],
+        source_id=SOURCE_ID,
     ).resolved
     tracked_tasks.extend([matched.task_id, winner.task_id])
 
@@ -969,7 +981,6 @@ def _legacy_vertex_task(db_session, resource_name: str, engine_id: str) -> str:
                 ),
             ),
         ),
-        with_default_rules=False,
     )
     ServiceNameMappingRepository(db_session).create_mapping(resource_name, created.id)
     return created.id

@@ -118,12 +118,15 @@ tags_metadata = [
         "description": "Endpoints to manage tasks and their rules",
     },
     {
-        "name": "Default Validation",
-        "description": "Endpoints to validate prompt and response on default rules",
-    },
-    {
-        "name": "Task Based Validation",
-        "description": "Endpoints to validate prompt and response for a task",
+        "name": "Validation",
+        "description": (
+            "Endpoints to run guardrail rules against a prompt and its response. "
+            "Task validation (`/tasks/{task_id}/validate_prompt`, "
+            "`/tasks/{task_id}/validate_response/{inference_id}`) scores against the "
+            "task's configured rules and records the inference. Stateless validation "
+            "(`/validate`) scores against rule specs given inline, needs no task, and "
+            "persists nothing."
+        ),
     },
     {
         "name": "Feedback",

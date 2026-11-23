@@ -24,6 +24,9 @@ from utils.users import permission_checker
 # TENANT-USER keys are only mintable via the public tenant signup flow (UP-4430);
 # admins reach this endpoint via API_KEY_WRITE and must not be able to create them.
 _ADMIN_FORBIDDEN_ROLES = frozenset([constants.TENANT_USER])
+# Grants nothing since default rules were removed. Existing keys keep the role
+# name; no new key is minted with it.
+_RETIRED_ROLES = frozenset([constants.DEFAULT_RULE_ADMIN])
 
 api_key_validator_creators = [APIKeyValidatorCreator(APIKeyValidatorType.MASTER)]
 multi_validator = MultiMethodValidator(api_key_validator_creators)
@@ -43,7 +46,7 @@ api_keys_routes = APIRouter(
         f"Generates a new API key. Up to {Config.max_api_key_limit()} active keys can exist at "
         f"the same time by default. Contact your system administrator if you need more. "
         f"Allowed roles are: "
-        f"{', '.join(r.value for r in APIKeysRolesEnum if r.value not in _ADMIN_FORBIDDEN_ROLES)}."
+        f"{', '.join(r.value for r in APIKeysRolesEnum if r.value not in _ADMIN_FORBIDDEN_ROLES | _RETIRED_ROLES)}."
     ),
     response_model_exclude_none=True,
 )
@@ -63,6 +66,12 @@ def create_api_key(
                 f"Roles {sorted(forbidden)} cannot be assigned via this endpoint; "
                 f"use the tenant signup flow."
             ),
+        )
+    retired = {r.value for r in (new_api_key.roles or []) if r.value in _RETIRED_ROLES}
+    if retired:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Roles {sorted(retired)} no longer grant any permissions.",
         )
     try:
         api_key_repo = ApiKeyRepository(db_session)

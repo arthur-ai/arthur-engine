@@ -710,3 +710,146 @@ def test_model_whitelist_read_is_admin_only(
         assert models.available_models == ["gpt-5.4-nano"]
     finally:
         client.delete_model_provider("openai")
+
+
+@pytest.mark.unit_tests
+def test_model_provider_eval_defaults_lifecycle(client: GenaiEngineTestClientBase):
+    # Other tests on this worker can leave anthropic configured; start clean.
+    assert client.delete_model_provider("anthropic") == 204
+
+    # Readable, and empty, before the provider is configured.
+    status_code, defaults = client.get_model_provider_eval_defaults("anthropic")
+    assert status_code == 200
+    assert defaults.provider == ModelProvider.ANTHROPIC
+    assert defaults.reasoning_effort is None
+    assert defaults.thinking is None
+
+    # Writing needs a configured provider.
+    status_code, _ = client.set_model_provider_eval_defaults(
+        "anthropic",
+        {"thinking": {"type": "disabled"}},
+    )
+    assert status_code == 400
+
+    assert client.set_model_provider("anthropic", {"api_key": "test-key"}) == 201
+    try:
+        status_code, _ = client.set_model_provider_eval_defaults(
+            "anthropic",
+            {"reasoning_effort": "low", "thinking": {"type": "disabled"}},
+        )
+        assert status_code == 204
+
+        _, defaults = client.get_model_provider_eval_defaults("anthropic")
+        assert defaults.reasoning_effort == "low"
+        assert defaults.thinking == {"type": "disabled"}
+
+        # Re-saving credentials keeps the defaults.
+        assert client.set_model_provider("anthropic", {"api_key": "new-key"}) == 201
+        _, defaults = client.get_model_provider_eval_defaults("anthropic")
+        assert defaults.thinking == {"type": "disabled"}
+
+        # Nulls clear them.
+        status_code, _ = client.set_model_provider_eval_defaults(
+            "anthropic",
+            {"reasoning_effort": None, "thinking": None},
+        )
+        assert status_code == 204
+        _, defaults = client.get_model_provider_eval_defaults("anthropic")
+        assert defaults.reasoning_effort is None
+        assert defaults.thinking is None
+    finally:
+        assert client.delete_model_provider("anthropic") == 204
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "defaults,detail",
+    [
+        ({"reasoning_effort": "default"}, "reasoning_effort"),
+        ({"reasoning_effort": "extreme"}, "reasoning_effort"),
+        ({"thinking": {"type": "enabled"}}, "budget_tokens"),
+        ({"thinking": {"type": "enabled", "budget_tokens": 100}}, "budget_tokens"),
+        ({"thinking": {"type": "sometimes"}}, "thinking"),
+    ],
+)
+def test_model_provider_eval_defaults_validation(
+    client: GenaiEngineTestClientBase,
+    defaults,
+    detail,
+):
+    assert client.set_model_provider("anthropic", {"api_key": "test-key"}) == 201
+    try:
+        status_code, body = client.set_model_provider_eval_defaults(
+            "anthropic",
+            defaults,
+        )
+        assert status_code == 400
+        assert detail in str(body)
+    finally:
+        assert client.delete_model_provider("anthropic") == 204
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "provider,model_name,expected",
+    [
+        (
+            "openai",
+            "gpt-5-mini",
+            {
+                "reasoning_efforts": ["minimal", "low", "medium", "high"],
+                "thinking": {"supported": False, "can_disable": False, "types": []},
+            },
+        ),
+        (
+            "anthropic",
+            "claude-sonnet-5-5",
+            {
+                "reasoning_efforts": ["minimal", "low", "medium", "high"],
+                "thinking": {
+                    "supported": True,
+                    "can_disable": False,
+                    "types": ["enabled", "adaptive"],
+                },
+            },
+        ),
+        (
+            "anthropic",
+            "claude-haiku-4-5",
+            {
+                "reasoning_efforts": None,
+                "thinking": {
+                    "supported": True,
+                    "can_disable": True,
+                    "types": ["enabled", "adaptive", "disabled"],
+                },
+            },
+        ),
+        (
+            "azure",
+            "my-prod-deployment",
+            {
+                "reasoning_efforts": None,
+                "thinking": {"supported": None, "can_disable": None, "types": None},
+            },
+        ),
+    ],
+)
+def test_model_reasoning_options(
+    client: GenaiEngineTestClientBase,
+    provider,
+    model_name,
+    expected,
+):
+    # Readable without the provider configured: it only asks litellm.
+    response = client.base_client.get(
+        f"/api/v1/model_providers/{provider}/reasoning_options",
+        params={"model_name": model_name},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "provider": provider,
+        "model_name": model_name,
+        **expected,
+    }

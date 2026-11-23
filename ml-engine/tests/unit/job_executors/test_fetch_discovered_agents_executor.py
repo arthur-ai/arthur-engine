@@ -503,7 +503,20 @@ def test_each_record_carries_what_its_latest_report_saw() -> None:
             _entry(
                 "t1",
                 external_id="splunk-t1",
-                observations={"version": "2.1.314", "previous_version": "2.1.312"},
+                observations={
+                    "version": "2.1.314",
+                    "previous_version": "2.1.312",
+                    "occurrences": [
+                        {
+                            "kind": "proc",
+                            "path": "~/.local/share/claude/versions/2.1.312",
+                        },
+                        {
+                            "kind": "proc",
+                            "path": "~/.local/share/claude/versions/2.1.314",
+                        },
+                    ],
+                },
             ),
             _entry(
                 "rec-2",
@@ -522,6 +535,11 @@ def test_each_record_carries_what_its_latest_report_saw() -> None:
     assert observed["splunk-t1"].version == "2.1.314"
     assert observed["splunk-t1"].previous_version == "2.1.312", "kept by GenAI Engine"
     assert observed["splunk-rec-2"].previous_version is None
+    assert [o.path for o in observed["splunk-t1"].occurrences] == [
+        "~/.local/share/claude/versions/2.1.312",
+        "~/.local/share/claude/versions/2.1.314",
+    ]
+    assert not observed["splunk-rec-2"].occurrences
     assert not observed["splunk-t1"].service_names, "not the creation source's"
     assert observed["splunk-rec-2"].version == "1.0"
 
@@ -902,3 +920,88 @@ def test_a_page_the_guard_empties_does_not_end_the_walk(tasks_api: MagicMock) ->
     requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
     assert [c.kwargs["after_task_id"] for c in requests[1:]] == [None, "s2"]
     assert _uploaded_task_ids(agents_client) == [["u1"]]
+
+
+def _listed_task(task_id: str) -> EnrichedTaskResponse:
+    """A task as a listing that read no spans serves it: activity, no span details."""
+    return EnrichedTaskResponse.from_dict(
+        {
+            "id": task_id,
+            "name": f"agent-{task_id}",
+            "created_at": "2026-09-17T09:00:00Z",
+            "updated_at": "2026-09-17T09:00:00Z",
+            "is_autocreated": False,
+            "num_spans": 7,
+            "trace_count": 2,
+            "inference_count": 40,
+            "last_activity_at": "2026-11-17T08:30:00Z",
+            "provenance": {
+                "sources": [{"source_class": "manual"}],
+                "source_classes": ["manual"],
+            },
+        },
+    )
+
+
+def test_a_fetch_with_no_source_syncs_only_the_unreported_tasks_reading_no_spans(
+    tasks_api: MagicMock,
+) -> None:
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_listed_task("t1"), _listed_task("t2")],
+        [_listed_task("t3")],
+    ]
+    agents_client = _agents_client()
+
+    _executor(agents_client).execute(
+        FetchDiscoveredAgentsJobSpec(
+            workspace_id=WORKSPACE_ID,
+            data_plane_id=DATA_PLANE_ID,
+        ),
+    )
+
+    requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    assert [
+        (
+            c.kwargs["discovery_source_id"],
+            c.kwargs["unreported"],
+            c.kwargs["include_span_details"],
+        )
+        for c in requests
+    ] == [(None, True, False), (None, True, False)]
+    assert _uploaded_task_ids(agents_client) == [["t1", "t2"], ["t3"]]
+
+
+def test_a_source_fetch_still_reads_spans(tasks_api: MagicMock) -> None:
+    tasks_api.get_agent_tasks_api_v2_agent_tasks_get.side_effect = [
+        [_task("s1")],
+        [_traced_task("u1")],
+    ]
+
+    _executor(_agents_client()).execute(_spec())
+
+    requests = tasks_api.get_agent_tasks_api_v2_agent_tasks_get.call_args_list
+    assert [c.kwargs["include_span_details"] for c in requests] == [True, True]
+
+
+def test_an_agent_from_a_listing_sends_no_span_details_and_carries_activity() -> None:
+    """Left out or sent as null, depending on the client, the Platform keeps the tools,
+    sub-agents and models a full fetch found; an empty list would clear them."""
+    agent = enriched_task_to_agent(_listed_task("t1"), DATA_PLANE_ID)
+    assert agent is not None
+
+    uploaded = agent.to_dict()
+
+    for details in ("tools", "sub_agents", "llm_models", "data_sources"):
+        assert uploaded.get(details) is None
+    assert (agent.trace_count, agent.inference_count) == (2, 40)
+    assert agent.last_activity_at == datetime(2026, 11, 17, 8, 30, tzinfo=timezone.utc)
+    assert agent.num_spans == 7
+
+
+def test_an_agent_with_no_tools_found_clears_the_stored_ones() -> None:
+    """A listing that read spans and found none sends an empty list, not nothing."""
+    task = _traced_task("u1")
+    task.tools = []
+    agent = enriched_task_to_agent(task, DATA_PLANE_ID)
+    assert agent is not None
+    assert agent.to_dict()["tools"] == []

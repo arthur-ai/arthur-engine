@@ -6,12 +6,15 @@ import pytest
 from arthur_common.models.common_schemas import (
     PaginationParameters,
     PaginationSortMethod,
+    VariableTemplateValue,
 )
 from arthur_common.models.llm_model_providers import (
     LLMBaseConfigSettings,
     ModelProvider,
 )
+from jinja2.sandbox import SandboxedEnvironment
 from litellm.types.utils import ModelResponse
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
@@ -20,20 +23,21 @@ from repositories.llm_evals_repository import LLMEvalsRepository
 from schemas.enums import LLMMetadataSortField
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
+    BaseCompletionRequest,
     CreateEvalRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
     LLMRequestConfigSettings,
 )
-from utils.constants import DEFAULT_ORG_ID
-
 from schemas.response_schemas import (
     EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
     LLMGetAllMetadataResponse,
 )
+from services.prompt.prompt_caching import eval_prompt_cache_key
 from tests.clients.base_test_client import override_get_db_session
+from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -944,6 +948,209 @@ def test_run_saved_llm_eval(
     llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
+CACHEABLE_EVAL_RUBRIC = (
+    "Respond with 1 if the answer is supported by the context, otherwise 0."
+)
+
+
+def _run_eval_and_capture_request(
+    mock_completion,
+    llm_evals_repo,
+    provider,
+    model_name,
+    instructions,
+    **run_kwargs,
+):
+    task_id = str(uuid4())
+    eval_name = "cacheable_eval"
+    llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        CreateEvalRequest(
+            model_name=model_name,
+            model_provider=provider,
+            instructions=instructions,
+        ),
+    )
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {"content": '{"reason": "ok", "score": 1}'}
+    mock_completion.return_value = mock_response
+    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
+        return_value=LLMClient(provider=provider, api_key="api_key"),
+    )
+
+    try:
+        llm_evals_repo.run_llm_eval(
+            task_id,
+            eval_name,
+            org_id=DEFAULT_ORG_ID,
+            completion_request=BaseCompletionRequest(
+                variables=[
+                    VariableTemplateValue(name="context", value="Paris is in France."),
+                    VariableTemplateValue(name="answer", value="Paris"),
+                ],
+            ),
+            **run_kwargs,
+        )
+    finally:
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+    rendered = (
+        SandboxedEnvironment(autoescape=False)
+        .from_string(instructions)
+        .render(
+            context="Paris is in France.",
+            answer="Paris",
+        )
+    )
+    return task_id, mock_completion.call_args.kwargs, rendered
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_marks_static_instructions_cacheable_for_anthropic(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = (
+        CACHEABLE_EVAL_RUBRIC + "\n\nContext: {{context}}\nAnswer: {{answer}}\n"
+    )
+
+    _, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.ANTHROPIC,
+        "claude-sonnet-4-5",
+        instructions,
+    )
+
+    system_message, user_message = request["messages"]
+    assert isinstance(system_message["content"], str)
+    static_block, variable_block = user_message["content"]
+    assert static_block["text"] == CACHEABLE_EVAL_RUBRIC + "\n\nContext:"
+    assert static_block["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in variable_block
+    assert "Paris" in variable_block["text"]
+    assert static_block["text"] + variable_block["text"] == rendered
+    assert "prompt_cache_key" not in request
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_sends_prompt_cache_key_for_openai(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = (
+        CACHEABLE_EVAL_RUBRIC + "\n\nContext: {{context}}\nAnswer: {{answer}}"
+    )
+
+    task_id, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.OPENAI,
+        "gpt-4o",
+        instructions,
+    )
+
+    assert request["prompt_cache_key"] == eval_prompt_cache_key(
+        task_id,
+        "cacheable_eval",
+        1,
+    )
+    assert request["extra_body"] == {"prompt_cache_retention": "24h"}
+    assert "prompt_cache_options" not in request
+    assert request["messages"][1]["content"] == rendered
+    assert "cache_control" not in str(request["messages"])
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_sends_explicit_breakpoint_for_openai_5_6_plus(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = (
+        CACHEABLE_EVAL_RUBRIC + "\n\nContext: {{context}}\nAnswer: {{answer}}"
+    )
+
+    task_id, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.OPENAI,
+        "gpt-5.6",
+        instructions,
+    )
+
+    assert request["prompt_cache_options"] == {"mode": "explicit"}
+    assert request["prompt_cache_key"] == eval_prompt_cache_key(
+        task_id,
+        "cacheable_eval",
+        1,
+    )
+    assert "extra_body" not in request
+    static_block, variable_block = request["messages"][1]["content"]
+    assert static_block["text"] == CACHEABLE_EVAL_RUBRIC + "\n\nContext:"
+    assert static_block["prompt_cache_breakpoint"] == {"mode": "explicit"}
+    assert "prompt_cache_breakpoint" not in variable_block
+    assert static_block["text"] + variable_block["text"] == rendered
+    assert "cache_control" not in str(request["messages"])
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_without_cache_breakpoint_sends_plain_instructions(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = (
+        CACHEABLE_EVAL_RUBRIC + "\n\nContext: {{context}}\nAnswer: {{answer}}"
+    )
+
+    _, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.ANTHROPIC,
+        "claude-sonnet-4-5",
+        instructions,
+        add_cache_breakpoint=False,
+    )
+
+    assert request["messages"][1]["content"] == rendered
+    assert "cache_control" not in str(request["messages"])
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_llm_eval_template_starting_with_variable_gets_no_breakpoint(
+    mock_completion,
+    mock_completion_cost,
+    llm_evals_repo,
+):
+    instructions = "{{context}}\n{{answer}}\n\n" + CACHEABLE_EVAL_RUBRIC
+
+    _, request, rendered = _run_eval_and_capture_request(
+        mock_completion,
+        llm_evals_repo,
+        ModelProvider.ANTHROPIC,
+        "claude-sonnet-4-5",
+        instructions,
+    )
+
+    assert request["messages"][1]["content"] == rendered
+    assert "prompt_cache_key" not in request
+
+
 @pytest.mark.unit_tests
 def test_run_deleted_llm_eval_spawns_error(
     llm_evals_repo,
@@ -966,7 +1173,9 @@ def test_run_deleted_llm_eval_spawns_error(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1"
+        )
     assert f"Cannot run this llm eval because it was deleted on" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1000,7 +1209,9 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1"
+        )
     assert (
         f"No structured output response from model {full_eval.model_name} with provider {full_eval.model_provider}"
         in str(exc_info.value)
@@ -1016,7 +1227,9 @@ def test_run_saved_llm_eval_malformed_response_errors(
     )
 
     with pytest.raises(TypeError) as exc_info:
-        llm_evals_repo.run_llm_eval(task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1")
+        llm_evals_repo.run_llm_eval(
+            task_id, eval_name, org_id=DEFAULT_ORG_ID, version="1"
+        )
     assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
 
     llm_evals_repo.delete_llm_item(task_id, eval_name)
@@ -1596,3 +1809,56 @@ def test_get_all_llm_eval_metadata_with_tag_filter(llm_evals_repo):
     finally:
         llm_evals_repo.delete_llm_item(task_id, name_a)
         llm_evals_repo.delete_llm_item(task_id, name_b)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"thinking": {"type": "disabled"}},
+        {"reasoning_effort": "none"},
+    ],
+)
+def test_create_eval_rejects_thinking_off_for_always_thinking_models(config):
+    with pytest.raises(ValidationError, match="Thinking can't be turned off"):
+        CreateEvalRequest(
+            model_name="claude-sonnet-5-5",
+            model_provider="anthropic",
+            instructions="Is {{answer}} correct?",
+            config=config,
+        )
+    # The same settings are fine where they take effect.
+    CreateEvalRequest(
+        model_name="claude-haiku-4-5",
+        model_provider="anthropic",
+        instructions="Is {{answer}} correct?",
+        config=config,
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "model_name,reasoning_effort",
+    [("gpt-5-mini", "none"), ("gpt-5.1", "minimal"), ("gpt-4o-mini", "low")],
+)
+def test_create_eval_rejects_reasoning_effort_the_model_refuses(
+    model_name,
+    reasoning_effort,
+):
+    with pytest.raises(ValidationError, match="is not supported for"):
+        CreateEvalRequest(
+            model_name=model_name,
+            model_provider="openai",
+            instructions="Is {{answer}} correct?",
+            config={"reasoning_effort": reasoning_effort},
+        )
+
+
+@pytest.mark.unit_tests
+def test_create_eval_passes_reasoning_settings_for_unknown_models():
+    CreateEvalRequest(
+        model_name="my-prod-deployment",
+        model_provider="azure",
+        instructions="Is {{answer}} correct?",
+        config={"reasoning_effort": "none"},
+    )
