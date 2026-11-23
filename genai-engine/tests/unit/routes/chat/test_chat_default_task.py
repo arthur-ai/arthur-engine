@@ -1,5 +1,4 @@
 import pytest
-
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 

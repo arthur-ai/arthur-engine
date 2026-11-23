@@ -3,14 +3,13 @@ from base64 import b64decode, b64encode
 
 import itsdangerous
 import pytest
-from httpx import Response
-
 from auth.auth_constants import (
     ACCESS_TOKEN_COOKIE_NAME,
     ID_TOKEN_COOKIE_NAME,
     OAUTH_CLIENT_NAME,
     USER_INFO_COOKIE_NAME,
 )
+from httpx import Response
 from tests.clients.base_test_client import (
     MASTER_KEY_AUTHORIZED_HEADERS,
     GenaiEngineTestClientBase,

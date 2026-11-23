@@ -13,9 +13,7 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     dataset_description = "Test dataset for CRUD operations"
     dataset_metadata = {"test_key": "test_value", "version": 1.0}
 
-    status_code, agentic_task = client.create_task(
-        name="test_user_story_datasets_crud_task", is_agentic=True
-    )
+    status_code, agentic_task = client.create_task(name="test_user_story_datasets_crud_task", is_agentic=True)
     assert status_code == 200
 
     status_code, created_dataset = client.create_dataset(

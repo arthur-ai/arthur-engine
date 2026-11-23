@@ -64,28 +64,18 @@ def test_upload_certificate_returns_400_for_non_png(client: GenaiEngineTestClien
 
 
 @pytest.mark.unit_tests
-def test_upload_certificate_returns_413_when_too_large(
-    client: GenaiEngineTestClientBase,
-):
+def test_upload_certificate_returns_413_when_too_large(client: GenaiEngineTestClientBase):
     with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "enabled"}):
         response = client.base_client.post(
             "/api/v2/demo/certificate",
-            files={
-                "file": (
-                    "certificate.png",
-                    io.BytesIO(b"\x00" * (5 * 1024 * 1024 + 1)),
-                    "image/png",
-                )
-            },
+            files={"file": ("certificate.png", io.BytesIO(b"\x00" * (5 * 1024 * 1024 + 1)), "image/png")},
         )
 
     assert response.status_code == 413
 
 
 @pytest.mark.unit_tests
-def test_upload_certificate_returns_400_when_demo_mode_disabled(
-    client: GenaiEngineTestClientBase,
-):
+def test_upload_certificate_returns_400_when_demo_mode_disabled(client: GenaiEngineTestClientBase):
     with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "disabled"}, clear=False):
         response = client.base_client.post(
             "/api/v2/demo/certificate",

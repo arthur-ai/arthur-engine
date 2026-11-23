@@ -4,6 +4,7 @@ import ast
 import json
 import uuid
 from datetime import datetime
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from sqlalchemy.orm import Session
@@ -15,7 +16,6 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
-from utils.constants import DEFAULT_ORG_ID
 
 
 @pytest.fixture(scope="function")
@@ -918,11 +918,11 @@ def test_execute_transform_negative_index_extraction(
 
         # Verify complex data is JSON stringified
         assert "last_result" in variables
-
+        
         last_result = ast.literal_eval(variables["last_result"])
         assert last_result["id"] == 2
         assert last_result["name"] == "Jane"
-
+        
         assert "second_to_last_result_name" in variables
         assert variables["second_to_last_result_name"] == "John"
     finally:
