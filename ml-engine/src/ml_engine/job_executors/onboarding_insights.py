@@ -171,8 +171,24 @@ class HttpInsightEngineClient:
     ) -> None:
         self.host = host.rstrip("/")
         self.headers = {"Authorization": f"Bearer {api_key}"}
+        self.session_id = session_id
         if session_id:
             self.headers[SESSION_HEADER] = session_id
+
+    def report_session(self, summary: dict[str, Any]) -> None:
+        """Tell the engine what the whole analysis did, so its trace in the system task
+        covers the job from start to end, like the chatbot's does a turn. Counts and
+        verdicts only, never trace content."""
+        if not self.session_id:
+            return
+        resp = requests.put(
+            f"{self.host}/api/v1/tasks/{SYSTEM_TASK_ID}/prompt_sessions/"
+            f"{self.session_id}/summary",
+            headers=self.headers,
+            json=summary,
+            timeout=30,
+        )
+        resp.raise_for_status()
 
     def default_model(self) -> Optional[DefaultModel]:
         resp = requests.get(

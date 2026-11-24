@@ -810,3 +810,66 @@ def test_span_names_stay_within_the_platform_bounds(
 
     # The most frequent names that fit, never one the Platform would refuse.
     assert report.span_names == ["common", "frequent"]
+
+
+class _NoModelEngine:
+    """A GenAI Engine with no default model, which records the job summary it is sent."""
+
+    def __init__(self) -> None:
+        self.summaries: list[dict[str, Any]] = []
+
+    def default_model(self) -> None:
+        return None
+
+    def run_prompt(self, prompt_name: str, traces_text: str) -> Any:
+        raise AssertionError("no prompt runs without a default model")
+
+    def report_session(self, summary: dict[str, Any]) -> None:
+        self.summaries.append(summary)
+
+
+def test_the_job_reports_its_steps_and_result_for_its_trace(
+    raw_data_enabled: None,
+) -> None:
+    engine = _NoModelEngine()
+    rows = [_agent_trace(_days_ago(i)) for i in range(12)]
+
+    result = _Run(rows, insight_client=engine)()
+
+    [summary] = engine.summaries
+    assert summary["status"] == "ok"
+    assert [s["name"] for s in summary["steps"]] == [
+        "read_traces",
+        "sample",
+        "llm_insights",
+    ]
+    assert summary["steps"][0]["attributes"] == {"traces": 12}
+    assert summary["input"] == {
+        "agent_task_id": TASK_ID,
+        "connector_id": "connector-1",
+        "sample_size": 500,
+    }
+    assert summary["output"]["outcome"] == result.outcome.value == "completed"
+    assert summary["output"]["traces_read"] == 12
+    assert "llm_insights: default_model_not_configured" in summary["output"]["skipped"]
+    # Counts and verdicts only: nothing read from the traces.
+    assert set(summary["output"]) == {
+        "outcome",
+        "traces_read",
+        "findings",
+        "skipped",
+        "llm_calls",
+        "cost_usd",
+    }
+
+
+def test_a_summary_that_cannot_be_sent_does_not_fail_the_job(
+    raw_data_enabled: None,
+) -> None:
+    engine = _NoModelEngine()
+    engine.report_session = MagicMock(side_effect=ConnectionError())  # type: ignore[method-assign]
+    rows = [_agent_trace(_days_ago(i)) for i in range(12)]
+
+    result = _Run(rows, insight_client=engine)()
+
+    assert result.outcome == OnboardingOutcome.COMPLETED

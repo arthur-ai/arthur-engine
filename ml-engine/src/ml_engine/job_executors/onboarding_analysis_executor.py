@@ -34,9 +34,10 @@ client without it, and the engine declares the kind on dequeue only when it is t
 
 import json
 import logging
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Callable, Literal, Protocol, Self
+from typing import Any, Callable, Iterator, Literal, Protocol, Self
 
 import arthur_client.api_bindings as api_bindings
 import duckdb
@@ -63,6 +64,7 @@ from config import Config
 from dataset_loader import DatasetLoader
 from job_executors.onboarding_insights import (
     InsightEngineClient,
+    InsightRun,
     InsightSpan,
     MergedVerdict,
     run_llm_insights,
@@ -341,15 +343,19 @@ class OnboardingAnalysisExecutor:
         `spec` may be the job spec as the Platform sent it: it is validated here, so a
         malformed one is also reported to the wizard as a failed result.
         """
+        started = self.now()
+        self._steps: list[dict[str, Any]] = []
+        self._last_run: InsightRun | None = None
+        parsed: OnboardingAnalysisJobSpec | None = None
         try:
-            result = self._analyse(
-                job_id,
-                OnboardingAnalysisJobSpec.model_validate(spec),
-            )
+            parsed = OnboardingAnalysisJobSpec.model_validate(spec)
+            result = self._analyse(job_id, parsed)
         except Exception as e:
+            self._report_session(started, parsed, None, e)
             self._report_failure(job_id, job_run_id, e)
             raise
         self.logger.info(f"Onboarding analysis {job_id} ended {result.outcome.value}")
+        self._report_session(started, parsed, result, None)
         try:
             self.uploader.upload(job_id, job_run_id, result)
         except OnboardingResultNotSent as e:
@@ -358,6 +364,77 @@ class OnboardingAnalysisExecutor:
             self._report_failure(job_id, job_run_id, e)
             raise
         return result
+
+    @contextmanager
+    def _step(self, name: str) -> Iterator[dict[str, Any]]:
+        """Time one step for the analysis's trace; the caller adds its counts."""
+        started = self.now()
+        counts: dict[str, Any] = {}
+        yield counts
+        self._steps.append(
+            {
+                "name": name,
+                "started_at": started.isoformat(),
+                "ended_at": self.now().isoformat(),
+                "attributes": counts,
+            },
+        )
+
+    def _report_session(
+        self,
+        started: datetime,
+        spec: OnboardingAnalysisJobSpec | None,
+        result: OnboardingAnalysisResult | None,
+        error: Exception | None,
+    ) -> None:
+        """Best effort: record the whole analysis in the engine's system task, so the
+        trace of its insight calls covers the job from start to end, like the chatbot's
+        trace of a turn. Counts and verdicts only: nothing read from the traces."""
+        report = getattr(self.insight_client, "report_session", None)
+        if report is None:
+            return
+        report_body = result.report if result else None
+        run = self._last_run
+        summary: dict[str, Any] = {
+            "started_at": started.isoformat(),
+            "ended_at": self.now().isoformat(),
+            "status": (
+                "error"
+                if error or (result and result.outcome == OnboardingOutcome.FAILED)
+                else "ok"
+            ),
+            "status_message": f"{type(error).__name__}" if error else None,
+            "input": (
+                {
+                    "agent_task_id": spec.address.task_id,
+                    "connector_id": spec.connector_id,
+                    "sample_size": spec.sample_size,
+                }
+                if spec
+                else {}
+            ),
+            "output": {
+                "outcome": result.outcome.value if result else "failed",
+                "traces_read": report_body.totals.traces if report_body else 0,
+                "findings": {
+                    f.kind: "yes" if f.values.get("fired") else "no"
+                    for f in (report_body.findings if report_body else [])
+                },
+                "skipped": [
+                    f"{s.kind}: {s.reason}"
+                    for s in (report_body.skipped if report_body else [])
+                ],
+                "llm_calls": run.calls if run else 0,
+                "cost_usd": round(run.cost_usd, 4) if run else 0.0,
+            },
+            "steps": self._steps,
+        }
+        try:
+            report(summary)
+        except Exception as e:
+            self.logger.warning(
+                f"Could not record the analysis in the engine's system task ({type(e).__name__})",
+            )
 
     def _report_failure(self, job_id: str, job_run_id: str, error: Exception) -> None:
         """Best effort: tell the wizard the run failed, so it need not wait out its timeout.
@@ -402,10 +479,12 @@ class OnboardingAnalysisExecutor:
 
         conn = duckdb.connect()
         try:
-            traces_table = self._load_traces(conn, job_id, spec, start, end)
-            calls_validate = _calls_validate(conn, traces_table)
-            span_names = _span_names(conn, traces_table)
-            totals = _totals(conn, traces_table, start, end)
+            with self._step("read_traces") as step:
+                traces_table = self._load_traces(conn, job_id, spec, start, end)
+                calls_validate = _calls_validate(conn, traces_table)
+                span_names = _span_names(conn, traces_table)
+                totals = _totals(conn, traces_table, start, end)
+                step["traces"] = totals.traces
             self.logger.info(f"Read {totals.traces} traces for onboarding analysis.")
 
             if totals.traces < spec.min_traces:
@@ -419,8 +498,16 @@ class OnboardingAnalysisExecutor:
                     ),
                 )
 
-            sample = _draw_sample(conn, traces_table, SAMPLE_TABLE, spec, salt=job_id)
-            findings, skipped = self._insights(conn, SAMPLE_TABLE)
+            with self._step("sample") as step:
+                sample = _draw_sample(
+                    conn, traces_table, SAMPLE_TABLE, spec, salt=job_id
+                )
+                step["sampled"] = sample.traces if sample else 0
+            with self._step("llm_insights") as step:
+                findings, skipped = self._insights(conn, SAMPLE_TABLE)
+                if self._last_run:
+                    step["calls"] = self._last_run.calls
+                    step["cost_usd"] = round(self._last_run.cost_usd, 4)
             return OnboardingAnalysisResult(
                 outcome=OnboardingOutcome.COMPLETED,
                 report=OnboardingReport(
@@ -471,6 +558,7 @@ class OnboardingAnalysisExecutor:
             return [], skipped
         traces = _sampled_traces(conn, sample_table)
         run = run_llm_insights(self.insight_client, traces, self.logger)
+        self._last_run = run
         skipped += [SkippedInsight(kind=k, reason=r) for k, r in run.skipped]
         findings = [_finding(v, sampled=run.sampled) for v in run.verdicts]
         return findings, skipped
