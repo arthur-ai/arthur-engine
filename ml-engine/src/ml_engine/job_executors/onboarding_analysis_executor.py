@@ -68,6 +68,10 @@ from tools.converters import client_to_common_dataset_schema
 
 ONBOARDING_WINDOW = timedelta(days=30)
 
+# Not the job's logger, which sends what it logs to the Platform: a traceback logged here
+# stays in the engine's own log.
+engine_logger = logging.getLogger(__name__)
+
 # The OpenInference span kind the GenAI Engine gives the span around a validate call.
 GUARDRAIL_SPAN_KIND = "GUARDRAIL"
 
@@ -369,8 +373,13 @@ class OnboardingAnalysisExecutor:
         )
         try:
             self.uploader.upload(job_id, job_run_id, result)
-        except Exception:
+        except Exception as upload_error:
+            # Its traceback carries `error` as context, and so what `error` quoted.
             self.logger.error(
+                f"Could not upload the failed result of onboarding analysis {job_id} "
+                f"({type(upload_error).__name__})",
+            )
+            engine_logger.error(
                 f"Could not upload the failed result of onboarding analysis {job_id}",
                 exc_info=True,
             )

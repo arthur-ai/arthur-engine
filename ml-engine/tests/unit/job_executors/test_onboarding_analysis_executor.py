@@ -643,6 +643,38 @@ def test_a_result_not_sent_is_replaced_by_a_failed_one() -> None:
     assert second.error.message == "The analysis failed (OnboardingResultNotSent)."
 
 
+def test_a_failed_upload_after_a_failure_reaches_the_job_log_by_type_only(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    run = _Run([])
+    run.uploader.upload.side_effect = ConnectionError("platform down")
+    job_errors = MagicMock()
+    run.executor.logger = MagicMock(error=job_errors)
+    run.executor._analyse = MagicMock(  # type: ignore[method-assign]
+        side_effect=ValueError("user jo@example.com said"),
+    )
+    spec = OnboardingAnalysisJobSpec(
+        connector_id="connector-1",
+        address=OnboardingAddress(task_id=TASK_ID),
+    )
+
+    with caplog.at_level(
+        logging.ERROR,
+        logger=onboarding_analysis_executor.engine_logger.name,
+    ):
+        with pytest.raises(ValueError):
+            run.executor.execute(run.job_id, "run-1", spec)
+
+    # The job's logger, whose errors go to the Platform: the upload error's type, and no
+    # traceback, which would carry the analysis error as its context.
+    [call] = job_errors.call_args_list
+    assert "ConnectionError" in call.args[0]
+    assert "exc_info" not in call.kwargs
+    # The engine's own log keeps both.
+    assert "jo@example.com" in caplog.text
+    assert "platform down" in caplog.text
+
+
 def test_a_window_start_without_an_offset_is_read_as_utc() -> None:
     spec = OnboardingAnalysisJobSpec.model_validate(
         {

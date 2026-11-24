@@ -433,6 +433,7 @@ class _Spend:
 
 
 _JSON_OBJECT = re.compile(r"\{.*\}", re.S)
+VERDICT_FIELDS = ("kind", "fired", "matched_traces", "example_span_name", "reason")
 
 
 def _parse_verdict(content: str) -> Optional[dict[str, Any]]:
@@ -452,7 +453,9 @@ def _parse_verdict(content: str) -> Optional[dict[str, Any]]:
     matched = verdict.get("matched_traces", [])
     if not isinstance(matched, list) or not all(isinstance(t, str) for t in matched):
         return None
-    return verdict
+    # Only the verdict's own fields: a key the model adds (such as `skipped`, which marks
+    # an unanswered call here) must not reach the merge.
+    return {k: verdict[k] for k in VERDICT_FIELDS if k in verdict}
 
 
 class _Asker:

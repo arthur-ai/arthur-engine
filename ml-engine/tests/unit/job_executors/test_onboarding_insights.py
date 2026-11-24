@@ -270,6 +270,19 @@ def test_a_verdict_with_malformed_matched_traces_is_unparsed(matched: Any) -> No
     )
 
 
+def test_a_reply_with_fields_beyond_the_verdict_keeps_only_the_verdict() -> None:
+    def answer(kind: str, text: str) -> str:
+        reply = json.loads(_verdict(kind, "no", []))
+        return json.dumps({**reply, "skipped": [], "extra": {"x": 1}})
+
+    run = run_llm_insights(
+        FakeEngine(answer=answer), _traces(3), logger, sleep=_no_sleep
+    )
+
+    assert run.skipped == []
+    assert {v.fired for v in run.verdicts} == {"no"}
+
+
 def test_a_citation_of_a_trace_outside_the_batch_is_dropped() -> None:
     def answer(kind: str, text: str) -> str:
         # Each batch cites its own first trace and one it did not hold.
