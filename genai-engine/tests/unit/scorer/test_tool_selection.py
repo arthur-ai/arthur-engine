@@ -21,6 +21,12 @@ os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 
 
+@pytest.fixture(autouse=True)
+def pin_env_judge(monkeypatch):
+    """These tests mock the env model, so the checks must not pick the default."""
+    monkeypatch.setenv("GENAI_ENGINE_LLM_CHECKS_MODEL_SOURCE", "env")
+
+
 def as_message(output: dict) -> AIMessage:
     """What the model sends back on the JSON-prompt path, before parsing."""
     return AIMessage(content=json.dumps(output))

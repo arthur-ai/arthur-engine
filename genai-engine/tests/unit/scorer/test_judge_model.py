@@ -1,5 +1,6 @@
 import uuid
 from contextlib import contextmanager
+from typing import Generator
 from unittest.mock import MagicMock, Mock, patch
 
 import litellm
@@ -103,6 +104,14 @@ def no_default():
     with patch("dependencies.db_session_context", _test_db_session):
         yield
     db.close()
+
+
+@pytest.fixture
+def model_invocations() -> Generator[None, None, None]:
+    """Collect audit invocations for the test, and stop collecting afterwards."""
+    token = _model_invocations.set([])
+    yield
+    _model_invocations.reset(token)
 
 
 def _source(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
@@ -213,10 +222,9 @@ def _judge(client: Mock) -> DefaultModelJudge:
 
 
 @pytest.mark.unit_tests
-def test_default_judge_structured_call():
+def test_default_judge_structured_call(model_invocations):
     client = Mock()
     client.completion.return_value = _response('{"good": true}', Verdict(good=True))
-    _model_invocations.set([])
 
     verdict, tokens = _judge(client).structured(
         PROMPT,
@@ -312,10 +320,14 @@ def _wrapped(provider_error: Exception) -> HTTPException:
         ),
     ],
 )
-def test_default_judge_errors_leave_the_rule_unavailable(raised, expected, message):
+def test_default_judge_errors_leave_the_rule_unavailable(
+    raised,
+    expected,
+    message,
+    model_invocations,
+):
     client = Mock()
     client.completion.side_effect = raised
-    _model_invocations.set([])
 
     with pytest.raises(expected) as exc_info:
         _judge(client).text(PROMPT, {"thing": "tea"}, "test check")
@@ -406,3 +418,78 @@ def test_auto_ignores_a_placeholder_env_model(monkeypatch, anthropic_default):
     with patch("scorer.judge_model.get_llm_executor", return_value=executor):
         _source(monkeypatch, "auto")
         assert isinstance(resolve_judge(), DefaultModelJudge)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("content", ["", None])
+def test_default_judge_rejects_an_empty_reply(content, model_invocations):
+    """An empty reply would otherwise pass sensitive data, which looks for "yes"."""
+    client = Mock()
+    client.completion.return_value = _response(content)
+
+    with pytest.raises(LLMExecutionException, match="no answer"):
+        _judge(client).text(PROMPT, {"thing": "tea"}, "test check")
+
+    [invocation] = get_recorded_invocations()
+    assert invocation.success is False
+    assert invocation.total_tokens == 37
+
+
+@pytest.mark.unit_tests
+def test_default_judge_audits_a_missing_structured_result(model_invocations):
+    client = Mock()
+    client.completion.return_value = _response('{"bad": 1}', None)
+
+    with pytest.raises(LLMExecutionException, match="expected format"):
+        _judge(client).structured(PROMPT, {"thing": "tea"}, Verdict, "test check")
+
+    [invocation] = get_recorded_invocations()
+    assert (invocation.success, invocation.error_type) == (
+        False,
+        "LLMExecutionException",
+    )
+    assert invocation.total_tokens == 37
+
+
+@pytest.mark.unit_tests
+def test_response_validation_bills_the_inferences_task():
+    """The chat route validates responses without a task_id; billing still follows the
+    task the inference belongs to."""
+    from validation import response as response_validation
+
+    inference = Mock(task_id="task-123", user_id=None, conversation_id=None)
+    billed = []
+
+    @contextmanager
+    def capture(org_id):
+        billed.append(org_id)
+        yield
+
+    @contextmanager
+    def no_span(*args, **kwargs):
+        yield Mock()
+
+    with (
+        patch.object(response_validation, "InferenceRepository") as repo,
+        patch.object(response_validation, "guardrail_span", no_span),
+        patch.object(response_validation, "RuleEngine"),
+        patch.object(
+            response_validation,
+            "task_org_id",
+            side_effect=lambda db, task_id: f"org-of-{task_id}",
+        ),
+        patch.object(response_validation, "llm_checks_billed_to", capture),
+    ):
+        repo.return_value.get_inference.return_value = inference
+        try:
+            response_validation.validate_response(
+                inference_id="inference-1",
+                body=Mock(response="hi", context=None, model_name=None),
+                db_session=Mock(),
+                scorer_client=Mock(),
+                rules=[],
+            )
+        except Exception:
+            pass  # only the billing org matters here
+
+    assert billed == ["org-of-task-123"]

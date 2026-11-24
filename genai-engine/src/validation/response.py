@@ -48,7 +48,9 @@ def validate_response(
         user_id=inference.user_id,
         session_id=inference.conversation_id,
     ) as gspan:
-        with llm_checks_billed_to(task_org_id(db_session, task_id)):
+        # The chat route passes no task_id; the inference records its task
+        billing_task_id = task_id or inference.task_id
+        with llm_checks_billed_to(task_org_id(db_session, billing_task_id)):
             rule_results = RuleEngine(scorer_client).evaluate(
                 validation_request,
                 rules,

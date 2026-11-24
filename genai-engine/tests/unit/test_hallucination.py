@@ -52,6 +52,12 @@ NONCLAIM_REQUEST = ScoreRequest(
 )
 
 
+@pytest.fixture(autouse=True)
+def pin_env_judge(monkeypatch):
+    """These tests mock the env model, so the checks must not pick the default."""
+    monkeypatch.setenv("GENAI_ENGINE_LLM_CHECKS_MODEL_SOURCE", "env")
+
+
 @pytest.fixture
 def claim_classifier_embedding_model():
     return get_claim_classifier_embedding_model()

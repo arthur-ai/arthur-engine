@@ -19,7 +19,7 @@ import logging
 import time
 import uuid
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Iterator, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Iterator, Protocol, TypeVar, cast
 
 import litellm
 from arthur_common.models.common_schemas import LLMTokenConsumption
@@ -201,13 +201,8 @@ class DefaultModelJudge:
         operation: str,
     ) -> tuple[SchemaT, LLMTokenConsumption]:
         response, tokens = self._complete(prompt, inputs, operation, schema)
-        parsed = response.structured_output_response
-        if not isinstance(parsed, schema):
-            raise LLMExecutionException(
-                "GenAI Engine was unable to evaluate: the model's response didn't "
-                "match the expected format",
-            )
-        return parsed, tokens
+        # _complete checked the type, inside the audited call
+        return cast(SchemaT, response.structured_output_response), tokens
 
     def text(
         self,
@@ -216,9 +211,7 @@ class DefaultModelJudge:
         operation: str,
     ) -> tuple[str, LLMTokenConsumption]:
         response, tokens = self._complete(prompt, inputs, operation, None)
-        choices = getattr(response.response, "choices", None) or []
-        content = choices[0].message.content if choices else ""
-        return message_text(content), tokens
+        return _response_text(response), tokens
 
     def _complete(
         self,
@@ -247,6 +240,18 @@ class DefaultModelJudge:
                 prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
                 completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
             )
+            # A reply with no answer must not read as one: a check scoring
+            # "no 'yes' in the text" would pass it
+            if schema is not None:
+                if not isinstance(response.structured_output_response, schema):
+                    raise LLMExecutionException(
+                        "GenAI Engine was unable to evaluate: the model's response "
+                        "didn't match the expected format",
+                    )
+            elif not _response_text(response).strip():
+                raise LLMExecutionException(
+                    "GenAI Engine was unable to evaluate: the model returned no answer",
+                )
             return response, tokens
         except Exception as e:
             error_type = type(_provider_error(e)).__name__
@@ -268,6 +273,11 @@ class DefaultModelJudge:
             )
 
 
+def _response_text(response: "LLMModelResponse") -> str:
+    choices = getattr(response.response, "choices", None) or []
+    return message_text(choices[0].message.content) if choices else ""
+
+
 def _provider_error(e: Exception) -> BaseException:
     # LLMClient re-raises LiteLLM errors as HTTPException inside its except blocks,
     # which leaves the original on __context__.
@@ -278,6 +288,8 @@ def _provider_error(e: Exception) -> BaseException:
 
 def _scorer_exception(e: Exception) -> Exception:
     """The exception the checks turn into an unavailable rule result."""
+    if isinstance(e, LLMExecutionException):
+        return e
     cause = _provider_error(e)
     if isinstance(cause, litellm.ContextWindowExceededError):
         return LLMMaxRequestTokensException(
