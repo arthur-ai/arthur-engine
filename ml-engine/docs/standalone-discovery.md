@@ -526,6 +526,33 @@ the `catalog.json` attached to the release the engine vendors (named in
 `src/ml_engine/discovery/_vendor/VERSION`), or set `query` to `""`, which every version
 reads. Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
+#### `bitdefender_gravityzone` — Bitdefender GravityZone (macOS and Linux endpoints)
+
+Asks each online GravityZone endpoint for the agent inventory Arthur's endpoint collector
+wrote to it. GravityZone cannot schedule the collector or keep its output as an endpoint
+attribute, so the collector is scheduled by your own tooling and the scan runs one
+read-only command per endpoint through GravityZone's Investigation API, `cat
+/var/lib/arthur/inventory.ea`, and reads back what it printed. Deploying the collector and
+creating the API key is [the GravityZone runbook](../../integrations/endpoint-ai-discovery/docs/mdm/gravityzone.md).
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `access_url` | no | yes | The Control Center API access URL from *My Account → API keys*, e.g. `https://cloudgz.gravityzone.bitdefender.com/api`. Must be `https://` |
+| `api_key` | yes | yes | A GravityZone API key with the **Network** and **Investigation** APIs enabled |
+
+Every scan lists the whole roster: GravityZone cannot filter endpoints by when they were last
+seen, so the lookback is applied to each endpoint's `lastSeen` after it is listed, and a
+window of `0` asks every endpoint. An endpoint that is offline, outside the window, runs
+Windows, refuses the command, fails it, or has not answered within five minutes is listed
+in the run's device coverage under its reason (`offline`, `not-seen-in-window`,
+`unsupported-platform`, `command-refused`, `command-failed`, `command-timed-out`,
+`output-unreadable`) and the scan goes on. A refused API key, a key without the
+Investigation API, or a command refused on every endpoint fails the scan.
+
+`query` is the agent catalog, as for Jamf; `""` uses the one the engine ships with. Use
+`query_language: none`. Commands go out twenty at a time and every call is spaced under
+GravityZone's default limit of 10 requests a second per key.
+
 #### `local` — one machine's scan, from a folder
 
 Reads the scan Arthur's endpoint collector wrote into a folder, and reports each agent on

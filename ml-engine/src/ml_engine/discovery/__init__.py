@@ -48,6 +48,8 @@ from discovery.cloud.vercel_ai.connector import VENDOR as VERCEL_AI_VENDOR
 from discovery.cloud.vercel_ai.connector import VercelConnector
 from discovery.cloud.wiz.connector import VENDOR as WIZ_VENDOR
 from discovery.cloud.wiz.connector import WizConnector
+from discovery.endpoint.gravityzone.connector import VENDOR as GRAVITYZONE_VENDOR
+from discovery.endpoint.gravityzone.connector import GravityZoneConnector
 from discovery.endpoint.jamf.connector import VENDOR as JAMF_VENDOR
 from discovery.endpoint.jamf.connector import JamfConnector
 from discovery.endpoint.local.connector import VENDOR as LOCAL_VENDOR
@@ -73,6 +75,7 @@ def source_connectors() -> dict[str, DiscoveryConnectorFactory]:
     """
     return {
         JAMF_VENDOR: JamfConnector,
+        GRAVITYZONE_VENDOR: GravityZoneConnector,
         GCP_COMPUTE_ENGINE_VENDOR: ComputeEngineConnector,
         AWS_EC2_VENDOR: Ec2Connector,
         AWS_BEDROCK_VENDOR: BedrockConnector,
@@ -111,7 +114,13 @@ def corroborating_vendors() -> frozenset[str]:
     `records_for` is added here.
     """
     return frozenset(
-        {JAMF_VENDOR, GCP_COMPUTE_ENGINE_VENDOR, AWS_EC2_VENDOR, LOCAL_VENDOR},
+        {
+            JAMF_VENDOR,
+            GRAVITYZONE_VENDOR,
+            GCP_COMPUTE_ENGINE_VENDOR,
+            AWS_EC2_VENDOR,
+            LOCAL_VENDOR,
+        },
     )
 
 
@@ -123,6 +132,8 @@ __all__ = [
     "LOCAL_VENDOR",
     "JamfConnector",
     "JAMF_VENDOR",
+    "GravityZoneConnector",
+    "GRAVITYZONE_VENDOR",
     "ComputeEngineConnector",
     "GCP_COMPUTE_ENGINE_VENDOR",
     "Ec2Connector",
