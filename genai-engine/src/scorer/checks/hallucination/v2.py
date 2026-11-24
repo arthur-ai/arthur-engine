@@ -40,7 +40,7 @@ logger = logging.getLogger()
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
-CLAIM_CLASSIFIER_EMBEDDING_MODEL: SentenceTransformer | None
+CLAIM_CLASSIFIER_EMBEDDING_MODEL: SentenceTransformer | None = None
 CLAIM_CLASSIFIER_CLASSIFIER_PATH = (
     "claim_classifier/354ec0a465a14726b825b3bd5b97137b.pth"
 )

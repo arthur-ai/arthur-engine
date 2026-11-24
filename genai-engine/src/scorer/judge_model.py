@@ -307,10 +307,38 @@ def _scorer_exception(e: Exception) -> Exception:
     )
 
 
+# The deployment templates ship GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS with
+# these, and setup writes them when an LLM is skipped.
+PLACEHOLDER_MODEL_NAME = "model_name"
+PLACEHOLDER_API_KEY = "my_api_key"
+
+
+def env_model_is_placeholder(names_endpoints_keys: str | None) -> bool:
+    """True when the env model setting holds only the templates' placeholders."""
+    if not isinstance(names_endpoints_keys, str):
+        return names_endpoints_keys is None
+    entries = [e for e in names_endpoints_keys.split(",") if e.strip()]
+    if not entries:
+        return True
+    for entry in entries:
+        parts = entry.strip().split("::")
+        model_name = parts[0]
+        api_key = parts[2] if len(parts) > 2 else ""
+        if model_name != PLACEHOLDER_MODEL_NAME and api_key != PLACEHOLDER_API_KEY:
+            return False
+    return True
+
+
 def _env_judge(temperature: float) -> EnvJudge | None:
     try:
         # Settings validation fails when the env model isn't configured at all
-        return EnvJudge(get_llm_executor(), temperature)
+        executor = get_llm_executor()
+    except Exception:
+        return None
+    if env_model_is_placeholder(executor.gpt_hosts):
+        return None
+    try:
+        return EnvJudge(executor, temperature)
     except Exception:
         return None
 

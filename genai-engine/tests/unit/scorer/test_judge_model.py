@@ -25,6 +25,7 @@ from scorer.checks.sensitive_data.custom_examples import SensitiveDataCustomExam
 from scorer.judge_model import (
     DefaultModelJudge,
     EnvJudge,
+    env_model_is_placeholder,
     llm_checks_billed_to,
     resolve_judge,
 )
@@ -79,6 +80,7 @@ def anthropic_default():
 @pytest.fixture
 def env_configured():
     executor = MagicMock()
+    executor.gpt_hosts = "gpt-4o::https://example.openai.azure.com/::real-key"
     executor.get_gpt_model.return_value = MagicMock(model_name="gpt-4o")
     with patch("scorer.judge_model.get_llm_executor", return_value=executor):
         yield executor
@@ -378,3 +380,29 @@ def test_env_judge_needs_a_model():
     executor.get_gpt_model.return_value = None
     with pytest.raises(ValueError):
         EnvJudge(executor, 0.0)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    ("value", "placeholder"),
+    [
+        ("model_name::::my_api_key", True),
+        ("model_name::https://model_service.com/::my_api_key", True),
+        ("", True),
+        (None, True),
+        ("gpt-4o::https://example.openai.azure.com/::real-key", False),
+        ("model_name::::my_api_key,gpt-4o::::real-key", False),
+    ],
+)
+def test_env_model_placeholders(value, placeholder):
+    assert env_model_is_placeholder(value) is placeholder
+
+
+@pytest.mark.unit_tests
+def test_auto_ignores_a_placeholder_env_model(monkeypatch, anthropic_default):
+    """The templates' placeholder must not hide the default model."""
+    executor = MagicMock()
+    executor.gpt_hosts = "model_name::::my_api_key"
+    with patch("scorer.judge_model.get_llm_executor", return_value=executor):
+        _source(monkeypatch, "auto")
+        assert isinstance(resolve_judge(), DefaultModelJudge)
