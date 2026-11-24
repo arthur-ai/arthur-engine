@@ -604,7 +604,9 @@ function New-Frame([string]$Payload) {
             Write-Host "arthur: framed $((Get-Item -LiteralPath $Payload).Length) bytes of JSON into $($value.Length) bytes"
         }
         Set-Content -LiteralPath $ea -Value $value -Encoding Ascii -NoNewline
-        Remove-Item -LiteralPath $gz, $b64 -Force -ErrorAction SilentlyContinue
+        # One path per call: a caller may stand a function in for Remove-Item that takes one.
+        Remove-Item -LiteralPath $gz -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $b64 -Force -ErrorAction SilentlyContinue
         return $ea
     } catch {
         Write-Host "arthur: no inventory.ea this run: $_"
