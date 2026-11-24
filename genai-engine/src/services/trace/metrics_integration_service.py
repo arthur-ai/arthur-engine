@@ -12,6 +12,7 @@ from metrics_engine import MetricsEngine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import MetricResult, Span
+from scorer.judge_model import llm_checks_billed_to
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
 
@@ -191,8 +192,9 @@ class MetricsIntegrationService:
             logger.debug(f"No metrics found for task {span.task_id}")
             return []
 
-        # Compute metrics
-        results = metrics_engine.evaluate(span_request, metrics)
+        # Compute metrics; LLM-judged ones are billed to the span's org
+        with llm_checks_billed_to(span.org_id):
+            results = metrics_engine.evaluate(span_request, metrics)
 
         # Set span_id and metric_id on results
         metric_results = []

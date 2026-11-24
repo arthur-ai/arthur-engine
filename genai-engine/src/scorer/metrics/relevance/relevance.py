@@ -9,13 +9,12 @@ from arthur_common.models.metric_schemas import (
 )
 from langchain_core.output_parsers.json import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableSerializable
 from pydantic import BaseModel, Field
 from torch import Tensor
 
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricScoreDetails
-from scorer.llm_client import extract_chain_model_name, get_llm_executor
+from scorer.judge_model import LLMJudge, resolve_judge
 from scorer.metrics.relevance.prompt_templates import (
     RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
     RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
@@ -47,18 +46,13 @@ class RelevanceResponseSchema(BaseModel):
     )
 
 
-def get_relevance_chain(
+def run_relevance_judge(
+    judge: LLMJudge,
     metric_type: MetricType,
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], RelevanceResponseSchema]:
-    """Get the appropriate relevance chain based on metric type and structured output support"""
-    model = get_llm_executor().get_gpt_model(chat_temperature=temperature)
-    if model is None:
-        raise RuntimeError(
-            f"Failed to initialize LLM model for {metric_type}. "
-            "Check your LLM configuration.",
-        )
-
+    inputs: dict[str, str | None],
+) -> tuple[RelevanceResponseSchema, int, int]:
+    """Ask the judge for a relevance score, with structured output when the model
+    supports it and a JSON prompt otherwise."""
     # Select template based on metric type
     if metric_type == MetricType.QUERY_RELEVANCE:
         structured_template = USER_QUERY_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE
@@ -68,11 +62,16 @@ def get_relevance_chain(
         structured_template = RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE
         legacy_template = RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE
         input_vars = ["system_prompt", "user_query", "response"]
+    operation = f"{metric_type.value} Check"
 
-    # Use structured outputs if supported, otherwise fall back to legacy
-    if get_llm_executor().supports_structured_outputs():
+    if judge.supports_structured_output():
         pt = PromptTemplate(input_variables=input_vars, template=structured_template)
-        return pt | model.with_structured_output(RelevanceResponseSchema)  # type: ignore[return-value]
+        response, tokens = judge.structured(
+            pt,
+            inputs,
+            RelevanceResponseSchema,
+            operation,
+        )
     else:
         parser = JsonOutputParser(pydantic_object=RelevanceResponseSchema)
         pt = PromptTemplate(
@@ -80,7 +79,9 @@ def get_relevance_chain(
             partial_variables={"format_instructions": parser.get_format_instructions()},
             template=legacy_template,
         )
-        return pt | model | parser
+        text, tokens = judge.text(pt, inputs, operation)
+        response = RelevanceResponseSchema.model_validate(parser.parse(text))
+    return response, tokens.prompt_tokens, tokens.completion_tokens
 
 
 class BaseRelevanceScorer(MetricScorer):
@@ -140,34 +141,24 @@ class BaseRelevanceScorer(MetricScorer):
         request: MetricRequest,
     ) -> tuple[float | None, str | None, str | None, int, int]:
         """Get scores from LLM judge"""
-        relevance_chain = get_relevance_chain(self.metric_type)
-        chain_call = lambda: relevance_chain.invoke(self._build_llm_input(request))
-
         try:
-            llm_judge_response, token_consumption = get_llm_executor().execute(
-                chain_call,
-                f"{self.metric_type.value} Check",
-                model_name=extract_chain_model_name(relevance_chain),
+            judge = resolve_judge(temperature=0.0)
+            if judge is None:
+                return None, None, None, 0, 0
+            response, prompt_tokens, completion_tokens = run_relevance_judge(
+                judge,
+                self.metric_type,
+                self._build_llm_input(request),
             )
         except Exception:
             return None, None, None, 0, 0
 
-        # Handle both structured output (Pydantic model) and legacy (dict) responses
-        if isinstance(llm_judge_response, RelevanceResponseSchema):
-            relevance_score_llm = llm_judge_response.relevance_score
-            justification = llm_judge_response.justification
-            suggested_refinement = llm_judge_response.suggested_refinement
-        else:
-            relevance_score_llm = llm_judge_response["relevance_score"]
-            justification = llm_judge_response["justification"]
-            suggested_refinement = llm_judge_response["suggested_refinement"]
-
         return (
-            relevance_score_llm,
-            justification,
-            suggested_refinement,
-            token_consumption.prompt_tokens,
-            token_consumption.completion_tokens,
+            response.relevance_score,
+            response.justification,
+            response.suggested_refinement,
+            prompt_tokens,
+            completion_tokens,
         )
 
     def _create_metric_details(

@@ -93,6 +93,22 @@ def get_static_catalog(provider: ModelProvider) -> List[str] | None:
     return SUPPORTED_TEXT_MODELS.get(provider)
 
 
+def supports_structured_output(provider: ModelProvider | str, model_name: str) -> bool:
+    """True when a Pydantic response_format can be sent to the model as a strict JSON
+    schema. Models LiteLLM doesn't know, such as Azure deployment aliases and proxy
+    models, report False and need a plain-text prompt instead."""
+    provider_name = provider.value if isinstance(provider, ModelProvider) else provider
+    try:
+        return bool(
+            litellm.supports_response_schema(
+                model=model_name,
+                custom_llm_provider=provider_name,
+            ),
+        )
+    except Exception:
+        return False
+
+
 class LLMClient:
     def __init__(
         self,

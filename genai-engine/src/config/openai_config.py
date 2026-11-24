@@ -16,6 +16,29 @@ class GenaiEngineOpenAIProvider(Enum):
 OPENAI_PRIVATE_CERT_PATH = "openai-cert.pem"
 
 
+class LLMChecksModelSource(str, Enum):
+    """Which model the built-in LLM checks (hallucination, sensitive data, relevance,
+    tool selection) run on."""
+
+    # The GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS model when it is set, so an
+    # existing install keeps its benchmarked model; otherwise the default model.
+    AUTO = "auto"
+    DEFAULT_MODEL = "default_model"
+    ENV = "env"
+
+
+class LLMChecksSettings(BaseSettings):
+    GENAI_ENGINE_LLM_CHECKS_MODEL_SOURCE: LLMChecksModelSource = (
+        LLMChecksModelSource.AUTO
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
 class OpenAISettings(BaseSettings):
     GENAI_ENGINE_OPENAI_PROVIDER: GenaiEngineOpenAIProvider = (
         GenaiEngineOpenAIProvider.AZURE
