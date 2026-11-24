@@ -6,10 +6,18 @@ import pytest
 from arthur_common.models.llm_model_providers import ModelProvider
 from openai import OpenAI
 
+from services.onboarding.insight_prompts import (
+    ONBOARDING_INSIGHT_SYSTEM_PROMPT,
+    onboarding_insight_user_message,
+)
 from services.prompt.prompt_caching import (
+    apply_conversation_caching,
     apply_eval_prompt_caching,
+    apply_shared_prefix_caching,
     eval_prompt_cache_key,
     static_template_prefix,
+    static_template_suffix,
+    system_prompt_cache_key,
 )
 
 RUBRIC = "Score 1 if the response answers the question, otherwise 0."
@@ -337,3 +345,320 @@ def test_openai_cache_fields_survive_into_the_request_body(model_name):
     else:
         assert body["prompt_cache_retention"] == "24h"
         assert body["messages"][1]["content"] == rendered
+
+
+TRACES = "FACTS\nt01: 3 tool calls\n\n[1] AGENT root\n  [2] TOOL fetch_url args=..."
+CLAUDE_MODELS = [
+    (ModelProvider.ANTHROPIC, "claude-sonnet-4-5"),
+    (ModelProvider.BEDROCK, "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
+    (ModelProvider.VERTEX_AI, "claude-sonnet-4-5@20250929"),
+]
+UNSUPPORTED_MODELS = [
+    (ModelProvider.GEMINI, "gemini-2.5-flash"),
+    (ModelProvider.VERTEX_AI, "gemini-2.5-flash"),
+    (ModelProvider.BEDROCK, "amazon.nova-pro-v1:0"),
+    (ModelProvider.VLLM, "meta-llama/Llama-3.1-8B-Instruct"),
+]
+
+
+def _insight_templates(kind: str) -> list[str]:
+    return [ONBOARDING_INSIGHT_SYSTEM_PROMPT, onboarding_insight_user_message(kind)]
+
+
+def _insight_params(kind: str) -> dict:
+    system, user = _insight_templates(kind)
+    return {
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user.replace("{{ traces }}", TRACES)},
+        ],
+    }
+
+
+def _apply_insight_caching(kind: str, provider, model_name) -> dict:
+    params = _insight_params(kind)
+    apply_shared_prefix_caching(
+        params,
+        provider=provider,
+        model_name=model_name,
+        templates=_insight_templates(kind),
+        cache_key="insights",
+    )
+    return params
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "template,expected",
+    [
+        (
+            "{{ traces }}\n\nInsight kind: x\nQuestion: y",
+            "Insight kind: x\nQuestion: y",
+        ),
+        ("Head {{ a }} middle {{ b }} tail\n", "tail"),
+        ("Head {% if a %}{{ a }}{% endif %}", ""),
+        ("Head {{- a -}}\n  tail", "tail"),
+        ("No variables at all", None),
+    ],
+)
+def test_static_template_suffix(template, expected):
+    assert static_template_suffix(template) == expected
+
+
+@pytest.mark.unit_tests
+def test_system_prompt_cache_key_is_stable_per_family():
+    key = system_prompt_cache_key("onboarding_insight_")
+    assert key == system_prompt_cache_key("onboarding_insight_")
+    assert key != system_prompt_cache_key("__chatbot_prompt__")
+    assert key.startswith("arthur-system-")
+    assert len(key) <= 64
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("provider,model_name", CLAUDE_MODELS)
+def test_claude_insight_breakpoint_follows_the_rendered_traces(provider, model_name):
+    params = _apply_insight_caching("internet_access", provider, model_name)
+
+    system, user = params["messages"]
+    assert system == _insight_params("internet_access")["messages"][0]
+    head, tail = user["content"]
+    assert head == {
+        "type": "text",
+        "text": TRACES + "\n\n",
+        "cache_control": {"type": "ephemeral"},
+    }
+    assert tail["text"].startswith("Insight kind: internet_access")
+    assert "cache_control" not in tail
+    assert _joined_text(user["content"]) == (
+        _insight_params("internet_access")["messages"][1]["content"]
+    )
+    assert "prompt_cache_key" not in params
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("provider,model_name", CLAUDE_MODELS)
+def test_claude_insight_prompts_share_everything_up_to_the_breakpoint(
+    provider,
+    model_name,
+):
+    # every insight prompt of a batch must write and read the same cached prefix
+    first = _apply_insight_caching("internet_access", provider, model_name)
+    second = _apply_insight_caching("tool_failures", provider, model_name)
+
+    assert first["messages"][0] == second["messages"][0]
+    assert first["messages"][1]["content"][0] == second["messages"][1]["content"][0]
+    assert first["messages"][1]["content"][1] != second["messages"][1]["content"][1]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("model_name", ["gpt-4.1", "gpt-5.5"])
+def test_pre_5_6_openai_insight_gets_family_key_and_unchanged_messages(model_name):
+    params = _apply_insight_caching("user_facing", ModelProvider.OPENAI, model_name)
+
+    assert params["prompt_cache_key"] == "insights"
+    assert params["extra_body"] == {"prompt_cache_retention": "24h"}
+    assert params["messages"] == _insight_params("user_facing")["messages"]
+
+
+@pytest.mark.unit_tests
+def test_openai_5_6_plus_insight_gets_explicit_breakpoint_after_the_traces():
+    params = _apply_insight_caching("user_facing", ModelProvider.OPENAI, "gpt-5.6")
+
+    assert params["prompt_cache_key"] == "insights"
+    assert params["prompt_cache_options"] == {"mode": "explicit"}
+    head, tail = params["messages"][1]["content"]
+    assert head == {
+        "type": "text",
+        "text": TRACES + "\n\n",
+        "prompt_cache_breakpoint": {"mode": "explicit"},
+    }
+    assert "prompt_cache_breakpoint" not in tail
+    assert "cache_control" not in str(params)
+
+
+@pytest.mark.unit_tests
+def test_azure_insight_gets_family_key_only():
+    params = _apply_insight_caching("user_facing", ModelProvider.AZURE, "gpt-4o")
+
+    assert params == {**_insight_params("user_facing"), "prompt_cache_key": "insights"}
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("provider,model_name", UNSUPPORTED_MODELS)
+def test_shared_prefix_caching_is_a_no_op_for_other_providers(provider, model_name):
+    params = _apply_insight_caching("heavy_model", provider, model_name)
+
+    assert params == _insight_params("heavy_model")
+
+
+@pytest.mark.unit_tests
+def test_claude_prompt_without_variables_gets_breakpoint_on_its_system_message():
+    params = {
+        "messages": [
+            {"role": "system", "content": "fixed instructions"},
+            {"role": "user", "content": "fixed question"},
+        ],
+    }
+    apply_shared_prefix_caching(
+        params,
+        provider=ModelProvider.ANTHROPIC,
+        model_name="claude-sonnet-4-5",
+        templates=["fixed instructions", "fixed question"],
+        cache_key="key",
+    )
+
+    assert params["messages"] == [
+        {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "fixed instructions",
+                    "cache_control": {"type": "ephemeral"},
+                },
+            ],
+        },
+        {"role": "user", "content": "fixed question"},
+    ]
+
+
+@pytest.mark.unit_tests
+def test_claude_prompt_ending_in_a_variable_gets_breakpoint_on_that_message():
+    params = {"messages": [{"role": "user", "content": "Question: " + TRACES}]}
+    apply_shared_prefix_caching(
+        params,
+        provider=ModelProvider.ANTHROPIC,
+        model_name="claude-sonnet-4-5",
+        templates=["Question: {{ traces }}"],
+        cache_key="key",
+    )
+
+    (block,) = params["messages"][0]["content"]
+    assert block["cache_control"] == {"type": "ephemeral"}
+    assert block["text"] == "Question: " + TRACES
+
+
+@pytest.mark.unit_tests
+def test_claude_shared_prefix_skips_rendered_text_that_lost_the_template_tail():
+    params = {"messages": [{"role": "user", "content": "something else"}]}
+    apply_shared_prefix_caching(
+        params,
+        provider=ModelProvider.ANTHROPIC,
+        model_name="claude-sonnet-4-5",
+        templates=["{{ traces }}\n\nQuestion: why?"],
+        cache_key="key",
+    )
+
+    assert params == {"messages": [{"role": "user", "content": "something else"}]}
+
+
+def _conversation(iteration: int) -> list[dict]:
+    """The chatbot's messages on each iteration of its tool loop."""
+    messages = [
+        {"role": "system", "content": "You are the Arthur assistant."},
+        {"role": "user", "content": "find my evals"},
+    ]
+    if iteration >= 2:
+        messages += [
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "tc1",
+                        "type": "function",
+                        "function": {"name": "search", "arguments": "{}"},
+                    },
+                ],
+            },
+            {"role": "tool", "tool_call_id": "tc1", "content": "3 evals found"},
+        ]
+    return messages
+
+
+def _breakpoints(messages: list[dict], marker: str) -> list[tuple[int, str]]:
+    return [
+        (i, block["text"])
+        for i, message in enumerate(messages)
+        if isinstance(message.get("content"), list)
+        for block in message["content"]
+        if marker in block
+    ]
+
+
+def _plain(messages: list[dict]) -> list[dict]:
+    """Messages with breakpoints taken off: the bytes the provider caches."""
+    return [
+        {
+            **message,
+            "content": (
+                _joined_text(message["content"])
+                if isinstance(message.get("content"), list)
+                else message.get("content")
+            ),
+        }
+        for message in messages
+    ]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("provider,model_name", CLAUDE_MODELS)
+def test_claude_chatbot_iterations_read_the_previous_iterations_prefix(
+    provider,
+    model_name,
+):
+    requests = []
+    for iteration in (1, 2):
+        params = {"messages": _conversation(iteration)}
+        apply_conversation_caching(
+            params,
+            provider=provider,
+            model_name=model_name,
+            cache_key="chatbot",
+        )
+        requests.append(params["messages"])
+    first, second = requests
+
+    assert _breakpoints(first, "cache_control") == [
+        (0, "You are the Arthur assistant."),
+        (1, "find my evals"),
+    ]
+    assert _breakpoints(second, "cache_control") == [
+        (0, "You are the Arthur assistant."),
+        (3, "3 evals found"),
+    ]
+    # the second request starts with every message the first one cached
+    assert _plain(second)[: len(first)] == _plain(first)
+    for messages in requests:
+        assert len(_breakpoints(messages, "cache_control")) <= 4
+
+
+@pytest.mark.unit_tests
+def test_openai_5_6_plus_chatbot_gets_explicit_breakpoints():
+    params = {"messages": _conversation(2)}
+    apply_conversation_caching(
+        params,
+        provider=ModelProvider.OPENAI,
+        model_name="gpt-5.6",
+        cache_key="chatbot",
+    )
+
+    assert params["prompt_cache_key"] == "chatbot"
+    assert params["prompt_cache_options"] == {"mode": "explicit"}
+    assert _breakpoints(params["messages"], "prompt_cache_breakpoint") == [
+        (0, "You are the Arthur assistant."),
+        (3, "3 evals found"),
+    ]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("provider,model_name", UNSUPPORTED_MODELS)
+def test_conversation_caching_is_a_no_op_for_other_providers(provider, model_name):
+    params = {"messages": _conversation(2)}
+    apply_conversation_caching(
+        params,
+        provider=provider,
+        model_name=model_name,
+        cache_key="chatbot",
+    )
+
+    assert params == {"messages": _conversation(2)}

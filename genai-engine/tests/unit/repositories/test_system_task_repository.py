@@ -4,6 +4,7 @@ Arthur's text becomes the `production` version only while `production` is a vers
 seeder wrote; a version someone else made `production` is never replaced.
 """
 
+import json
 from typing import Generator, cast
 from uuid import uuid4
 
@@ -104,7 +105,9 @@ def test_every_insight_prompt_is_seeded_on_the_default_model(
         assert isinstance(prompt.config.response_format, LLMResponseFormat)
         schema = prompt.config.response_format.json_schema
         assert schema is not None and schema.strict
-        assert schema.schema.properties["kind"].enum == [kind]
+        assert schema.schema.properties["kind"].enum == list(
+            ONBOARDING_INSIGHT_QUESTIONS,
+        )
         assert schema.schema.properties["fired"].enum == ["yes", "no", "cannot_tell"]
         assert prompt.variables == ["traces"]
         assert prompt.messages[0].content == ONBOARDING_INSIGHT_SYSTEM_PROMPT
@@ -114,6 +117,20 @@ def test_every_insight_prompt_is_seeded_on_the_default_model(
         )
         assert PRODUCTION_TAG in prompt.tags
         assert seed_tag(onboarding_insight_prompt(kind)) in prompt.tags
+
+
+@pytest.mark.unit_tests
+def test_every_insight_prompt_is_seeded_with_the_same_response_format(
+    db_session: Session,
+) -> None:
+    # providers cache the schema with the prompt prefix, so one that differed per kind
+    # would stop the prompts of a batch from sharing the cached traces
+    formats = set()
+    for kind in ONBOARDING_INSIGHT_QUESTIONS:
+        config = _version(db_session, ONBOARDING_INSIGHT_PROMPT_PREFIX + kind).config
+        assert config is not None and config.response_format is not None
+        formats.add(json.dumps(config.response_format.model_dump(), sort_keys=True))
+    assert len(formats) == 1
 
 
 @pytest.mark.unit_tests

@@ -89,7 +89,7 @@ def onboarding_insight_prompt(kind: str) -> SeededPromptRequest:
         config=LLMPromptRequestConfigSettings.model_validate(
             {
                 "max_tokens": ONBOARDING_INSIGHT_MAX_TOKENS,
-                "response_format": onboarding_insight_response_format(kind),
+                "response_format": onboarding_insight_response_format(),
             },
         ),
     )

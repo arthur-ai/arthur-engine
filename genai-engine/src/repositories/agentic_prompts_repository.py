@@ -35,7 +35,15 @@ from schemas.response_schemas import (
     AgenticPromptVersionListResponse,
     AgenticPromptVersionResponse,
 )
-from services.prompt.chat_completion_service import ChatCompletionService
+from services.onboarding.insight_prompts import ONBOARDING_INSIGHT_PROMPT_PREFIX
+from services.prompt.chat_completion_service import (
+    ChatCompletionService,
+    CompletionParamsHook,
+)
+from services.prompt.prompt_caching import (
+    apply_shared_prefix_caching,
+    system_prompt_cache_key,
+)
 from services.trace.internal_trace_service import InternalTraceService
 from utils.constants import ARTHUR_SYSTEM_TASK_ID, EMPTY_MODEL_PROVIDER
 
@@ -174,6 +182,7 @@ class AgenticPromptRepository(
         llm_client = self.model_provider_repo.get_model_provider_client(
             provider=prompt.require_configured_provider(),
         )
+        prepare_params = self._system_prompt_caching(task_id, prompt)
         if task_id == ARTHUR_SYSTEM_TASK_ID and not completion_request.stream:
             return self._run_recorded(
                 prompt,
@@ -181,12 +190,43 @@ class AgenticPromptRepository(
                 completion_request,
                 org_id,
                 session_id,
+                prepare_params,
             )
         return await self.chat_completion_service.execute_prompt_completion(
             llm_client,
             prompt,
             completion_request,
             org_id=org_id,
+            prepare_params=prepare_params,
+        )
+
+    @staticmethod
+    def _system_prompt_caching(
+        task_id: str,
+        prompt: AgenticPrompt,
+    ) -> CompletionParamsHook | None:
+        """Prompt caching for the prompts Arthur runs in its own system task, which
+        run in batches on the same variables. Customer prompts are sent as saved."""
+        if task_id != ARTHUR_SYSTEM_TASK_ID:
+            return None
+        provider = prompt.require_configured_provider()
+        # captured now: rendering replaces the variables in the prompt's messages
+        templates = [
+            message.content if isinstance(message.content, str) else None
+            for message in prompt.messages
+        ]
+        # the insight prompts share one cache: a batch asks all of them of the same traces
+        family = (
+            ONBOARDING_INSIGHT_PROMPT_PREFIX
+            if prompt.name.startswith(ONBOARDING_INSIGHT_PROMPT_PREFIX)
+            else prompt.name
+        )
+        return lambda completion_params: apply_shared_prefix_caching(
+            completion_params,
+            provider=provider,
+            model_name=prompt.model_name,
+            templates=templates,
+            cache_key=system_prompt_cache_key(family),
         )
 
     def _run_recorded(
@@ -196,6 +236,7 @@ class AgenticPromptRepository(
         completion_request: PromptCompletionRequest,
         org_id: uuid.UUID,
         session_id: Optional[str],
+        prepare_params: CompletionParamsHook | None,
     ) -> AgenticPromptRunResponse:
         """Run the prompt and record the call as an LLM span in the system task.
 
@@ -229,6 +270,7 @@ class AgenticPromptRepository(
                 llm_client,
                 completion_request,
                 org_id=org_id,
+                prepare_params=prepare_params,
             )
         except Exception as e:
             status = f" {e.status_code}" if isinstance(e, HTTPException) else ""
