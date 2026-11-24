@@ -60,6 +60,13 @@ $Out = Join-Path $Work 'arthur'
 # A TEMP of the test's own makes "nothing is left" an assertion.
 $RunTemp = Join-Path $Work 'temp'
 New-Item -ItemType Directory -Path $RunTemp | Out-Null
+Set-Content -LiteralPath (Join-Path $Work 'unframe.py') -Encoding Ascii -Value @(
+    'import base64, gzip, sys',
+    'value = open(sys.argv[1], "rb").read().decode("ascii")',
+    'assert "\n" not in value.strip() and "\r" not in value, "more than one line"',
+    'assert value.startswith("arthur1."), "no arthur1. prefix: " + value[:20]',
+    'payload = gzip.decompress(base64.b64decode(value[len("arthur1."):], validate=True))',
+    'assert payload == open(sys.argv[2], "rb").read(), "decodes to a different payload"')
 $HostTemp = $env:TEMP
 $HostTmp = $env:TMP
 
@@ -95,9 +102,25 @@ function Get-Hash([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
+# THE PAIR'S NAMES. inventory.ea is placed after the pair a run publishes, so the cases below
+# that ask about the pair read it without the frame, and the frame is asserted on its own.
 function Get-Names([string]$Dir) {
     if (-not (Test-Path -LiteralPath $Dir)) { return , @() }
-    return , @(Get-ChildItem -LiteralPath $Dir -Force | ForEach-Object { $_.Name } | Sort-Object)
+    return , @(Get-ChildItem -LiteralPath $Dir -Force | ForEach-Object { $_.Name } |
+        Where-Object { $_ -ne 'inventory.ea' } | Sort-Object)
+}
+
+# THE FRAME DECODES TO THE PAYLOAD BESIDE IT, byte for byte, read the way the ML Engine reads
+# it: arthur1., then base64, then gzip. Returns why not, or nothing.
+$Unframe = Join-Path $Work 'unframe.py'
+function Test-Frame([string]$Dir) {
+    $ea = Join-Path $Dir 'inventory.ea'
+    if (-not (Test-Path -LiteralPath $ea -PathType Leaf)) { return 'no inventory.ea' }
+    $ErrorActionPreference = 'Continue'
+    $why = & $Python.Path $Unframe $ea (Join-Path $Dir 'inventory.json') 2>&1 | ForEach-Object { "$_" }
+    $ErrorActionPreference = 'Stop'
+    if ($LASTEXITCODE -ne 0) { return "inventory.ea does not decode to inventory.json: $why" }
+    return ''
 }
 
 # 5.1's ConvertFrom-Json hands an array back as one object, and 7's unrolls it.
@@ -130,18 +153,19 @@ try {
 
     $inventory = Join-Path $Out 'inventory.json'
     $status = Join-Path $Out 'status.txt'
-    # EXACTLY THE TWO, which also says no staging directory was left beside them and no
-    # inventory.ea was written for a carrier that does not exist.
-    $names = (Get-Names $Out) -join ' '
-    if ($names -ne 'inventory.json status.txt') {
-        Bad "the output directory holds [$names], not inventory.json and status.txt"
+    # EXACTLY THE THREE, which also says no staging directory was left beside them.
+    $all = (@(Get-ChildItem -LiteralPath $Out -Force | ForEach-Object { $_.Name } | Sort-Object)) -join ' '
+    if ($all -ne 'inventory.ea inventory.json status.txt') {
+        Bad "the output directory holds [$all], not inventory.ea, inventory.json and status.txt"
         Write-Host 'collector: FAIL'
         exit 1
     }
     foreach ($path in @($inventory, $status)) {
         if ((Get-Item -LiteralPath $path).Length -eq 0) { Bad "$path is empty" }
     }
-    Note 'wrote inventory.json and status.txt, and nothing else'
+    $why = Test-Frame $Out
+    if ($why) { Bad $why }
+    Note 'wrote inventory.json, status.txt and the inventory.ea that frames them, and nothing else'
 
     Write-Host '== the payload, and what the two files agree on ========================='
     $before = $Fail
@@ -225,12 +249,16 @@ try {
     $before = $Fail
     $absent = Join-Path $Work 'no-such-pack.conf'
     $hashes = @((Get-Hash $inventory), (Get-Hash $status))
+    $frameHash = Get-Hash (Join-Path $Out 'inventory.ea')
     $printed = Invoke-Script $Collect $Out $absent ''
     $code = $LASTEXITCODE
     Show $printed
     if ($code -eq 0) { Bad 'a scan that could not run exited 0 -- the scheduler would show success' }
     if ((Get-Hash $inventory) -ne $hashes[0]) { Bad 'a failed run rewrote inventory.json -- the last good scan was lost or re-dated' }
     if ((Get-Hash $status) -ne $hashes[1]) { Bad 'a failed run rewrote status.txt' }
+    if (-not (Test-Path -LiteralPath (Join-Path $Out 'inventory.ea')) -or (Get-Hash (Join-Path $Out 'inventory.ea')) -ne $frameHash) {
+        Bad 'a failed run removed or rewrote the inventory.ea of the last good scan'
+    }
     if (@($printed | Where-Object { $_ -match 'keeping the last successful scan' }).Count -ne 1) {
         Bad 'a failed run did not say it was serving an older value'
     }
@@ -305,6 +333,7 @@ try {
     if ($code -eq 0) { Bad 'a first-ever scan that could not run exited 0' }
     $left = (Get-Names $fresh) -join ' '
     if ($left) { Bad "[$left] was left behind with no successful scan to back it" }
+    if (Test-Path -LiteralPath (Join-Path $fresh 'inventory.ea')) { Bad 'an inventory.ea was left behind with no successful scan to back it' }
     if ($Fail -eq $before) { Note "no previous scan: exit $code, no partial value written" }
 
     Write-Host '== a scan that fails its JSON check keeps the last good one too =========='
@@ -360,6 +389,8 @@ try {
         $names = (Get-Names $Out) -join ' '
         if ($names -ne 'inventory.json status.txt') { Bad "after a second run the output directory holds [$names]" }
         if ((Get-Hash $status) -eq $hashes[1]) { Bad 'a second clean run left the previous status.txt in place' }
+        $why = Test-Frame $Out
+        if ($why) { Bad "after a second run, $why" }
         $again = @(Read-Rows $inventory)
         $line = Get-Content -LiteralPath $status -Raw -Encoding UTF8
         if ($line -notmatch " rows=$($again.Count)\s") { Bad "after a second run the status does not count the payload's $($again.Count) rows: $line" }

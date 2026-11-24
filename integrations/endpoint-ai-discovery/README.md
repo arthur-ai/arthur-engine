@@ -13,9 +13,10 @@ inventory does not see them.
 1. A scheduled script runs [osquery](https://osquery.io) and writes what it found to
    `/var/lib/arthur/`. The script is `dist/collect.sh` on macOS and `dist/collect-linux.sh`
    on Linux. `dist/collect-windows.ps1` is the same script for Windows, where it writes to
-   `C:\ProgramData\Arthur\` and the standalone `local` source reads that folder.
+   `C:\ProgramData\Arthur\`; GravityZone reads `inventory.ea` there, and the standalone
+   `local` source reads the folder.
 2. The platform that already manages the machine carries that file. On Jamf Pro it is Extension
-   Attributes; on Compute Engine, guest attributes; on EC2, SSM custom inventory.
+   Attributes; on Compute Engine, guest attributes; on EC2, SSM custom inventory; on Bitdefender GravityZone, a command the scan runs on each endpoint.
 3. Arthur's collector reads the file through that platform's API and matches it against the
    agent catalog.
 

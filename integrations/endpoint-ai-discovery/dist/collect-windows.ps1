@@ -775,9 +775,8 @@ exit $code
 #|#
 #|#   $out\inventory.json   the readable payload
 #|#   $out\status.txt       one line, for a reader to match on
-#|#
-#|# NO inventory.ea. The framed value is what a carrier's attribute holds, and no carrier
-#|# reads a Windows machine yet, so nothing would read the file.
+#|#   $out\inventory.ea     the framed value a carrier reads with one command, as on macOS
+#|#                         and Linux: arthur1.<base64(gzip(json))>, or ERROR:oversize:<bytes>
 #|$ErrorActionPreference = 'Stop'
 #|
 #|# Set by the bundle's wrapper, which extracted bin\ and dist\ into a private temp directory
@@ -1010,6 +1009,16 @@ exit $code
 #|            $good = $false
 #|        }
 #|    }
+#|    # THE FRAMED VALUE GOES WITH ITS PAIR. It is placed only after a pair is published, so
+#|    # one in place is that pair's or older, and it dates itself. Kept beside a good pair it
+#|    # was written for; removed with a pair that is not served, or when another account can
+#|    # change it.
+#|    $eaPath = Join-Path $out 'inventory.ea'
+#|    if (Test-Path -LiteralPath $eaPath -PathType Leaf) {
+#|        if (-not $good -or ($elevated -and -not (Test-Trusted $eaPath))) {
+#|            Remove-Item -LiteralPath $eaPath -Force -ErrorAction SilentlyContinue
+#|        }
+#|    }
 #|    if ($good) {
 #|        Write-Host 'arthur: keeping the last successful scan; the value below is that run, not this one'
 #|        Get-Content -LiteralPath (Join-Path $out 'status.txt') -Encoding UTF8 | ForEach-Object { Write-Host $_ }
@@ -1023,6 +1032,50 @@ exit $code
 #|        }
 #|    }
 #|    Write-Host 'arthur: no previous scan to fall back on; no value written'
+#|}
+#|
+#|# THE FRAMED VALUE, BUILT IN THE STAGING DIRECTORY FROM THE CHECKED PAYLOAD. The same frame
+#|# and cap as DRIVER on macOS and Linux, so a carrier reads a Windows machine exactly as it
+#|# reads a Mac: arthur1. and the base64 of the gzip of inventory.json, on one line, or
+#|# ERROR:oversize:<bytes> past the cap.
+#|#
+#|# tar.exe's raw format writes one member's bytes with no archive around them, so with -z it
+#|# is a plain gzip of the file. certutil.exe's type 0x40000001 is base64 with no header and
+#|# no line breaks; any whitespace left is removed anyway, since the value must be one line.
+#|#
+#|# A FRAME THAT CANNOT BE BUILT IS NOT A FAILED SCAN. The pair is the scan, and a machine
+#|# without tar.exe still serves it to a reader of inventory.json. So this returns $null and
+#|# the run says why; the previous frame is removed when the new pair is published, and a
+#|# carrier reading the file then finds none, which it reports as not cached.
+#|function New-Frame([string]$Payload) {
+#|    try {
+#|        $bin = Join-Path $env:SystemRoot 'System32'
+#|        $gz = Join-Path $stage 'inventory.json.gz'
+#|        $b64 = Join-Path $stage 'inventory.b64'
+#|        $ea = Join-Path $stage 'inventory.ea'
+#|        & (Join-Path $bin 'tar.exe') -c -z --format raw -f $gz -C (Split-Path -Parent $Payload) (Split-Path -Leaf $Payload) 2>&1 | Out-Null
+#|        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $gz -PathType Leaf)) { throw 'tar.exe could not gzip the payload' }
+#|        & (Join-Path $bin 'certutil.exe') -f -encodehex $gz $b64 0x40000001 2>&1 | Out-Null
+#|        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $b64 -PathType Leaf)) { throw 'certutil.exe could not encode the payload' }
+#|        $text = (Get-Content -LiteralPath $b64 -Raw -Encoding Ascii) -replace '\s', ''
+#|        if (-not $text) { throw 'the encoded payload is empty' }
+#|        $value = "arthur1.$text"
+#|        # 256 KB, as DRIVER's CAP, and for the same reason: our loud failure fires before
+#|        # any carrier's silent one.
+#|        $cap = 262144
+#|        if ($value.Length -gt $cap) {
+#|            Write-Host "arthur: framed value is $($value.Length) bytes, over the $cap-byte cap. Reporting the reason instead of the payload."
+#|            $value = "ERROR:oversize:$($value.Length)"
+#|        } else {
+#|            Write-Host "arthur: framed $((Get-Item -LiteralPath $Payload).Length) bytes of JSON into $($value.Length) bytes"
+#|        }
+#|        Set-Content -LiteralPath $ea -Value $value -Encoding Ascii -NoNewline
+#|        Remove-Item -LiteralPath $gz, $b64 -Force -ErrorAction SilentlyContinue
+#|        return $ea
+#|    } catch {
+#|        Write-Host "arthur: no inventory.ea this run: $_"
+#|        return $null
+#|    }
 #|}
 #|
 #|$code = 1
@@ -1064,6 +1117,7 @@ exit $code
 #|            # ONLY TO AN EMPTY PLACE: beside a new file that could not be taken back it would
 #|            # be two scans passing for one. Then, or when a previous file will not go back,
 #|            # what is still set aside is kept in .previous for the next run: see Restore-Kept.
+#|            $frame = New-Frame $inventory
 #|            $aside = Join-Path $stage 'previous'
 #|            New-Item -ItemType Directory -Path $aside | Out-Null
 #|            $failed = ''
@@ -1151,6 +1205,18 @@ exit $code
 #|                # The scheduler records the exit status. A branch that could not look is not
 #|                # a failed collection: the payload says so per branch, and this line is what
 #|                # a reader matches on.
+#|                #
+#|                # THE FRAME FOLLOWS THE PAIR IT WAS BUILT FROM, by delete and move: a reader in
+#|                # between finds no frame, which reads as not cached for one poll, never a frame
+#|                # beside another scan's pair. A frame that will not go into place is not a
+#|                # failed scan either; the pair is published.
+#|                $eaPath = Join-Path $out 'inventory.ea'
+#|                try {
+#|                    if (Test-Path -LiteralPath $eaPath -PathType Leaf) { Remove-Item -LiteralPath $eaPath -Force }
+#|                    if ($frame) { Move-Item -LiteralPath $frame -Destination $eaPath }
+#|                } catch {
+#|                    Write-Host "arthur: could not place inventory.ea: $_"
+#|                }
 #|                Get-Content -LiteralPath (Join-Path $out 'status.txt') -Encoding UTF8 | ForEach-Object { Write-Host $_ }
 #|                $code = 0
 #|            }
