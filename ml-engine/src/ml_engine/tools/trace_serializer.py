@@ -1,6 +1,7 @@
 # Copied from the GenAI Engine's genai-engine/src/utils/trace_serializer.py (arthur-engine
-# commit 73b594eef), the format the onboarding insight prompts are written against. Keep the
-# two in step until the module has a shared home.
+# commit c02c5c84e), the format the onboarding insight prompts are written against, with
+# one change: a trace whose whole text fits max_chars is returned whole. Keep the two in
+# step until the module has a shared home.
 
 """One trace as text for an LLM judge: the whole run in one prompt, within a size budget.
 

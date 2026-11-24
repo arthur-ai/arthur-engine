@@ -563,7 +563,9 @@ def run_llm_insights(
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=MAX_PARALLEL_CALLS) as pool:
         for batch in batches:
-            # The first call alone, so the engine can cache the batch for the others.
+            # The first call alone, so a provider that caches a repeated prompt prefix
+            # by itself (OpenAI does) can serve the batch to the other five from its
+            # cache. The engine marks no saved prompt for caching, so Anthropic does not.
             first, *rest = INSIGHT_KINDS
             answers[first].append(asker.ask(batch, first))
             for kind, answer in zip(
