@@ -1,13 +1,16 @@
 import copy
 import json
 import logging
+import re
 import uuid
 from typing import List, Optional, Type, cast
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.llm_model_providers import (
     LLMConfigSettings,
     LLMResponseFormat,
     LLMResponseFormatEnum,
+    OpenAIMessage,
 )
 from fastapi import HTTPException
 from litellm import supports_response_schema
@@ -55,6 +58,50 @@ _SESSION_TRACE_NAMESPACE = uuid.UUID("5f0e5d3a-2b8a-4f63-9a51-6c8d0e7f4b21")
 def session_trace_id(session_id: str) -> bytes:
     """The trace that a session's system-task prompt runs are recorded in."""
     return uuid.uuid5(_SESSION_TRACE_NAMESPACE, session_id).bytes
+
+
+# A variable longer than this is recorded as a pointer, not copied: a feature passes the
+# traces it analyses, which are already stored in this engine.
+RECORDED_VARIABLE_MAX_CHARS = 2_000
+_TRACE_ID = re.compile(r"<trace id=([^>\s]+)>")
+
+
+def recorded_variable(value: str) -> str:
+    """What a span records for one variable: the value, or a pointer to the traces."""
+    if len(value) <= RECORDED_VARIABLE_MAX_CHARS:
+        return value
+    trace_ids = _TRACE_ID.findall(value)
+    if trace_ids:
+        return (
+            f"[{len(trace_ids)} traces stored in this engine, {len(value):,} characters: "
+            f"{', '.join(trace_ids)}]"
+        )
+    return f"[{len(value):,} characters, not recorded]"
+
+
+def recorded_input_messages(
+    messages: List[OpenAIMessage],
+    variables: Optional[List[VariableTemplateValue]],
+) -> List[OpenAIMessage]:
+    """The prompt's messages as a span records them: each variable filled in, a long
+    one (the traces) as a pointer to what the engine already stores."""
+    values = {v.name: recorded_variable(v.value) for v in variables or []}
+
+    def fill(text: str) -> str:
+        return re.sub(
+            r"\{\{\s*(\w+)\s*\}\}",
+            lambda m: values.get(m.group(1), m.group(0)),
+            text,
+        )
+
+    return [
+        (
+            m.model_copy(update={"content": fill(m.content)})
+            if isinstance(m.content, str)
+            else m.model_copy()
+        )
+        for m in messages
+    ]
 
 
 def session_root_span_id(session_id: str) -> bytes:
@@ -218,10 +265,11 @@ class AgenticPromptRepository(
     ) -> AgenticPromptRunResponse:
         """Run the prompt and record the call as an LLM span in the system task.
 
-        The span holds the prompt's name and version, the model, the tokens, the cost,
-        the latency (its start and end) and, for a failed call, the error's type. Not the
-        messages or the reply: what a feature sends can be another task's traces.
-        Recording never fails the run.
+        The span holds the prompt's name and version, the model, the messages sent, the
+        reply, the tokens, the cost, the latency (its start and end) and, for a failed
+        call, the error's type. A long variable is recorded as a pointer, not copied:
+        what a feature sends is traces this engine already stores
+        (`recorded_input_messages`). Recording never fails the run.
         """
         tracer = InternalTraceService(
             self.db_session,
@@ -247,6 +295,10 @@ class AgenticPromptRepository(
         )
         if session_id:
             span.set_attribute(SpanAttributes.SESSION_ID, session_id)
+        tracer.set_llm_input_messages(
+            span,
+            recorded_input_messages(prompt.messages, completion_request.variables),
+        )
         try:
             response = self.chat_completion_service.run_chat_completion(
                 prompt,
@@ -267,6 +319,12 @@ class AgenticPromptRepository(
         ):
             if tokens is not None:
                 span.set_attribute(attribute, tokens)
+        content = response.content or ""
+        tracer.set_llm_response(
+            span,
+            content=content,
+            output_envelope="raw" if content.lstrip().startswith("{") else "text",
+        )
         try:
             span.set_attribute(SpanAttributes.LLM_COST_TOTAL, float(response.cost))
         except (TypeError, ValueError):

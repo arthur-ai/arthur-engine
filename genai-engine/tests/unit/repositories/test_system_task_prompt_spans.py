@@ -133,7 +133,7 @@ def _spans(session: Session, name: str) -> list[DatabaseSpan]:
 
 @pytest.mark.unit_tests
 @pytest.mark.asyncio
-async def test_a_run_is_recorded_as_an_llm_span_without_its_text(
+async def test_a_run_is_recorded_as_an_llm_span_with_its_messages_and_reply(
     db_session: Session,
     prompt_name: str,
 ) -> None:
@@ -155,12 +155,41 @@ async def test_a_run_is_recorded_as_an_llm_span_without_its_text(
         "prompt_name": prompt_name,
         "prompt_version": 1,
     }
-    # Neither what was sent nor what came back.
-    assert "PROMPT-TEXT-MARKER" not in attributes
-    assert "VARIABLE-MARKER" not in attributes
-    assert "the reply" not in attributes
+    # What was sent (a short variable filled in) and what came back.
+    assert span.raw_data["attributes"]["input"]["value"] == {
+        "messages": [{"role": "user", "content": "PROMPT-TEXT-MARKER VARIABLE-MARKER"}],
+    }
+    assert span.raw_data["attributes"]["output"]["value"] == {"text": "the reply"}
     # Arthur's own calls never run continuous evals.
     enqueue.assert_not_called()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+async def test_traces_passed_as_a_variable_are_recorded_as_a_pointer(
+    db_session: Session,
+    prompt_name: str,
+) -> None:
+    """The traces a feature sends are already stored in this engine: the span names
+    them instead of copying them."""
+    ids = [uuid4().hex, uuid4().hex]
+    traces = "".join(f"<trace id={i}>{'TRACE-TEXT-MARKER ' * 200}</trace>" for i in ids)
+
+    with patch(GET_CLIENT, return_value=_client()):
+        await AgenticPromptRepository(db_session).run_saved_prompt(
+            ARTHUR_SYSTEM_TASK_ID,
+            prompt_name,
+            "latest",
+            PromptCompletionRequest(variables=[{"name": "x", "value": traces}]),
+            org_id=DEFAULT_ORG_ID,
+        )
+
+    [span] = _spans(db_session, prompt_name)
+    recorded = json.dumps(span.raw_data["attributes"]["input"]["value"])
+    assert "TRACE-TEXT-MARKER" not in recorded
+    assert f"2 traces stored in this engine, {len(traces):,} characters" in recorded
+    assert all(i in recorded for i in ids)
+    assert "PROMPT-TEXT-MARKER" in recorded
 
 
 @pytest.mark.unit_tests
