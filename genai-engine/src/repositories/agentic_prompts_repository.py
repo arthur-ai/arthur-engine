@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 import uuid
 from typing import List, Optional, Type, cast
 
@@ -13,6 +14,7 @@ from litellm import supports_response_schema
 from openinference.semconv.trace import SpanAttributes
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import StreamingResponse
 from starlette.status import HTTP_400_BAD_REQUEST
 
@@ -21,6 +23,7 @@ from db_models.agentic_prompt_models import (
     DatabaseAgenticPrompt,
     DatabaseAgenticPromptVersionTag,
 )
+from db_models.telemetry_models import DatabaseSpan
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -36,8 +39,14 @@ from schemas.response_schemas import (
     AgenticPromptVersionResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
-from services.trace.internal_trace_service import InternalTraceService
+from services.trace.internal_trace_service import (
+    InternalTraceService,
+    TraceSpanBuilder,
+)
 from utils.constants import ARTHUR_SYSTEM_TASK_ID, EMPTY_MODEL_PROVIDER
+from utils.trace import timestamp_ns_to_datetime
+
+logger = logging.getLogger(__name__)
 
 # Derives one trace id per session id, so a session's runs share a trace.
 _SESSION_TRACE_NAMESPACE = uuid.UUID("5f0e5d3a-2b8a-4f63-9a51-6c8d0e7f4b21")
@@ -46,6 +55,12 @@ _SESSION_TRACE_NAMESPACE = uuid.UUID("5f0e5d3a-2b8a-4f63-9a51-6c8d0e7f4b21")
 def session_trace_id(session_id: str) -> bytes:
     """The trace that a session's system-task prompt runs are recorded in."""
     return uuid.uuid5(_SESSION_TRACE_NAMESPACE, session_id).bytes
+
+
+def session_root_span_id(session_id: str) -> bytes:
+    """The span a session's system-task prompt runs are recorded under, as the
+    chatbot's calls are under its agent span."""
+    return uuid.uuid5(_SESSION_TRACE_NAMESPACE, f"root:{session_id}").bytes[:8]
 
 
 class AgenticPromptRepository(
@@ -175,7 +190,11 @@ class AgenticPromptRepository(
             provider=prompt.require_configured_provider(),
         )
         if task_id == ARTHUR_SYSTEM_TASK_ID and not completion_request.stream:
-            return self._run_recorded(
+            # The model call blocks, so it runs in a worker thread: on the event loop it
+            # would hold every other request, and a caller's parallel calls would run
+            # one after another.
+            return await run_in_threadpool(
+                self._run_recorded,
                 prompt,
                 llm_client,
                 completion_request,
@@ -210,11 +229,16 @@ class AgenticPromptRepository(
             service_name="system task prompt",
             trace_id=session_trace_id(session_id) if session_id else None,
         )
+        root_span_id = (
+            self._open_session_root(tracer, session_id) if session_id else None
+        )
         span = tracer.start_llm_span(
             None,
             model_name=prompt.model_name,
             model_provider=str(prompt.model_provider),
         )
+        if root_span_id is not None:
+            span.parent_span_id = root_span_id
         span.name = prompt.name
         span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, prompt.version)
         span.set_attribute(
@@ -234,6 +258,7 @@ class AgenticPromptRepository(
             status = f" {e.status_code}" if isinstance(e, HTTPException) else ""
             tracer.end_span_with_error(span, f"{type(e).__name__}{status}")
             tracer.flush()
+            self._extend_session_root(tracer, root_span_id, span)
             raise
         for attribute, tokens in (
             (SpanAttributes.LLM_TOKEN_COUNT_PROMPT, response.input_tokens),
@@ -248,7 +273,69 @@ class AgenticPromptRepository(
             pass
         tracer.end_span(span)
         tracer.flush()
+        self._extend_session_root(tracer, root_span_id, span)
         return response
+
+    def _session_root(
+        self,
+        tracer: InternalTraceService,
+        root_span_id: bytes,
+    ) -> Optional[DatabaseSpan]:
+        return (
+            self.db_session.query(DatabaseSpan)
+            .filter(
+                DatabaseSpan.task_id == ARTHUR_SYSTEM_TASK_ID,
+                DatabaseSpan.trace_id == tracer.trace_id.hex(),
+                DatabaseSpan.span_id == root_span_id.hex(),
+            )
+            .first()
+        )
+
+    def _open_session_root(
+        self,
+        tracer: InternalTraceService,
+        session_id: str,
+    ) -> bytes:
+        """The session's root span id, adding the AGENT root span to this flush when it
+        is the session's first run. It is named for the caller, the part of the session
+        id before ":" (`onboarding_analysis:<job id>` gives `onboarding_analysis`).
+
+        Two first runs of one session at the same moment would each add one: callers
+        send a session's first run alone (the onboarding job does).
+        """
+        root_span_id = session_root_span_id(session_id)
+        if self._session_root(tracer, root_span_id) is None:
+            caller = session_id.split(":", 1)[0] or "system task prompts"
+            root = tracer.start_agent_span(
+                name=caller,
+                agent_name=caller,
+                session_id=session_id,
+            )
+            root.span_id = root_span_id
+            tracer.end_span(root)
+        return root_span_id
+
+    def _extend_session_root(
+        self,
+        tracer: InternalTraceService,
+        root_span_id: Optional[bytes],
+        span: TraceSpanBuilder,
+    ) -> None:
+        """Stretch the session's root span to end with its latest run. Never fails the run."""
+        if root_span_id is None or span.end_time is None:
+            return
+        try:
+            end_ns = int(span.end_time.timestamp() * 1e9)
+            end_time = timestamp_ns_to_datetime(end_ns)
+            root = self._session_root(tracer, root_span_id)
+            if root is None or root.end_time >= end_time:
+                return
+            root.end_time = end_time
+            root.raw_data = {**root.raw_data, "endTimeUnixNano": str(end_ns)}
+            self.db_session.commit()
+        except Exception:
+            logger.exception("Failed to extend the session's root span")
+            self.db_session.rollback()
 
     def _with_resolved_model(self, prompt: AgenticPrompt) -> AgenticPrompt:
         """The prompt with the model it runs on. A prompt saved with the 'empty'

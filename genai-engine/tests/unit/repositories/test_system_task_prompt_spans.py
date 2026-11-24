@@ -2,6 +2,7 @@
 
 import json
 import random
+import threading
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -20,6 +21,7 @@ from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from repositories.agentic_prompts_repository import (
     AgenticPromptRepository,
+    session_root_span_id,
     session_trace_id,
 )
 from repositories.system_task_repository import SystemTaskRepository
@@ -67,8 +69,15 @@ def prompt_name(db_session: Session) -> Generator[str, None, None]:
         ),
     )
     yield name
-    spans = db_session.query(DatabaseSpan).filter(DatabaseSpan.span_name == name).all()
-    trace_ids = {s.trace_id for s in spans}
+    trace_ids = {
+        s.trace_id
+        for s in db_session.query(DatabaseSpan).filter(DatabaseSpan.span_name == name)
+    }
+    spans = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.trace_id.in_(trace_ids))
+        .all()
+    )
     for span in spans:
         db_session.delete(span)
     db_session.query(DatabaseTraceMetadata).filter(
@@ -169,6 +178,65 @@ async def test_runs_with_one_session_id_share_a_session_and_a_trace(
     assert {s.trace_id for s in spans} == {
         session_trace_id("onboarding_analysis:job-1").hex(),
     }
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+async def test_a_sessions_runs_sit_under_one_root_span_that_ends_with_the_last(
+    db_session: Session,
+    prompt_name: str,
+) -> None:
+    session_id = f"onboarding_analysis:{uuid4()}"
+    await _run(db_session, prompt_name, session_id=session_id)
+    await _run(db_session, prompt_name, session_id=session_id)
+
+    runs = _spans(db_session, prompt_name)
+    [root] = (
+        db_session.query(DatabaseSpan)
+        .filter(
+            DatabaseSpan.trace_id == session_trace_id(session_id).hex(),
+            DatabaseSpan.parent_span_id.is_(None),
+        )
+        .all()
+    )
+    assert root.span_id == session_root_span_id(session_id).hex()
+    assert (root.span_name, root.span_kind) == ("onboarding_analysis", "AGENT")
+    assert root.session_id == session_id
+    assert {s.parent_span_id for s in runs} == {root.span_id}
+    assert root.start_time <= min(s.start_time for s in runs)
+    assert root.end_time == max(s.end_time for s in runs)
+    assert root.raw_data["endTimeUnixNano"] == max(
+        s.raw_data["endTimeUnixNano"] for s in runs
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+async def test_the_model_call_runs_off_the_event_loop(
+    db_session: Session,
+    prompt_name: str,
+) -> None:
+    """A blocking call on the event loop would hold every other request, so a
+    caller's parallel calls would be answered one after another."""
+    loop_thread = threading.get_ident()
+    client = _client()
+    called_on: list[int] = []
+    completion = client.completion
+    client.completion = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda *a, **k: called_on.append(threading.get_ident())
+        or completion.return_value,
+    )
+
+    with patch(GET_CLIENT, return_value=client):
+        await AgenticPromptRepository(db_session).run_saved_prompt(
+            ARTHUR_SYSTEM_TASK_ID,
+            prompt_name,
+            "latest",
+            PromptCompletionRequest(variables=[{"name": "x", "value": "v"}]),
+            org_id=DEFAULT_ORG_ID,
+        )
+
+    assert called_on and called_on[0] != loop_thread
 
 
 @pytest.mark.unit_tests
