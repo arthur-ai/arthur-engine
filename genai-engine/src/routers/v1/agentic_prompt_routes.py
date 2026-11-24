@@ -40,6 +40,7 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
     PromptCompletionRequest,
     SavedPromptRenderingRequest,
+    SystemTaskSessionSummary,
     UnsavedPromptRenderingRequest,
     UnsavedPromptVariablesRequest,
 )
@@ -795,3 +796,31 @@ def delete_tag_from_agentic_prompt_version(
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.put(
+    "/tasks/{task_id}/prompt_sessions/{session_id}/summary",
+    summary="Record what a system task prompt session did",
+    description="For the Arthur system task only. Records a session's whole job as its "
+    "root span (start to end, input, output, status) and a CHAIN span per reported "
+    "step, beside the LLM spans of the session's prompt runs. Send counts and ids, "
+    "never content.",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
+def put_system_task_session_summary(
+    summary: SystemTaskSessionSummary,
+    session_id: str = Path(..., max_length=128),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_task),
+) -> Response:
+    if task.id != constants.ARTHUR_SYSTEM_TASK_ID:
+        raise HTTPException(
+            status_code=400,
+            detail="Session summaries are recorded for the Arthur system task only.",
+        )
+    AgenticPromptRepository(db_session).record_session_summary(session_id, summary)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

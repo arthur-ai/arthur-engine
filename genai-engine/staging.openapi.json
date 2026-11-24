@@ -8198,6 +8198,68 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/prompt_sessions/{session_id}/summary": {
+            "put": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Record what a system task prompt session did",
+                "description": "For the Arthur system task only. Records a session's whole job as its root span (start to end, input, output, status) and a CHAIN span per reported step, beside the LLM spans of the session's prompt runs. Send counts and ids, never content.",
+                "operationId": "put_system_task_session_summary_api_v1_tasks__task_id__prompt_sessions__session_id__summary_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 128,
+                            "title": "Session Id"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SystemTaskSessionSummary"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/tasks/{task_id}/datasets": {
             "post": {
                 "tags": [
@@ -33205,6 +33267,102 @@
                 ],
                 "title": "SyntheticDataRowResponse",
                 "description": "A single generated row with a temporary client-side ID for tracking."
+            },
+            "SystemTaskSessionStep": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "title": "Name",
+                        "description": "The step's name, e.g. read_traces."
+                    },
+                    "started_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Started At"
+                    },
+                    "ended_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Ended At"
+                    },
+                    "attributes": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Attributes",
+                        "description": "Counts and settings for the step; never content it read."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "started_at",
+                    "ended_at"
+                ],
+                "title": "SystemTaskSessionStep",
+                "description": "One step of the work a session's system task prompt runs belong to."
+            },
+            "SystemTaskSessionSummary": {
+                "properties": {
+                    "started_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Started At"
+                    },
+                    "ended_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Ended At"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ok",
+                            "error"
+                        ],
+                        "title": "Status",
+                        "default": "ok"
+                    },
+                    "status_message": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 500
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Status Message"
+                    },
+                    "input": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Input",
+                        "description": "What the job was asked to do. Counts and ids only, never content."
+                    },
+                    "output": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Output",
+                        "description": "How the job ended. Counts and verdicts only, never content."
+                    },
+                    "steps": {
+                        "items": {
+                            "$ref": "#/components/schemas/SystemTaskSessionStep"
+                        },
+                        "type": "array",
+                        "maxItems": 50,
+                        "title": "Steps"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "started_at",
+                    "ended_at"
+                ],
+                "title": "SystemTaskSessionSummary",
+                "description": "What the caller of a session's system task prompt runs did, from start to end.\n\nThe engine records it as the session's root span and a span per step, so the\nsession's trace covers the whole job, not only its model calls."
             },
             "TaskAnalyticsBucketSize": {
                 "type": "string",
