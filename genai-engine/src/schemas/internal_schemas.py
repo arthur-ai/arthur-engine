@@ -1921,7 +1921,6 @@ class ApplicationConfiguration(BaseModel):
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
     trace_retention_days: int
-    insights_generation_enabled: bool = False
 
     @staticmethod
     def _from_database_model(
@@ -1993,13 +1992,6 @@ class ApplicationConfiguration(BaseModel):
         if not default_currency or not default_currency.strip():
             default_currency = currency_config.DEFAULT_CURRENCY or "USD"
         default_currency = default_currency.strip().upper()
-        insights_generation_enabled = (
-            config_if_exists(
-                ApplicationConfigurations.INSIGHTS_GENERATION_ENABLED,
-                configs,
-            )
-            == "true"
-        )
 
         return ApplicationConfiguration(
             chat_task_id=config_if_exists(
@@ -2010,7 +2002,6 @@ class ApplicationConfiguration(BaseModel):
             document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
             trace_retention_days=trace_retention_days,
-            insights_generation_enabled=insights_generation_enabled,
         )
 
     def _to_response_model(self) -> ApplicationConfigurationResponse:
@@ -2025,7 +2016,6 @@ class ApplicationConfiguration(BaseModel):
             max_llm_rules_per_task_count=self.max_llm_rules_per_task_count,
             trace_retention_days=self.trace_retention_days,
             allowed_trace_retention_days=constants.ALLOWED_TRACE_RETENTION_DAYS,
-            insights_generation_enabled=self.insights_generation_enabled,
         )
 
 

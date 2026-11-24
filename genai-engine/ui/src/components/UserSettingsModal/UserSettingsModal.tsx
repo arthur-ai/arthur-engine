@@ -73,8 +73,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   initialTraceRetentionDays,
   allowedTraceRetentionDays = NO_RETENTION_DAYS,
   isLoadingTraceRetention = false,
-  insightsGenerationAvailable = false,
-  initialInsightsGenerationEnabled = false,
   isTenant = false,
   title = "Settings",
   saveLabel = "Save",
@@ -93,7 +91,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [blacklistSearch, setBlacklistSearch] = useState("");
   const retentionDefault = initialTraceRetentionDays ?? allowedTraceRetentionDays[0];
   const [traceRetentionDays, setTraceRetentionDays] = useState<number | undefined>(retentionDefault);
-  const [insightsGenerationEnabled, setInsightsGenerationEnabled] = useState<boolean>(initialInsightsGenerationEnabled);
 
   useEffect(() => {
     if (open) {
@@ -103,7 +100,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setBlacklistEndpoints(initialSettings?.blacklistEndpoints ?? []);
       setBlacklistSearch("");
       setTraceRetentionDays(initialTraceRetentionDays ?? allowedTraceRetentionDays[0]);
-      setInsightsGenerationEnabled(initialInsightsGenerationEnabled);
     }
   }, [
     open,
@@ -113,7 +109,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     initialSettings?.blacklistEndpoints,
     initialTraceRetentionDays,
     allowedTraceRetentionDays,
-    initialInsightsGenerationEnabled,
   ]);
 
   const options = timezoneOptions.length > 0 ? timezoneOptions : DEFAULT_TIMEZONE_OPTIONS;
@@ -134,7 +129,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       traceRetentionDays: traceRetentionDays !== initialTraceRetentionDays ? traceRetentionDays : undefined,
       enableChatbot,
       blacklistEndpoints,
-      insightsGenerationEnabled: insightsGenerationEnabled !== initialInsightsGenerationEnabled ? insightsGenerationEnabled : undefined,
     });
   };
 
@@ -205,7 +199,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           </>
         )}
 
-        {!isTenant && (chatbotEnabled || insightsGenerationAvailable) && (
+        {!isTenant && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography
@@ -252,23 +246,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 control={<Switch checked={enableChatbot} onChange={(e) => setEnableChatbot(e.target.checked)} disabled={isLoading} />}
                 label="Enable AI Assistant"
               />
-            )}
-            {insightsGenerationAvailable && (
-              <Box sx={{ mt: 1 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={insightsGenerationEnabled}
-                      onChange={(e) => setInsightsGenerationEnabled(e.target.checked)}
-                      disabled={isLoading || isLoadingTraceRetention}
-                    />
-                  }
-                  label="Generate insights"
-                />
-                <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
-                  For everyone on this instance, using the default model. Used by onboarding insights (coming soon).
-                </Typography>
-              </Box>
             )}
             {chatbotEnabled && availableEndpoints.length > 0 && (
               <Box sx={{ mt: 2 }}>

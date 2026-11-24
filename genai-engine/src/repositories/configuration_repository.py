@@ -92,14 +92,6 @@ class ConfigurationRepository:
             )
             self.db_session.add(trace_retention)
 
-        if request.insights_generation_enabled is not None:
-            insights = update_or_create_config(
-                ApplicationConfigurations.INSIGHTS_GENERATION_ENABLED,
-                str(request.insights_generation_enabled).lower(),
-                existing_configurations,
-            )
-            self.db_session.add(insights)
-
         self.db_session.commit()
         return self.get_configurations()
 
