@@ -11,10 +11,12 @@ names, into DuckDB through the loader the metrics job uses, and hands one result
    span names seen, so transforms can be built.
 4. Totals by SQL.
 5. Sample up to `sample_size` traces and `max_spans` spans, drawn in DuckDB.
-6. Insights. With a GenAI Engine configured, the LLM insights send the sampled traces
-   to its saved insight prompts (`onboarding_insights`) and report a finding per insight.
-   The rule insights are not built yet. An insight that does not run is listed in
-   `skipped` with the reason, never reported as "nothing found".
+6. Insights. When a GenAI Engine is configured, its insights setting is on and it has a
+   default model provider, the LLM insights send the sampled traces to its saved
+   insight prompts (`onboarding_insights`); each answered insight can become a finding.
+   The rule insights are not built yet. An insight that does not run, or whose calls
+   fail or are skipped, is listed in `skipped` with the reason, never reported as
+   "nothing found".
 7. Upload the one result.
 
 Every trace read counts and is analysed, GUARDRAIL spans included. A validate call made
