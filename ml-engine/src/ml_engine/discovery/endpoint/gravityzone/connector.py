@@ -45,6 +45,7 @@ from discovery.catalog import Matcher
 from discovery.endpoint.device import ManagedDevice
 from discovery.endpoint.gravityzone.client import (
     INVESTIGATION,
+    TIMED_OUT_ERROR_CODE,
     GravityZoneClient,
     GravityZoneError,
     GravityZoneSettings,
@@ -82,8 +83,9 @@ OUTPUT_ATTRIBUTE = "GravityZone command output"
 # Commands in flight at once, and how often they are polled.
 WAVE_SIZE = 20
 POLL_INTERVAL_SECONDS = 5.0
-# From the start of a command to giving up on its output. Unverified: GravityZone's own
-# execution timeout is not published.
+# From the start of a command to giving up on its output. GravityZone has its own execution
+# limit (a task past it fails with errorCode -99997, 77209-1565959), but does not publish
+# its length.
 COMMAND_TIMEOUT_SECONDS = 300.0
 
 # Coverage reasons this carrier adds to the endpoint pipeline's own.
@@ -95,8 +97,10 @@ COMMAND_FAILED = "command-failed"
 COMMAND_TIMED_OUT = "command-timed-out"
 OUTPUT_UNREADABLE = "output-unreadable"
 
-# getManagedEndpointDetails `state`. Unverified beyond the reference: 1 online, 2 offline,
-# 3 suspended. Anything else is tried, and the command timeout decides.
+# getManagedEndpointDetails `state` (77211-128484): 1 online, 2 offline, 3 suspended,
+# 0 unknown -- and 2 and 3 are returned only for endpoints in a virtualization integration,
+# so a laptop that is off reads 0 or 1. Anything but 2 and 3 is tried, and the command's
+# own outcome decides.
 _ONLINE, _OFFLINE_STATES = 1, frozenset({2, 3})
 
 _LINUX_NAMES = (
@@ -236,8 +240,11 @@ class GravityZoneConnector:
             raise GravityZoneError(
                 f"GravityZone refused the discovery command on all {self._refused} "
                 f"endpoint(s) it was sent to ({self._last_refusal}). The API key needs "
-                "the Investigation API, the company needs Remote Shell (GravityZone "
-                "EDR/XDR), and the endpoints need the Remote Shell module enabled.",
+                "the Investigation API; its user needs the Manage Networks and Advanced "
+                "Investigation rights; the company needs EDR or XDR with the Remote "
+                "Shell add-on and must not be partner-managed; and the endpoints' "
+                "policy needs Remote Shell connection enabled (General > Agent > "
+                "Communication).",
                 status_code=self._last_refusal.status_code,
             ) from self._last_refusal
 
@@ -323,7 +330,13 @@ class GravityZoneConnector:
             logger.warning("%s: command output not available (%s)", key, exc)
             return COMMAND_FAILED, None
         if output.state == "failed":
-            logger.warning("%s: GravityZone reports the command failed", key)
+            logger.warning(
+                "%s: GravityZone reports the command failed (errorCode %s)",
+                key,
+                output.error_code,
+            )
+            if output.error_code == TIMED_OUT_ERROR_CODE:
+                return COMMAND_TIMED_OUT, None
             return COMMAND_FAILED, None
         if output.state != "done" or output.url is None:
             if self._clock() - job.started_at >= COMMAND_TIMEOUT_SECONDS:

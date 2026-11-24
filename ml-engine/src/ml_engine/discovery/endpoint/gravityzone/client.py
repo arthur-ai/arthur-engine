@@ -1,28 +1,28 @@
 """Talking to GravityZone's public API: list endpoints, run one command, read its output.
 
-JSON-RPC 2.0 over HTTPS, one POST per call to `<access_url>/v1.0/jsonrpc/<module>`,
-authenticated with HTTP Basic: the API key as the user name and an empty password. There
-is no token to mint or refresh, so a 401 is the key itself being refused and is never
-retried.
+JSON-RPC 2.0 over HTTPS, one POST per call to `<access_url>/<version>/jsonrpc/<module>`,
+authenticated with HTTP Basic: a personal API key as the user name and an empty password
+(Public API, 77211-125277). There is no token to mint or refresh, so a refused key is never
+retried. GravityZone reports a refusal two ways, and both are read: HTTP 401 / 403, or a
+JSON-RPC error -32001 "Authorization error" (wrong scope, missing user rights, licence) in
+an HTTP 200, which is how it answers every error but 429.
 
-THE ONE WRITE THIS CLIENT MAKES IS `startCommandExecutionOnEndpoint`, and it runs as root
-on the endpoint (GravityZone's Remote Shell runs with root privileges; whether an API
-command does too is unverified). The command is a constant of the connector that reads
-one file and prints it. Nothing a source field holds is ever put into it.
+THE ONE WRITE THIS CLIENT MAKES IS `startCommandExecutionOnEndpoint` (77209-1566170),
+under the Remote Shell prerequisites, whose sessions run with root privileges
+(77209-111689). The command is a constant of the connector that reads one file and prints
+it. Nothing a source field holds is ever put into it.
 
-RATE LIMITS ARE THE CUSTOMER'S, SHARED WITH EVERY OTHER INTEGRATION ON THE KEY.
-GravityZone allows 10 requests a second per key by default and answers 429 with
-Retry-After past that. Calls are spaced to stay under eight a second, one at a time, and a
-429 is retried after the delay it names.
+RATE LIMITS ARE THE CUSTOMER'S, SHARED WITH EVERY OTHER INTEGRATION ON THE KEY. None of
+the methods here is listed with its own limit, so the default applies: 10 requests a second
+per key, 429 with Retry-After (and JSON-RPC -32003) past it (77211-394430). Calls are spaced
+to stay under eight a second, one at a time, and a 429 is retried after the delay it names.
 
-UNVERIFIED AGAINST A REAL TENANT (built from the public API reference only):
-- the response shapes of `getInvestigationFileUrl` (field names, status values) and of
-  `startCommandExecutionOnEndpoint` (where the activity id is), so both are read
-  defensively;
-- whether the download URL needs the API key (it is sent only to the access URL's own
-  host) and the archive format (zip, tar, gzip and plain text are all accepted);
-- `getApiKeyDetails` and its `enabledApis` list, used only to say early that the key
-  lacks the Investigation API; any other answer is ignored.
+Doc pages are under https://www.bitdefender.com/business/support/en/<id>.html. STILL
+UNVERIFIED AGAINST A REAL TENANT: the format of the output archive (the reference says only
+"archive containing the command output log"; zip, tar, gzip and plain text are accepted,
+and Remote Shell file downloads from Linux are GPG-encrypted, which would read as
+unreadable output), whether the download URL needs the API key, and the exact
+`enabledApis` token for the Investigation API.
 """
 
 import base64
@@ -42,6 +42,9 @@ import requests
 from discovery.retry import MAX_ATTEMPTS, RETRY_STATUSES, backoff_seconds
 
 API_VERSION = "v1.0"
+# getEndpointsList is documented at 1.1, which is also what allows 1000 a page; 1.0 caps at
+# 100 (77211-128483).
+ENDPOINTS_LIST_VERSION = "v1.1"
 NETWORK = "network"
 INVESTIGATION = "investigation"
 GENERAL = "general"
@@ -60,12 +63,21 @@ TIMEOUT = (10.0, 60.0)
 # is not that output, and is not read into memory to find out.
 MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024
 
-# What getInvestigationFileUrl's status reads as. Matched case-insensitively; numbers
-# are accepted because the reference does not say which form the API uses.
-_DONE = frozenset(
-    {"success", "successful", "succeeded", "done", "completed", "finished"}
-)
-_FAILED = frozenset({"failed", "failure", "error", "canceled", "cancelled", "expired"})
+# getInvestigationFileUrl `status` (77209-1565959): pending, in_progress and
+# to_be_retrieved are still running; success carries `url`; failed carries `errorCode`.
+_DONE = "success"
+_FAILED = "failed"
+# errorCode for a task that ran out of GravityZone's own execution time.
+TIMED_OUT_ERROR_CODE = -99997
+
+# JSON-RPC error codes (77211-125277). -32001 covers an invalid key, a key without the
+# API, missing user rights and licence restrictions; -32003 is the rate limit.
+RPC_AUTHORIZATION_ERROR = -32001
+RPC_TOO_MANY_REQUESTS = -32003
+
+# GravityZone Cloud's own domain. The download URL is on the console's host, which is not
+# always the access URL's (the reference shows `https://console-url/storage/...`).
+CLOUD_DOMAIN = ".gravityzone.bitdefender.com"
 
 
 class GravityZoneError(RuntimeError):
@@ -97,6 +109,8 @@ class CommandOutput:
 
     state: str  # "pending", "done" or "failed"
     url: Optional[str] = None
+    # GravityZone's errorCode for a failed task, e.g. TIMED_OUT_ERROR_CODE.
+    error_code: Optional[int] = None
 
 
 # Module -> the API name an administrator ticks when creating the key, for the 403 hint.
@@ -126,8 +140,8 @@ class GravityZoneClient:
 
     # --- transport ----------------------------------------------------------------
 
-    def _url(self, module: str) -> str:
-        return f"{self._s.access_url.rstrip('/')}/{API_VERSION}/jsonrpc/{module}"
+    def _url(self, module: str, version: str = API_VERSION) -> str:
+        return f"{self._s.access_url.rstrip('/')}/{version}/jsonrpc/{module}"
 
     def _pace(self) -> None:
         wait = self._next_call_at - self._clock()
@@ -141,6 +155,7 @@ class GravityZoneClient:
         method: str,
         params: dict[str, Any],
         idempotent: bool = True,
+        version: str = API_VERSION,
     ) -> Any:
         """One JSON-RPC call's `result`, or a `GravityZoneError` with the HTTP status.
 
@@ -153,7 +168,7 @@ class GravityZoneClient:
             self._pace()
             try:
                 resp = self._http.post(
-                    self._url(module),
+                    self._url(module, version),
                     json={
                         "jsonrpc": "2.0",
                         "method": method,
@@ -207,14 +222,24 @@ class GravityZoneClient:
                     f"GravityZone {method} failed with HTTP {status}",
                     status_code=status,
                 )
-            return self._result(resp, method)
+            try:
+                return self._result(resp, method, module)
+            except GravityZoneError as exc:
+                # The rate limit as a JSON-RPC error: not run, so safe to send again.
+                if exc.rpc_code == RPC_TOO_MANY_REQUESTS and attempt < MAX_ATTEMPTS:
+                    last = "JSON-RPC -32003"
+                    self._sleep(
+                        backoff_seconds(attempt, resp.headers.get("Retry-After")),
+                    )
+                    continue
+                raise
 
         raise GravityZoneError(
             f"GravityZone {method} still failing after {MAX_ATTEMPTS} attempts ({last})",
         )
 
     @staticmethod
-    def _result(resp: Any, method: str) -> Any:
+    def _result(resp: Any, method: str, module: str) -> Any:
         try:
             body = resp.json()
         except ValueError:
@@ -226,11 +251,26 @@ class GravityZoneClient:
                 "check access_url is the Control Center API access URL, ending in /api",
                 status_code=200,
             )
+        # Successful responses carry `"error": null`.
         error = body.get("error")
         if error:
             code = error.get("code") if isinstance(error, dict) else None
+            data = error.get("data") if isinstance(error, dict) else None
+            details = data.get("details") if isinstance(data, dict) else None
+            # GravityZone's own explanation, e.g. "API Key is not allowed to access the
+            # selected API: Incidents". It names the API, never the key; bounded anyway.
+            said = f": {str(details)[:200]}" if details else ""
+            if code == RPC_AUTHORIZATION_ERROR:
+                raise GravityZoneError(
+                    f"GravityZone denied {method} (JSON-RPC -32001 Authorization "
+                    f"error{said}). The API key needs the "
+                    f"{_API_NAMES.get(module, module)} API enabled, and the user who "
+                    "owns it needs the rights and licence that API uses.",
+                    status_code=403,
+                    rpc_code=code,
+                )
             raise GravityZoneError(
-                f"GravityZone {method} returned JSON-RPC error {code}",
+                f"GravityZone {method} returned JSON-RPC error {code}{said}",
                 status_code=200,
                 rpc_code=code if isinstance(code, int) else None,
             )
@@ -276,6 +316,7 @@ class GravityZoneClient:
                     "perPage": self._s.page_size,
                     "filters": {"depth": {"allItemsRecursively": True}},
                 },
+                version=ENDPOINTS_LIST_VERSION,
             )
             if not isinstance(result, dict):
                 raise GravityZoneError(
@@ -304,7 +345,10 @@ class GravityZoneClient:
     # --- commands -----------------------------------------------------------------
 
     def start_command(self, endpoint_id: str, command: str) -> str:
-        """Start `command` on one endpoint; the activity id to poll it by."""
+        """Start `command` on one endpoint; the activity id to poll it by.
+
+        The result is the task id itself, a string (77209-1566170).
+        """
         result = self.call(
             INVESTIGATION,
             "startCommandExecutionOnEndpoint",
@@ -325,26 +369,40 @@ class GravityZoneClient:
             "getInvestigationFileUrl",
             {"targetId": endpoint_id, "activityId": activity_id},
         )
-        url = _first(result, ("url", "downloadUrl", "fileUrl", "link"))
-        state = (_first(result, ("status", "state")) or "").strip().lower()
-        if state in _FAILED:
-            return CommandOutput("failed")
-        if url and (not state or state in _DONE):
-            return CommandOutput("done", url)
+        if not isinstance(result, dict):
+            raise GravityZoneError(
+                "GravityZone getInvestigationFileUrl returned no result object",
+                status_code=200,
+            )
+        state = str(result.get("status") or "").strip().lower()
+        if state == _FAILED:
+            code = result.get("errorCode")
+            return CommandOutput(
+                "failed",
+                error_code=code if isinstance(code, int) else None,
+            )
+        url = result.get("url")
+        if state == _DONE and url:
+            return CommandOutput("done", str(url))
         return CommandOutput("pending")
 
     def download(self, url: str) -> bytes:
         """The output archive, bounded.
 
-        The key goes only to the access URL's own host. Any other host is taken to be a
-        pre-signed storage URL that needs nothing and must not be handed the key.
+        The reference shows the URL on the console host (`https://console-url/storage/
+        investigationFiles/<fileId>`), so the key goes to the access URL's own host and,
+        when the access URL is GravityZone Cloud, to any host under its domain. Any other
+        host is taken to be a pre-signed storage URL that must not be handed the key.
         """
         parts = urlsplit(url)
         if parts.scheme != "https":
             raise GravityZoneError(
                 "GravityZone returned a download URL that is not https"
             )
-        ours = (parts.hostname or "").lower() == self._host
+        host = (parts.hostname or "").lower()
+        ours = host == self._host or (
+            self._host.endswith(CLOUD_DOMAIN) and host.endswith(CLOUD_DOMAIN)
+        )
         self._pace()
         try:
             resp = self._http.get(

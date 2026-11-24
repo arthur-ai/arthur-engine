@@ -538,7 +538,7 @@ creating the API key is [the GravityZone runbook](../../integrations/endpoint-ai
 | Field | Secret | Required | Notes |
 |---|---|---|---|
 | `access_url` | no | yes | The Control Center API access URL from *My Account → API keys*, e.g. `https://cloudgz.gravityzone.bitdefender.com/api`. Must be `https://` |
-| `api_key` | yes | yes | A GravityZone API key with the **Network** and **Investigation** APIs enabled |
+| `api_key` | yes | yes | A personal GravityZone API key with the **Network** and **Investigation** APIs enabled, owned by a user with the Manage Networks and Advanced Investigation rights. Service API keys are not supported yet |
 
 Every scan lists the whole roster: GravityZone cannot filter endpoints by when they were last
 seen, so the lookback is applied to each endpoint's `lastSeen` after it is listed, and a

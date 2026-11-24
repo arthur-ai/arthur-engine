@@ -1,11 +1,13 @@
 """The GravityZone client and connector, against a fake Control Center.
 
-Built from GravityZone's public API reference, not from a tenant: the response shapes of
-`startCommandExecutionOnEndpoint` and `getInvestigationFileUrl` and the output archive's
-format are unverified, so the fake serves the forms the client accepts, and the tests
-that matter most are the ones that do not depend on them -- an endpoint that cannot
-answer is a coverage gap and never a failed scan, the command is a constant, and the key
-goes nowhere but the access URL's host.
+Built from GravityZone's public API reference, not from a tenant. The fake answers in the
+reference's own shapes (https://www.bitdefender.com/business/support/en/<id>.html):
+`startCommandExecutionOnEndpoint` returns the task id as a string (77209-1566170),
+`getInvestigationFileUrl` walks pending / in_progress / to_be_retrieved to success with
+`url`, `bucket` and `fileId`, or failed with `errorCode` (77209-1565959),
+`getEndpointsList` is v1.1 with `hasMoreRecords` (77211-128483), and errors come back as
+JSON-RPC errors in an HTTP 200, `"error": null` on success (77211-125277). The output
+archive's format is not published, so that is the one shape the fake chooses.
 """
 
 import base64
@@ -155,7 +157,7 @@ class FakeGravityZone:
         outputs: Optional[dict[str, Any]] = None,
         per_page: int = 1000,
         enabled_apis: Optional[list[str]] = None,
-        statuses: Optional[dict[str, list[int]]] = None,
+        statuses: Optional[dict[str, list[Any]]] = None,
         download_host: str = "cloudgz.gravityzone.bitdefender.com",
     ) -> None:
         self.endpoints = endpoints
@@ -167,6 +169,7 @@ class FakeGravityZone:
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.posts: list[dict[str, Any]] = []
         self.downloads: list[dict[str, Any]] = []
+        self.polls: dict[str, int] = {}
 
     def post(self, url: str, **kw: Any) -> FakeResponse:
         self.posts.append({"url": url, **kw})
@@ -176,6 +179,9 @@ class FakeGravityZone:
         queued = self.statuses.get(method)
         if queued:
             status = queued.pop(0)
+            if isinstance(status, dict):
+                # A JSON-RPC error in an HTTP 200, as GravityZone sends all but 429.
+                return FakeResponse(200, {"result": None, "error": status})
             if status != 200:
                 return FakeResponse(
                     status, {"error": {"code": -1}}, {"Retry-After": "0"}
@@ -183,7 +189,10 @@ class FakeGravityZone:
         if method == "getApiKeyDetails":
             if self.enabled_apis is None:
                 return FakeResponse(200, {"error": {"code": -32601}})
-            return FakeResponse(200, {"result": {"enabledApis": self.enabled_apis}})
+            return FakeResponse(
+                200,
+                {"result": {"enabledApis": self.enabled_apis}, "error": None},
+            )
         if method == "getEndpointsList":
             page = params["page"]
             start = (page - 1) * self.per_page
@@ -191,7 +200,10 @@ class FakeGravityZone:
             more = start + self.per_page < len(self.endpoints)
             return FakeResponse(
                 200,
-                {"result": {"items": items, "page": page, "hasMoreRecords": more}},
+                {
+                    "result": {"items": items, "page": page, "hasMoreRecords": more},
+                    "error": None,
+                },
             )
         if method == "getManagedEndpointDetails":
             found = next(e for e in self.endpoints if e["id"] == params["endpointId"])
@@ -200,22 +212,36 @@ class FakeGravityZone:
             out = self.outputs.get(params["targetId"])
             if isinstance(out, int):
                 return FakeResponse(out, {"error": {"code": -1}})
-            return FakeResponse(
-                200, {"result": {"activityId": f"act-{params['targetId']}"}}
-            )
+            # The task id, a 24-hex string.
+            return FakeResponse(200, {"result": f"{params['targetId']:0>24}"[-24:]})
         if method == "getInvestigationFileUrl":
             target = params["targetId"]
             out = self.outputs.get(target)
             if out == "failed":
-                return FakeResponse(200, {"result": {"status": "failed"}})
+                return FakeResponse(
+                    200,
+                    {"result": {"status": "failed", "errorCode": -1004}},
+                )
+            if out == "gz-timeout":
+                return FakeResponse(
+                    200,
+                    {"result": {"status": "failed", "errorCode": -99997}},
+                )
             if out == "pending" or out is None:
-                return FakeResponse(200, {"result": {"status": "pending"}})
+                return FakeResponse(200, {"result": {"status": "in_progress"}})
+            # The first poll finds it collected but not yet uploaded.
+            polls = self.polls[target] = self.polls.get(target, 0) + 1
+            if polls == 1:
+                return FakeResponse(200, {"result": {"status": "to_be_retrieved"}})
             return FakeResponse(
                 200,
                 {
                     "result": {
                         "status": "success",
-                        "url": f"https://{self.download_host}/files/{target}.zip",
+                        "url": f"https://{self.download_host}/storage/"
+                        f"investigationFiles/{target}",
+                        "bucket": "investigationFiles",
+                        "fileId": target,
                     },
                 },
             )
@@ -223,7 +249,7 @@ class FakeGravityZone:
 
     def get(self, url: str, **kw: Any) -> FakeResponse:
         self.downloads.append({"url": url, **kw})
-        target = url.rsplit("/", 1)[1].split(".")[0]
+        target = url.rsplit("/", 1)[1]
         out = self.outputs[target]
         if isinstance(out, str):
             out = printed(out)
@@ -511,11 +537,14 @@ def test_every_call_is_json_rpc_with_the_key_as_basic_user_and_no_redirects() ->
         assert post["headers"]["Authorization"] == expected
         assert post["allow_redirects"] is False
         assert post["json"]["jsonrpc"] == "2.0"
-        assert post["url"].startswith(f"{ACCESS_URL}/v1.0/jsonrpc/")
     assert sum(TIMEOUT) < 120
     urls = {p["json"]["method"]: p["url"] for p in fake.posts}
-    assert urls["getEndpointsList"].endswith("/jsonrpc/network")
-    assert urls["startCommandExecutionOnEndpoint"].endswith("/jsonrpc/investigation")
+    # getEndpointsList is documented at v1.1, the version that allows 1000 a page.
+    assert urls["getEndpointsList"] == f"{ACCESS_URL}/v1.1/jsonrpc/network"
+    assert urls["getManagedEndpointDetails"] == f"{ACCESS_URL}/v1.0/jsonrpc/network"
+    assert urls["getApiKeyDetails"] == f"{ACCESS_URL}/v1.0/jsonrpc/general"
+    for method in ("startCommandExecutionOnEndpoint", "getInvestigationFileUrl"):
+        assert urls[method] == f"{ACCESS_URL}/v1.0/jsonrpc/investigation"
 
 
 def test_the_roster_is_paged_until_no_more_records_and_never_repeats_an_id() -> None:
@@ -538,6 +567,16 @@ def test_the_key_goes_to_the_access_url_host_and_not_to_a_storage_url() -> None:
     assert "Authorization" in ours.downloads[0]["headers"]
     assert ours.downloads[0]["allow_redirects"] is False
 
+    # The reference shows the URL on the console host, which in GravityZone Cloud need
+    # not be the access URL's host.
+    console = FakeGravityZone(
+        [endpoint("e1")],
+        {"e1": CODEX},
+        download_host="cloud.gravityzone.bitdefender.com",
+    )
+    scan_all(console)
+    assert "Authorization" in console.downloads[0]["headers"]
+
     storage = FakeGravityZone(
         [endpoint("e1")],
         {"e1": CODEX},
@@ -545,6 +584,50 @@ def test_the_key_goes_to_the_access_url_host_and_not_to_a_storage_url() -> None:
     )
     scan_all(storage)
     assert storage.downloads[0]["headers"] == {}
+
+
+def test_an_authorization_error_in_a_200_reads_as_permission_denied() -> None:
+    """GravityZone answers a key without the API, missing rights or a licence gap with
+    JSON-RPC -32001 in an HTTP 200, not with a 403."""
+    fake = FakeGravityZone(
+        [endpoint("e1")],
+        statuses={
+            "getEndpointsList": [
+                {
+                    "code": -32001,
+                    "message": "Authorization error",
+                    "data": {
+                        "details": "API Key is not allowed to access the selected "
+                        "API: Network",
+                    },
+                },
+            ],
+        },
+    )
+    with pytest.raises(GravityZoneError) as caught:
+        scan_all(fake)
+    assert caught.value.status_code == 403
+    assert "not allowed to access the selected API: Network" in str(caught.value)
+    assert failure_code(caught.value) is DiscoveryErrorCode.PERMISSION_DENIED
+
+
+def test_the_rate_limit_as_a_json_rpc_error_is_retried() -> None:
+    fake = FakeGravityZone(
+        [endpoint("e1")],
+        {"e1": CODEX},
+        statuses={"getEndpointsList": [{"code": -32003, "message": "Too many"}]},
+    )
+    assert len(agent_records([scan_all(fake)])) == 1
+    assert len(fake.sent("getEndpointsList")) == 2
+
+
+def test_gravityzones_own_execution_timeout_is_a_timed_out_gap() -> None:
+    fake = FakeGravityZone([endpoint("e1")], {"e1": "gz-timeout"})
+    connector = connector_for(fake)
+    scan_all(fake, connector=connector)
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"command-timed-out": 1}
 
 
 def test_a_refused_key_fails_the_scan_as_authentication() -> None:
