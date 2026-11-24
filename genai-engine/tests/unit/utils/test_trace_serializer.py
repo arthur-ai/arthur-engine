@@ -10,6 +10,7 @@ import pytest
 
 from utils import trace_serializer
 from utils.trace_serializer import (
+    DEFAULT_MAX_CHARS,
     FORMAT_VERSION,
     MIN_MAX_CHARS,
     serialize_trace,
@@ -349,7 +350,7 @@ def big_trace(n_tools: int = 120) -> list[Span]:
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("max_chars", [MIN_MAX_CHARS, 12_000, 48_000])
+@pytest.mark.parametrize("max_chars", [MIN_MAX_CHARS, 12_000, 48_000, 100_000])
 def test_never_over_budget_and_says_what_was_cut(max_chars: int):
     spans = big_trace()
     text, stats = serialize_trace(spans, max_chars=max_chars)
@@ -758,3 +759,32 @@ def test_a_multiline_tool_name_is_one_short_label_and_never_grows_the_text(monke
     )
     assert "\n" not in head and len(head) < 200
     assert_smallest_omission(spans, (2000, 4000, 6000, 8000), monkeypatch)
+
+
+@pytest.mark.unit_tests
+def test_a_trace_that_fits_comes_back_whole():
+    """A 6,030-char tool result with an email in the middle, in a trace far under the
+    budget, is not shortened: nothing is cut unless the whole text is over budget."""
+    filler = "order history line. " * 150
+    big = filler + "contact: jane.doe@example.com " + filler
+    assert len(big) == 6030
+    spans = support_turn()
+    spans.insert(
+        3,
+        span(
+            "lookup",
+            "root",
+            "TOOL",
+            "lookup_order",
+            0.5,
+            {"input": {"value": '{"order_id": "C3001"}'}, "output": {"value": big}},
+        ),
+    )
+    text, stats = serialize_trace(spans)
+    assert big.strip() in text and "jane.doe@example.com" in text  # values are stripped
+    assert not stats.truncated and stats.fields_shortened == 0 and stats.chars_cut == 0
+    assert stats.chars == stats.full_chars == len(text) < DEFAULT_MAX_CHARS
+    assert "[TRUNCATED" not in text
+    # over budget, the same trace is cut as before, and says so
+    cut_text, cut_stats = serialize_trace(spans, max_chars=MIN_MAX_CHARS)
+    assert cut_stats.truncated and len(cut_text) <= MIN_MAX_CHARS

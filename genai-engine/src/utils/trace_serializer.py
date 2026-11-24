@@ -15,7 +15,8 @@ What each span shows:
 Exact repeats of a long value become `(same as [n] label)`; when cutting leaves out
 the value a repeat points to, the repeat shows the value itself instead.
 
-When the text is over budget it is cut in a fixed order, and a footer says what was cut:
+A trace whose full text fits max_chars is returned whole: nothing is shortened. When the
+text is over budget it is cut in a fixed order, and a footer says what was cut:
 1. shorten fields one ladder step at a time (2,000, 1,000, 500, 250, 120 chars), each
    step taken by every class in order, least important first (history, tool results,
    LLM inputs, documents, tool args, LLM outputs, other input/output), so no class is
@@ -38,7 +39,7 @@ from pydantic import BaseModel
 from utils.span_tree import tree_order
 
 FORMAT_VERSION = 1
-DEFAULT_MAX_CHARS = 48_000
+DEFAULT_MAX_CHARS = 100_000  # what hosted trace judges send per variable (about 100 KB)
 MIN_MAX_CHARS = 2_000
 
 FIELD_CAP_LADDER = [2000, 1000, 500, 250, 120]  # per-field caps tried in order
@@ -625,16 +626,26 @@ def serialize_trace(
         + " +Xs = start offset from trace start)"
     )
 
-    # 3. Cut to budget, in a fixed order.
+    # 3. The whole text, if it fits: nothing is cut below the budget.
+    full_text = _render(header, rows, {c: 10**9 for c in range(N_CLASSES)}, set())[0]
+    full_size = len(full_text)
+    if full_size <= max_chars:
+        return full_text, TraceSerializationStats(
+            spans=len(spans),
+            chars=full_size,
+            full_chars=full_size,
+            detached=detached,
+            orphans=orphans,
+            duplicate_chars_replaced=duplicate_chars,
+        )
+
+    # 4. Over budget: cut in a fixed order.
     caps = {field_class: FIELD_CAP_LADDER[0] for field_class in range(N_CLASSES)}
     caps[C_PROTECTED] = min(PROTECTED_CAP, max(200, max_chars // 4))
-    full_size = len(
-        _render(header, rows, {c: 10**9 for c in range(N_CLASSES)}, set())[0],
-    )
     bodiless: set[int] = set()
     text, fields_cut, chars_cut = _render(header, rows, caps, bodiless)
     ladder_steps = 0
-    # 3a. Step each field class down the ladder, least important class first.
+    # 4a. Step each field class down the ladder, least important class first.
     schedule = [
         (level, field_class)
         for level in range(1, len(FIELD_CAP_LADDER))
@@ -645,7 +656,7 @@ def serialize_trace(
         caps[field_class] = FIELD_CAP_LADDER[level]
         text, fields_cut, chars_cut = _render(header, rows, caps, bodiless)
         ladder_steps += 1
-    # 3b. Omit span bodies from the middle outwards; error spans last, the root never.
+    # 4b. Omit span bodies from the middle outwards; error spans last, the root never.
     if len(text) + FOOTER_RESERVE > max_chars:
         middle = (len(rows) + 1) / 2
         droppable = [
@@ -667,7 +678,7 @@ def serialize_trace(
                 low = k + 1
         bodiless = set(droppable[:low])
         text, fields_cut, chars_cut = _render(header, rows, caps, bodiless)
-    # 3c. Collapse runs of same-named siblings whose bodies are omitted.
+    # 4c. Collapse runs of same-named siblings whose bodies are omitted.
     collapsed = False
     if len(text) + FOOTER_RESERVE > max_chars:
         collapsed = True
@@ -678,7 +689,7 @@ def serialize_trace(
             bodiless,
             collapse=True,
         )
-    # 3d. Last resort: cut the span list itself, keeping head and tail.
+    # 4d. Last resort: cut the span list itself, keeping head and tail.
     hard_cut = 0
     if len(text) + FOOTER_RESERVE > max_chars:
         # The cut may drop any reference's target, so repeats show their values.
