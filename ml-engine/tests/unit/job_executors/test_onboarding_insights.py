@@ -1,7 +1,7 @@
 """The onboarding LLM insights against a fake GenAI Engine.
 
-The fake stands in for the engine's configuration route and its saved-prompt
-completions route: it records each prompt it is asked to run and answers per insight.
+The fake stands in for the engine's configuration and default model provider routes and
+its saved-prompt completions route: it records each prompt it is asked to run and answers per insight.
 The executor tests run the whole job over fixture traces with the same fake.
 """
 
@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterator
 from unittest.mock import patch
 
 import pytest
+import requests
 from test_onboarding_analysis_executor import (
     _agent_trace,
     _days_ago,
@@ -27,12 +28,17 @@ from job_executors.onboarding_analysis_executor import (
     OnboardingOutcome,
 )
 from job_executors.onboarding_insights import (
+    BATCH_CHAR_BUDGET,
     INSIGHT_KINDS,
     PROMPT_PREFIX,
     SYSTEM_TASK_ID,
+    DefaultModel,
     HttpInsightEngineClient,
     InsightSpan,
     PromptCompletion,
+    PromptRejected,
+    PromptTooLarge,
+    batch_char_budget,
     make_batches,
     run_llm_insights,
 )
@@ -65,8 +71,14 @@ class FakeEngine:
         answer: Answer | None = None,
         cost_usd: float = 0.1,
         fail: Callable[[str, int], bool] = lambda kind, attempt: False,
+        default_set: bool = True,
+        reject: bool = False,
+        too_large: Callable[[str], bool] = lambda text: False,
     ) -> None:
         self.enabled = enabled
+        self.default_set = default_set
+        self.reject = reject
+        self.too_large = too_large
         self.answer = answer or (lambda kind, text: _verdict(kind, "no", []))
         self.cost_usd = cost_usd
         self.fail = fail
@@ -77,12 +89,23 @@ class FakeEngine:
     def insights_enabled(self) -> bool:
         return self.enabled
 
+    def default_model(self) -> DefaultModel | None:
+        # A model litellm knows with a window of 200k tokens or more: the tuned batch size.
+        return (
+            DefaultModel("anthropic", "claude-opus-5-5") if self.default_set else None
+        )
+
     def run_prompt(self, prompt_name: str, traces_text: str) -> PromptCompletion:
         kind = prompt_name.removeprefix(PROMPT_PREFIX)
         with self.lock:
             attempt = self.attempts.get(kind, 0)
             self.attempts[kind] = attempt + 1
             self.calls.append((prompt_name, traces_text))
+        if self.reject:
+            # As the engine answers when the default model has no structured output.
+            raise PromptRejected(400)
+        if self.too_large(traces_text):
+            raise PromptTooLarge()
         if self.fail(kind, attempt):
             raise ConnectionError("provider down")
         return PromptCompletion(
@@ -141,6 +164,103 @@ def test_an_unreadable_setting_skips_the_insights() -> None:
 
     assert run.insights_off is False
     assert run.skipped == [("llm_insights", "model_unavailable")]
+
+
+def test_no_default_model_runs_no_prompt() -> None:
+    engine = FakeEngine(default_set=False)
+
+    run = run_llm_insights(engine, _traces(12), logger, sleep=_no_sleep)
+
+    assert run.insights_off is False
+    assert run.skipped == [("llm_insights", "default_model_not_configured")]
+    assert engine.calls == []
+
+
+def test_an_unreadable_default_model_skips_the_insights() -> None:
+    class Unreachable(FakeEngine):
+        def default_model(self) -> DefaultModel | None:
+            raise ConnectionError("engine down")
+
+    engine = Unreachable()
+    run = run_llm_insights(engine, _traces(12), logger, sleep=_no_sleep)
+
+    assert run.skipped == [("llm_insights", "model_unavailable")]
+    assert engine.calls == []
+
+
+def test_a_refused_call_stops_every_later_call() -> None:
+    engine = FakeEngine(reject=True)
+
+    # Two batches: twelve calls if every one were made, 36 with retries.
+    run = run_llm_insights(engine, _traces(40), logger, sleep=_no_sleep)
+
+    assert len(engine.calls) == 1
+    assert run.verdicts == []
+    assert sorted(run.skipped) == sorted(
+        (kind, "model_rejected") for kind in INSIGHT_KINDS
+    )
+
+
+def test_a_batch_too_long_for_the_model_skips_only_that_batch() -> None:
+    first_batch: list[str] = []
+
+    def too_large(text: str) -> bool:
+        if not first_batch:
+            first_batch.append(text)
+        return text == first_batch[0]
+
+    engine = FakeEngine(too_large=too_large)
+
+    run = run_llm_insights(engine, _traces(40), logger, sleep=_no_sleep)
+
+    # Every insight was asked of both batches, once each: a 413 is not retried, and the
+    # other batch still ran, so each "no" becomes cannot_tell.
+    assert len(engine.calls) == 2 * len(INSIGHT_KINDS)
+    assert {v.fired for v in run.verdicts} == {"cannot_tell"}
+    assert run.skipped == []
+
+
+def test_every_trace_too_large_is_reported_as_too_large() -> None:
+    with patch(
+        "job_executors.onboarding_insights.batch_char_budget",
+        return_value=10,
+    ):
+        engine = FakeEngine()
+        run = run_llm_insights(engine, _traces(3), logger, sleep=_no_sleep)
+
+    assert engine.calls == []
+    assert run.traces == 0
+    assert sorted(run.skipped) == sorted((kind, "too_large") for kind in INSIGHT_KINDS)
+
+
+@pytest.mark.parametrize(
+    ("model", "budget"),
+    [
+        # 1M-token window: the tuned size, 89k tokens.
+        (DefaultModel("anthropic", "claude-opus-5-5"), BATCH_CHAR_BUDGET),
+        # 128k-token window: half of it less the reserve, 53k tokens.
+        (DefaultModel("openai", "gpt-4o"), int(53_000 * 3 / 1.15)),
+        # Not in litellm's map (an Azure deployment name): the tuned size.
+        (DefaultModel("azure", "my-deployment"), BATCH_CHAR_BUDGET),
+    ],
+)
+def test_the_batch_budget_follows_the_input_window(
+    model: DefaultModel,
+    budget: int,
+) -> None:
+    assert batch_char_budget(model) == budget
+
+
+def test_an_empty_example_span_name_is_none() -> None:
+    def answer(kind: str, text: str) -> str:
+        return _verdict(kind, "yes", _all_traces_in(text)[:1], span="")
+
+    run = run_llm_insights(
+        FakeEngine(answer=answer), _traces(3), logger, sleep=_no_sleep
+    )
+
+    assert run.verdicts
+    assert all(v.example_span_name is None for v in run.verdicts)
 
 
 def test_each_insight_runs_its_saved_prompt_on_every_batch() -> None:
@@ -365,6 +485,22 @@ def test_the_job_completes_when_every_insight_call_fails(
     )
 
 
+def test_the_job_completes_without_a_default_model(raw_data_enabled: None) -> None:
+    rows = [_agent_trace(_days_ago(i)) for i in range(12)]
+    engine = FakeEngine(default_set=False)
+
+    result = _job(rows, engine)
+
+    assert result.outcome == OnboardingOutcome.COMPLETED
+    report = _report(result)
+    assert report.findings == []
+    assert ("llm_insights", "default_model_not_configured") in [
+        (s.kind, s.reason) for s in report.skipped
+    ]
+    assert report.totals.traces == 12
+    assert engine.calls == []
+
+
 def test_a_cannot_tell_finding_has_no_fired_value(raw_data_enabled: None) -> None:
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]
 
@@ -394,8 +530,13 @@ def test_the_http_client_reads_the_setting_and_runs_a_saved_prompt(
         headers=auth,
     ).respond_with_json({"insights_generation_enabled": True})
     httpserver.expect_request(
+        "/api/v1/default_model_provider",
+        method="GET",
+        headers=auth,
+    ).respond_with_json({"provider": "openai", "model_name": "gpt-4.1-mini"})
+    httpserver.expect_request(
         f"/api/v1/tasks/{SYSTEM_TASK_ID}/prompts/onboarding_insight_user_facing"
-        "/versions/latest/completions",
+        "/versions/production/completions",
         method="POST",
         headers=auth,
         json={
@@ -406,6 +547,7 @@ def test_the_http_client_reads_the_setting_and_runs_a_saved_prompt(
     client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
 
     assert client.insights_enabled() is True
+    assert client.default_model() == DefaultModel("openai", "gpt-4.1-mini")
     completion = client.run_prompt("onboarding_insight_user_facing", "FACTS\n...")
 
     assert completion == PromptCompletion(content='{"fired": "no"}', cost_usd=0.12)
@@ -417,3 +559,39 @@ def test_an_engine_without_the_setting_has_insights_off(httpserver: Any) -> None
     client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
 
     assert client.insights_enabled() is False
+
+
+def test_the_http_client_reads_an_unset_default_model(httpserver: Any) -> None:
+    httpserver.expect_request("/api/v1/default_model_provider").respond_with_json(
+        {"provider": None, "model_name": None},
+    )
+
+    client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
+
+    assert client.default_model() is None
+
+
+@pytest.mark.parametrize(
+    ("status", "raised"),
+    [
+        (400, PromptRejected),
+        (404, PromptRejected),
+        (413, PromptTooLarge),
+        (429, requests.HTTPError),
+        (500, requests.HTTPError),
+    ],
+)
+def test_the_http_client_tells_a_refused_call_from_a_failed_one(
+    httpserver: Any,
+    status: int,
+    raised: type[Exception],
+) -> None:
+    httpserver.expect_request(
+        f"/api/v1/tasks/{SYSTEM_TASK_ID}/prompts/onboarding_insight_user_facing"
+        "/versions/production/completions",
+    ).respond_with_json({"detail": "refused"}, status=status)
+
+    client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
+
+    with pytest.raises(raised):
+        client.run_prompt("onboarding_insight_user_facing", "FACTS\n...")

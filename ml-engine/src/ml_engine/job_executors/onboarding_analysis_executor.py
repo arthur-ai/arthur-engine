@@ -426,8 +426,6 @@ class OnboardingAnalysisExecutor:
         setting is off."""
         # TODO: rule insights over the sample, no LLM, and the PII detector.
         skipped = [SkippedInsight(kind="rule_insights", reason=INSIGHT_NOT_IMPLEMENTED)]
-        # TODO: no default model: `skipped` (`llm_insights`, `no_default_model`), the
-        # rest kept, once the engine reports it apart from a failed call.
         if self.insight_client is None:
             skipped.append(
                 SkippedInsight(kind="llm_insights", reason="engine_not_configured"),
@@ -436,7 +434,7 @@ class OnboardingAnalysisExecutor:
         traces = _sampled_traces(conn, sample_table)
         run = run_llm_insights(self.insight_client, traces, self.logger)
         skipped += [SkippedInsight(kind=k, reason=r) for k, r in run.skipped]
-        findings = [_finding(v, sample_traces=len(traces)) for v in run.verdicts]
+        findings = [_finding(v, sample_traces=run.traces) for v in run.verdicts]
         return findings, skipped, run.insights_off
 
 

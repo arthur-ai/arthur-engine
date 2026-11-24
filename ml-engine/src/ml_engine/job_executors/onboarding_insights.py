@@ -1,18 +1,21 @@
 """The LLM insights of an onboarding analysis: one saved prompt per insight, over the sample.
 
 Each insight is a prompt saved in the GenAI Engine's system task as
-`onboarding_insight_<kind>`. Its user message takes one variable, `traces`: a batch of
-sampled traces as text, each serialized with `tools.trace_serializer`, after a FACTS
-block of per-trace hints that cheap rules extracted. The engine runs the prompt on its
-default model and returns the model's JSON verdict and the call's cost:
+`onboarding_insight_<kind>`; the version tagged `production` runs. Its user message takes
+one variable, `traces`: a batch of sampled traces as text, each serialized with
+`tools.trace_serializer`, after a FACTS block of per-trace hints that cheap rules
+extracted. The engine runs the prompt on its default model provider, which must support
+structured output, and returns the model's verdict, in the prompt's JSON schema, and the
+call's cost:
 
     {"kind": ..., "fired": "yes" | "no" | "cannot_tell", "matched_traces": ["t01", ...],
-     "example_span_name": ..., "reason": ...}
+     "example_span_name": ... or "", "reason": ...}
 
 Traces go in batches that fit a fixed character budget, every insight is asked of every
 batch, and the verdicts are merged per insight. Nothing here fails the job: a call that
 still fails after its retries, a reply that is not a verdict, or the cost cap leaves that
-insight's verdict out and says why, and the insights setting off skips them all.
+insight's verdict out and says why. The insights setting off, no default model, or the
+engine refusing a call (the default model cannot give structured output) skips them all.
 """
 
 import json
@@ -26,6 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Mapping, Optional, Protocol, Sequence
 
+import litellm
 import requests
 
 from tools.trace_serializer import MIN_MAX_CHARS, serialize_trace
@@ -54,10 +58,19 @@ SUGGESTED_CHECK = {
     "tool_failures": "an error-recovery judge on the whole trace, and an alert on its failure rate",
 }
 
-# What one batch may hold, in characters: the prompts were tuned on batches of up to 89k
-# tokens (a 200k context halved, less the prompt and the answer), at about 3 characters
-# a token, with 15% margin for the estimate.
-BATCH_CHAR_BUDGET = int(89_000 * 3 / 1.15)
+# What one batch may hold. The prompts were tuned on batches of up to 89k tokens: a 200k
+# input window halved, less the prompt and the answer. A model with a smaller input window
+# gets half of it, less the same reserve; a larger one keeps the tuned size.
+MAX_BATCH_TOKENS = 89_000
+PROMPT_AND_ANSWER_TOKENS = 11_000
+
+
+def _chars(tokens: int) -> int:
+    """About 3 characters a token, with 15% margin for the estimate."""
+    return int(tokens * 3 / 1.15)
+
+
+BATCH_CHAR_BUDGET = _chars(MAX_BATCH_TOKENS)
 TARGET_BATCH = 35
 MAX_PARALLEL_CALLS = 5
 COST_CAP_USD = 5.0
@@ -87,8 +100,55 @@ class PromptCompletion:
     cost_usd: float
 
 
+@dataclass(frozen=True)
+class DefaultModel:
+    """The GenAI Engine's default model provider, which runs the insight prompts."""
+
+    provider: str
+    model_name: str
+
+
+def batch_char_budget(model: DefaultModel) -> int:
+    """The batch budget for the model's input window. litellm's model map (the one the
+    GenAI Engine uses, through the same pinned arthur-common) gives max_input_tokens; its
+    max_tokens is the output limit and says nothing about the input. A model litellm does
+    not know (an Azure deployment name) keeps the tuned size."""
+    try:
+        window = litellm.get_model_info(
+            model=model.model_name,
+            custom_llm_provider=model.provider,
+        ).get("max_input_tokens")
+    except Exception:
+        window = None
+    if not window:
+        return BATCH_CHAR_BUDGET
+    tokens = min(MAX_BATCH_TOKENS, window // 2 - PROMPT_AND_ANSWER_TOKENS)
+    return max(0, _chars(tokens))
+
+
+class PromptTooLarge(Exception):
+    """The batch is longer than the model's input window (HTTP 413). Only this call is
+    affected: a smaller batch could still fit."""
+
+
+class PromptRejected(Exception):
+    """The engine refused the call (a 4xx other than a timeout or rate limit): the same
+    call would be refused again, as would the other prompts on the same model."""
+
+    def __init__(self, status_code: int) -> None:
+        super().__init__(f"HTTP {status_code}")
+        self.status_code = status_code
+
+
+# Client errors that a retry can get past.
+_RETRYABLE_CLIENT_ERRORS = {408, 429}
+_CONTENT_TOO_LARGE = 413
+
+
 class InsightEngineClient(Protocol):
     def insights_enabled(self) -> bool: ...
+
+    def default_model(self) -> Optional[DefaultModel]: ...
 
     def run_prompt(self, prompt_name: str, traces_text: str) -> PromptCompletion: ...
 
@@ -113,10 +173,22 @@ class HttpInsightEngineClient:
         # An engine that predates the setting has no insights prompts either.
         return bool(resp.json().get("insights_generation_enabled", False))
 
+    def default_model(self) -> Optional[DefaultModel]:
+        resp = requests.get(
+            f"{self.host}/api/v1/default_model_provider",
+            headers=self.headers,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if not body.get("provider") or not body.get("model_name"):
+            return None
+        return DefaultModel(provider=body["provider"], model_name=body["model_name"])
+
     def run_prompt(self, prompt_name: str, traces_text: str) -> PromptCompletion:
         resp = requests.post(
             f"{self.host}/api/v1/tasks/{SYSTEM_TASK_ID}/prompts/{prompt_name}"
-            "/versions/latest/completions",
+            "/versions/production/completions",
             headers=self.headers,
             json={
                 "variables": [{"name": "traces", "value": traces_text}],
@@ -124,6 +196,12 @@ class HttpInsightEngineClient:
             },
             timeout=CALL_TIMEOUT_SECONDS,
         )
+        if resp.status_code == _CONTENT_TOO_LARGE:
+            raise PromptTooLarge()
+        if 400 <= resp.status_code < 500 and (
+            resp.status_code not in _RETRYABLE_CLIENT_ERRORS
+        ):
+            raise PromptRejected(resp.status_code)
         resp.raise_for_status()
         body = resp.json()
         return PromptCompletion(
@@ -347,15 +425,33 @@ class _Asker:
         self.spend = spend
         self.logger = logger
         self.sleep = sleep
+        # Set by the first refused call; no later call is made.
+        self.rejected = threading.Event()
 
     def ask(self, batch: Batch, kind: str) -> dict[str, Any]:
         """The verdict, or {"skipped": reason}: never raises."""
+        if self.rejected.is_set():
+            return {"skipped": "model_rejected"}
         if self.spend.over_cap():
             return {"skipped": "cost_cap"}
         for attempt in range(CALL_ATTEMPTS):
             try:
                 completion = self.client.run_prompt(PROMPT_PREFIX + kind, batch.text)
                 break
+            except PromptTooLarge:
+                self.logger.warning(
+                    f"Onboarding insight {kind}: a batch of {len(batch.short_ids)} "
+                    "traces is longer than the default model's input window",
+                )
+                return {"skipped": "too_large"}
+            except PromptRejected as e:
+                # The engine's message is not logged: it can name the prompt's text.
+                self.logger.warning(
+                    f"Onboarding insight {kind} refused by the engine ({e}); "
+                    "skipping the remaining insight calls",
+                )
+                self.rejected.set()
+                return {"skipped": "model_rejected"}
             except Exception as e:
                 if attempt == CALL_ATTEMPTS - 1:
                     # The type only: a provider's message can echo the prompt.
@@ -379,7 +475,7 @@ def _merge(
     verdicts = [a for a in answers if "skipped" not in a]
     if not verdicts:
         reasons = sorted({a["skipped"] for a in answers})
-        return None, reasons[0] if reasons else "no_batches"
+        return None, reasons[0] if reasons else None
     fired = [v for v in verdicts if v["fired"] == "yes"]
     states = {v["fired"] for v in verdicts}
     if fired:
@@ -434,15 +530,32 @@ def run_llm_insights(
         run.insights_off = True
         run.skipped.append(("llm_insights", "insights_off"))
         return run
+    # The prompts name no model: with no default model provider every call would fail.
+    try:
+        default_model = client.default_model()
+    except Exception as e:
+        logger.warning(
+            f"Could not read the default model provider ({type(e).__name__})"
+        )
+        run.skipped.append(("llm_insights", "model_unavailable"))
+        return run
+    if default_model is None:
+        run.skipped.append(("llm_insights", "default_model_not_configured"))
+        return run
 
     # Short ids keep the prompt small, and are what the model cites back.
     short = {trace_id: f"t{i:02d}" for i, trace_id in enumerate(traces, 1)}
     trace_ids = {s: trace_id for trace_id, s in short.items()}
-    batches, too_large = make_batches({short[t]: spans for t, spans in traces.items()})
+    batches, too_large = make_batches(
+        {short[t]: spans for t, spans in traces.items()},
+        char_budget=batch_char_budget(default_model),
+    )
     if too_large:
         logger.warning(
             f"{len(too_large)} sampled trace(s) too large to send for insights",
         )
+    # The findings count what the model was shown, not what was sampled.
+    run.traces = sum(len(batch.short_ids) for batch in batches)
 
     spend = _Spend(cost_cap_usd)
     asker = _Asker(client, spend, logger, sleep)
@@ -464,7 +577,10 @@ def run_llm_insights(
         if verdict is not None:
             run.verdicts.append(verdict)
         else:
-            run.skipped.append((kind, reason or "no_batches"))
+            # With nothing sent, it is because every trace was too large alone.
+            run.skipped.append(
+                (kind, reason or ("too_large" if too_large else "no_batches"))
+            )
     run.cost_usd = spend.usd
     run.calls = spend.calls
     logger.info(

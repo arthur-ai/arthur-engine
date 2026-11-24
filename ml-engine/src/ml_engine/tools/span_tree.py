@@ -1,5 +1,5 @@
 # Copied from the GenAI Engine's genai-engine/src/utils/span_tree.py (arthur-engine
-# commit 679380794). Keep the two in step until the module has a shared home.
+# commit 73b594eef). Keep the two in step until the module has a shared home.
 
 """One order for a trace's spans, shared by transforms and the per-span eval fan-out.
 
