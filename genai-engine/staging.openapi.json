@@ -7715,6 +7715,25 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "X-Arthur-Session-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 128
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Groups runs of Arthur system task prompts: each run is recorded as an LLM span in the system task, and runs sent with the same value share one session and one trace. Ignored for other tasks.",
+                            "title": "X-Arthur-Session-Id"
+                        },
+                        "description": "Groups runs of Arthur system task prompts: each run is recorded as an LLM span in the system task, and runs sent with the same value share one session and one trace. Ignored for other tasks."
                     }
                 ],
                 "requestBody": {

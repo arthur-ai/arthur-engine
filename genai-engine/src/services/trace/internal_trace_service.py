@@ -64,6 +64,10 @@ class TraceSpanBuilder:
     def set_attribute(self, key: str, value: Any) -> None:
         if isinstance(value, int):
             self.attributes.append(KeyValue(key=key, value=AnyValue(int_value=value)))
+        elif isinstance(value, float):
+            self.attributes.append(
+                KeyValue(key=key, value=AnyValue(double_value=value)),
+            )
         elif isinstance(value, Enum):
             self.attributes.append(
                 KeyValue(key=key, value=AnyValue(string_value=value.value)),
@@ -156,11 +160,12 @@ class InternalTraceService:
 
     def start_llm_span(
         self,
-        parent: TraceSpanBuilder,
+        parent: Optional[TraceSpanBuilder],
         model_name: str,
         model_provider: str,
     ) -> TraceSpanBuilder:
-        span = TraceSpanBuilder(self.trace_id, parent.span_id)
+        """An LLM span under `parent`, or a root span when there is none."""
+        span = TraceSpanBuilder(self.trace_id, parent.span_id if parent else None)
         span.name = "llm_call"
         span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "LLM")
         span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model_name)

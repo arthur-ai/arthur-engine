@@ -1,10 +1,19 @@
 import copy
-from typing import Annotated
+from typing import Annotated, Optional
 
 import jinja2
 import litellm
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Path,
+    Response,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
@@ -457,6 +466,14 @@ async def run_saved_agentic_prompt(
         title="Prompt Version",
     ),
     completion_request: PromptCompletionRequest = PromptCompletionRequest(),
+    session_id: Optional[str] = Header(
+        None,
+        alias="X-Arthur-Session-Id",
+        max_length=128,
+        description="Groups runs of Arthur system task prompts: each run is recorded "
+        "as an LLM span in the system task, and runs sent with the same value share "
+        "one session and one trace. Ignored for other tasks.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -483,6 +500,7 @@ async def run_saved_agentic_prompt(
             prompt_version,
             completion_request,
             org_id=task.org_id,
+            session_id=session_id,
         )
     except HTTPException:
         # propagate HTTP exceptions

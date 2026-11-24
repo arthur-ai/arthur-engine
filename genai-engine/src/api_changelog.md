@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/23/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional `header` request parameter `x-arthur-session-id`
+
 # 11/19/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the chatbot always uses the default model provider (`/api/v1/default_model_provider`); a request that sets `model_provider` or `model_name` now returns `400`, and the response shows the default's model, or null when none is set
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_name` became optional for the status `200`

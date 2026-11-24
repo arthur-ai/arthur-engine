@@ -1,6 +1,7 @@
 import copy
+import json
 import uuid
-from typing import List, Type, cast
+from typing import List, Optional, Type, cast
 
 from arthur_common.models.llm_model_providers import (
     LLMConfigSettings,
@@ -9,11 +10,13 @@ from arthur_common.models.llm_model_providers import (
 )
 from fastapi import HTTPException
 from litellm import supports_response_schema
+from openinference.semconv.trace import SpanAttributes
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
 from starlette.status import HTTP_400_BAD_REQUEST
 
+from clients.llm.llm_client import LLMClient
 from db_models.agentic_prompt_models import (
     DatabaseAgenticPrompt,
     DatabaseAgenticPromptVersionTag,
@@ -33,7 +36,16 @@ from schemas.response_schemas import (
     AgenticPromptVersionResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
-from utils.constants import EMPTY_MODEL_PROVIDER
+from services.trace.internal_trace_service import InternalTraceService
+from utils.constants import ARTHUR_SYSTEM_TASK_ID, EMPTY_MODEL_PROVIDER
+
+# Derives one trace id per session id, so a session's runs share a trace.
+_SESSION_TRACE_NAMESPACE = uuid.UUID("5f0e5d3a-2b8a-4f63-9a51-6c8d0e7f4b21")
+
+
+def session_trace_id(session_id: str) -> bytes:
+    """The trace that a session's system-task prompt runs are recorded in."""
+    return uuid.uuid5(_SESSION_TRACE_NAMESPACE, session_id).bytes
 
 
 class AgenticPromptRepository(
@@ -146,7 +158,12 @@ class AgenticPromptRepository(
         prompt_version: str,
         completion_request: PromptCompletionRequest,
         org_id: uuid.UUID,
+        session_id: Optional[str] = None,
     ) -> AgenticPromptRunResponse | StreamingResponse:
+        """Run a saved prompt. A non-streaming run of a prompt in the Arthur system
+        task, which Arthur's own features call, is recorded there as an LLM span, as
+        the chatbot's calls are; `session_id` puts a caller's runs in one session and
+        one trace."""
         prompt = self._with_resolved_model(
             self.get_llm_item(
                 task_id,
@@ -157,12 +174,81 @@ class AgenticPromptRepository(
         llm_client = self.model_provider_repo.get_model_provider_client(
             provider=prompt.require_configured_provider(),
         )
+        if task_id == ARTHUR_SYSTEM_TASK_ID and not completion_request.stream:
+            return self._run_recorded(
+                prompt,
+                llm_client,
+                completion_request,
+                org_id,
+                session_id,
+            )
         return await self.chat_completion_service.execute_prompt_completion(
             llm_client,
             prompt,
             completion_request,
             org_id=org_id,
         )
+
+    def _run_recorded(
+        self,
+        prompt: AgenticPrompt,
+        llm_client: LLMClient,
+        completion_request: PromptCompletionRequest,
+        org_id: uuid.UUID,
+        session_id: Optional[str],
+    ) -> AgenticPromptRunResponse:
+        """Run the prompt and record the call as an LLM span in the system task.
+
+        The span holds the prompt's name and version, the model, the tokens, the cost,
+        the latency (its start and end) and, for a failed call, the error's type. Not the
+        messages or the reply: what a feature sends can be another task's traces.
+        Recording never fails the run.
+        """
+        tracer = InternalTraceService(
+            self.db_session,
+            task_id=ARTHUR_SYSTEM_TASK_ID,
+            service_name="system task prompt",
+            trace_id=session_trace_id(session_id) if session_id else None,
+        )
+        span = tracer.start_llm_span(
+            None,
+            model_name=prompt.model_name,
+            model_provider=str(prompt.model_provider),
+        )
+        span.name = prompt.name
+        span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, prompt.version)
+        span.set_attribute(
+            SpanAttributes.METADATA,
+            json.dumps({"prompt_name": prompt.name, "prompt_version": prompt.version}),
+        )
+        if session_id:
+            span.set_attribute(SpanAttributes.SESSION_ID, session_id)
+        try:
+            response = self.chat_completion_service.run_chat_completion(
+                prompt,
+                llm_client,
+                completion_request,
+                org_id=org_id,
+            )
+        except Exception as e:
+            status = f" {e.status_code}" if isinstance(e, HTTPException) else ""
+            tracer.end_span_with_error(span, f"{type(e).__name__}{status}")
+            tracer.flush()
+            raise
+        for attribute, tokens in (
+            (SpanAttributes.LLM_TOKEN_COUNT_PROMPT, response.input_tokens),
+            (SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, response.output_tokens),
+            (SpanAttributes.LLM_TOKEN_COUNT_TOTAL, response.total_tokens),
+        ):
+            if tokens is not None:
+                span.set_attribute(attribute, tokens)
+        try:
+            span.set_attribute(SpanAttributes.LLM_COST_TOTAL, float(response.cost))
+        except (TypeError, ValueError):
+            pass
+        tracer.end_span(span)
+        tracer.flush()
+        return response
 
     def _with_resolved_model(self, prompt: AgenticPrompt) -> AgenticPrompt:
         """The prompt with the model it runs on. A prompt saved with the 'empty'
