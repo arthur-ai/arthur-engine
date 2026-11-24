@@ -33,6 +33,7 @@ from job_executors.onboarding_analysis_executor import (
     OnboardingErrorCode,
     OnboardingOutcome,
     OnboardingReport,
+    OnboardingResultNotSent,
     PlatformOnboardingResultUploader,
     SampleSummary,
     _draw_sample,
@@ -596,6 +597,67 @@ def test_the_upload_puts_the_result_on_this_attempt(
     )
 
 
+def test_a_result_the_client_rejects_is_not_sent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    put = MagicMock()
+
+    class RejectingBody:
+        @classmethod
+        def from_dict(cls, data: dict[str, Any]) -> "RejectingBody":
+            raise ValueError("field not declared")
+
+    monkeypatch.setattr(
+        api_bindings,
+        "OnboardingV1Api",
+        lambda client: MagicMock(put_onboarding_analysis_result=put),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        api_bindings, "PutOnboardingAnalysisResult", RejectingBody, raising=False
+    )
+    result = OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
+
+    with pytest.raises(OnboardingResultNotSent):
+        PlatformOnboardingResultUploader(_unreachable_client()).upload(
+            "job", "run", result
+        )
+    put.assert_not_called()
+
+
+def test_a_result_not_sent_is_replaced_by_a_failed_one() -> None:
+    run = _Run([])
+    run.uploader.upload.side_effect = [OnboardingResultNotSent("ValueError"), None]
+    spec = OnboardingAnalysisJobSpec(
+        connector_id="connector-1",
+        address=OnboardingAddress(task_id=TASK_ID),
+    )
+
+    with pytest.raises(OnboardingResultNotSent):
+        run.executor.execute(run.job_id, "run-1", spec)
+
+    first, second = [c.args[2] for c in run.uploader.upload.call_args_list]
+    assert first.outcome == OnboardingOutcome.INSUFFICIENT_TRACES
+    assert second.outcome == OnboardingOutcome.FAILED
+    assert second.error is not None
+    assert second.error.message == "The analysis failed (OnboardingResultNotSent)."
+
+
+def test_a_window_start_without_an_offset_is_read_as_utc() -> None:
+    spec = OnboardingAnalysisJobSpec.model_validate(
+        {
+            "connector_id": "connector-1",
+            "address": {"task_id": TASK_ID},
+            "start_timestamp": "2026-11-10T00:00:00",
+        },
+    )
+
+    start, end = spec.window(NOW)
+
+    assert start == datetime(2026, 11, 10, tzinfo=timezone.utc)
+    assert end - start == timedelta(days=7, hours=12)
+
+
 def test_a_client_without_the_route_cannot_upload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -637,14 +699,18 @@ def test_a_completed_result_is_a_valid_platform_upload(raw_data_enabled: None) -
 )
 def test_the_engine_does_not_take_jobs_it_cannot_upload() -> None:
     # The engine declares on dequeue that it runs these jobs as soon as its client can,
-    # so with such a client the upload must be a real call: here it fails only for want
-    # of a Platform to reach.
+    # so with such a client the upload must reach the transport as the route's PUT: the
+    # generated API and body model run, only the transport is a stub.
+    transport = MagicMock(wraps=_unreachable_client())
+    transport.call_api = MagicMock()
+    transport.response_deserialize = MagicMock()
     result = OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
-    with pytest.raises(Exception) as raised:
-        PlatformOnboardingResultUploader(_unreachable_client()).upload(
-            "job", "run", result
-        )
-    assert not isinstance(raised.value, NotImplementedError)
+
+    PlatformOnboardingResultUploader(transport).upload("job", "run", result)
+
+    method, url, *_ = transport.call_api.call_args.args
+    assert method == "PUT"
+    assert url.endswith("/api/v1/jobs/job/runs/run/onboarding_result")
 
 
 # --- What reaches the wizard ---------------------------------------------------------------

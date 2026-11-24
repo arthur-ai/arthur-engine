@@ -11,7 +11,10 @@ names, into DuckDB through the loader the metrics job uses, and hands one result
    span names seen, so transforms can be built.
 4. Totals by SQL.
 5. Sample up to `sample_size` traces and `max_spans` spans, drawn in DuckDB.
-6. Insights. Not built yet: each is listed in `skipped`, never reported as "nothing found".
+6. Insights. With a GenAI Engine configured, the LLM insights send the sampled traces
+   to its saved insight prompts (`onboarding_insights`) and report a finding per insight.
+   The rule insights are not built yet. An insight that does not run is listed in
+   `skipped` with the reason, never reported as "nothing found".
 7. Upload the one result.
 
 Every trace read counts and is analysed, GUARDRAIL spans included. A validate call made
@@ -46,7 +49,7 @@ from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
 from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA
 from arthur_common.tools.duckdb_data_loader import DuckDBOperator
 from duckdb import DuckDBPyConnection
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from arthur_client_support import (
     ONBOARDING_RESULT_API,
@@ -111,6 +114,15 @@ class OnboardingAnalysisJobSpec(BaseModel):
     # far over the GenAI Engine's page size limit.
     max_root_spans: int = Field(default=100_000, ge=1)
     max_spans: int = Field(default=10_000, ge=1)
+
+    @field_validator("start_timestamp", "end_timestamp")
+    @classmethod
+    def _utc_if_naive(cls, value: datetime | None) -> datetime | None:
+        # The window's other end may be the engine's aware clock, and the two are
+        # subtracted: a timestamp without an offset is read as UTC.
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
     def window(self, now: datetime) -> tuple[datetime, datetime]:
         end = self.end_timestamp or now
@@ -243,6 +255,17 @@ class OnboardingResultUploader(Protocol):
     ) -> None: ...
 
 
+class OnboardingResultNotSent(Exception):
+    """The result could not be prepared for upload, so nothing reached the Platform for
+    this attempt and a failed result may still be sent in its place."""
+
+
+class OnboardingAnalysisFailed(Exception):
+    """An onboarding analysis failed. Names only the original exception's type: the
+    job's logger sends what it logs to the Platform, and a message can quote the traces.
+    """
+
+
 class PlatformOnboardingResultUploader:
     """Uploads the result to the Platform's onboarding result route for this attempt:
     PUT /api/v1/jobs/{job_id}/runs/{job_run_id}/onboarding_result.
@@ -273,7 +296,10 @@ class PlatformOnboardingResultUploader:
             )
         # The client's model is built from the same JSON the Platform receives, so a
         # field the Platform does not declare fails here, before anything is sent.
-        body = body_model.from_dict(result.model_dump(mode="json"))
+        try:
+            body = body_model.from_dict(result.model_dump(mode="json"))
+        except Exception as e:
+            raise OnboardingResultNotSent(type(e).__name__) from e
         getattr(result_api(self.api_client), ONBOARDING_RESULT_METHOD)(
             job_id=job_id,
             job_run_id=job_run_id,
@@ -318,7 +344,13 @@ class OnboardingAnalysisExecutor:
             self._report_failure(job_id, job_run_id, e)
             raise
         self.logger.info(f"Onboarding analysis {job_id} ended {result.outcome.value}")
-        self.uploader.upload(job_id, job_run_id, result)
+        try:
+            self.uploader.upload(job_id, job_run_id, result)
+        except OnboardingResultNotSent as e:
+            # Nothing was sent for this attempt. After a send that failed the Platform
+            # may hold the result already, so only this case reports a different one.
+            self._report_failure(job_id, job_run_id, e)
+            raise
         return result
 
     def _report_failure(self, job_id: str, job_run_id: str, error: Exception) -> None:

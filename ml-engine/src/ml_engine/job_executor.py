@@ -72,6 +72,7 @@ from job_executors.metrics_calculation_executor import (
 )
 from job_executors.onboarding_analysis_executor import (
     OnboardingAnalysisExecutor,
+    OnboardingAnalysisFailed,
     PlatformOnboardingResultUploader,
 )
 from job_executors.onboarding_insights import HttpInsightEngineClient
@@ -100,6 +101,9 @@ if TEST_DISCOVERY_SOURCE_SUPPORTED:
     )
 
 logging.basicConfig()
+
+# Not the job's logger: what this logs stays in the engine's own log, not the Platform's.
+engine_logger = logging.getLogger(__name__)
 
 
 class JobSpecRawParser:
@@ -457,26 +461,35 @@ class JobExecutor:
                             raise NotImplementedError(
                                 ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
                             )
-                        OnboardingAnalysisExecutor(
-                            DatasetLoader(
-                                self.connector_constructor,
-                                self.datasets_client,
+                        try:
+                            OnboardingAnalysisExecutor(
+                                DatasetLoader(
+                                    self.connector_constructor,
+                                    self.datasets_client,
+                                    self.logger,
+                                ),
+                                PlatformOnboardingResultUploader(
+                                    self.jobs_client.api_client,
+                                ),
                                 self.logger,
-                            ),
-                            PlatformOnboardingResultUploader(
-                                self.jobs_client.api_client,
-                            ),
-                            self.logger,
-                            insight_client=self._onboarding_insight_client(),
-                        ).execute(
-                            job.id,
-                            job_run.id,
-                            # Validated by the executor, so that a malformed spec
-                            # still reaches the wizard as a failed result.
-                            JobSpecRawParser(
-                                job_resp.raw_data,
-                            ).job_spec(),
-                        )
+                                insight_client=self._onboarding_insight_client(),
+                            ).execute(
+                                job.id,
+                                job_run.id,
+                                # Validated by the executor, so that a malformed spec
+                                # still reaches the wizard as a failed result.
+                                JobSpecRawParser(
+                                    job_resp.raw_data,
+                                ).job_spec(),
+                            )
+                        except Exception as e:
+                            # The job's logger sends its errors and tracebacks to the
+                            # Platform, and this message can quote the traces read.
+                            engine_logger.error(
+                                f"Onboarding analysis {job.id} failed",
+                                exc_info=e,
+                            )
+                            raise OnboardingAnalysisFailed(type(e).__name__) from None
                     case JobKind.COMPLIANCE_POLICY_CHECK:
                         if not isinstance(
                             job.job_spec.actual_instance,

@@ -41,6 +41,7 @@ from job_executors.onboarding_insights import (
     batch_char_budget,
     make_batches,
     run_llm_insights,
+    trace_facts,
 )
 
 logger = logging.getLogger("test-onboarding-insights")
@@ -251,6 +252,109 @@ def test_the_batch_budget_follows_the_input_window(
     assert batch_char_budget(model) == budget
 
 
+@pytest.mark.parametrize(
+    "matched",
+    [17, "t01", [1], None],
+)
+def test_a_verdict_with_malformed_matched_traces_is_unparsed(matched: Any) -> None:
+    def answer(kind: str, text: str) -> str:
+        return json.dumps({"kind": kind, "fired": "yes", "matched_traces": matched})
+
+    run = run_llm_insights(
+        FakeEngine(answer=answer), _traces(3), logger, sleep=_no_sleep
+    )
+
+    assert run.verdicts == []
+    assert sorted(run.skipped) == sorted(
+        (kind, "unparsed_reply") for kind in INSIGHT_KINDS
+    )
+
+
+def test_a_citation_of_a_trace_outside_the_batch_is_dropped() -> None:
+    def answer(kind: str, text: str) -> str:
+        # Each batch cites its own first trace and one it did not hold.
+        return _verdict(kind, "yes", [_all_traces_in(text)[0], "t99"])
+
+    traces = _traces(3)
+    run = run_llm_insights(FakeEngine(answer=answer), traces, logger, sleep=_no_sleep)
+
+    first = next(iter(traces))
+    for verdict in run.verdicts:
+        assert verdict.matched_trace_ids == [first]
+
+
+def test_a_retry_after_another_call_was_refused_is_not_sent() -> None:
+    import job_executors.onboarding_insights as insights
+
+    askers: list[Any] = []
+    original = insights._Asker.__init__
+
+    def init(self: Any, *args: Any, **kwargs: Any) -> None:
+        original(self, *args, **kwargs)
+        askers.append(self)
+
+    def backoff(seconds: float) -> None:
+        # Another call is refused while this one waits to retry.
+        askers[0].rejected.set()
+
+    engine = FakeEngine(fail=lambda kind, attempt: True)
+    with patch.object(insights._Asker, "__init__", init):
+        run = run_llm_insights(engine, _traces(3), logger, sleep=backoff)
+
+    assert len(engine.calls) == 1
+    assert sorted(run.skipped) == sorted(
+        (kind, "model_rejected") for kind in INSIGHT_KINDS
+    )
+
+
+def test_a_retry_past_the_cost_cap_is_not_sent() -> None:
+    import job_executors.onboarding_insights as insights
+
+    spends: list[Any] = []
+    original = insights._Spend.__init__
+
+    def init(self: Any, *args: Any, **kwargs: Any) -> None:
+        original(self, *args, **kwargs)
+        spends.append(self)
+
+    def backoff(seconds: float) -> None:
+        # Other calls reach the cap while this one waits.
+        spends[0].add(100.0)
+
+    engine = FakeEngine(fail=lambda kind, attempt: attempt == 0)
+    with patch.object(insights._Spend, "__init__", init):
+        run = run_llm_insights(engine, _traces(3), logger, sleep=backoff)
+
+    assert len(engine.calls) == 1
+    assert all(reason == "cost_cap" for _, reason in run.skipped)
+
+
+def test_the_http_client_reads_a_verdict_returned_as_an_object(
+    httpserver: Any,
+) -> None:
+    verdict = {"kind": "user_facing", "fired": "no", "matched_traces": []}
+    httpserver.expect_request(
+        f"/api/v1/tasks/{SYSTEM_TASK_ID}/prompts/onboarding_insight_user_facing"
+        "/versions/production/completions",
+    ).respond_with_json({"content": verdict, "cost": 0.1})
+
+    client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
+    completion = client.run_prompt("onboarding_insight_user_facing", "FACTS\n...")
+
+    assert json.loads(completion.content) == verdict
+
+
+def test_the_http_client_reads_other_content_as_no_reply(httpserver: Any) -> None:
+    httpserver.expect_request(
+        f"/api/v1/tasks/{SYSTEM_TASK_ID}/prompts/onboarding_insight_user_facing"
+        "/versions/production/completions",
+    ).respond_with_json({"content": ["not", "a", "verdict"], "cost": 0.1})
+
+    client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
+
+    assert client.run_prompt("onboarding_insight_user_facing", "x").content == ""
+
+
 def test_an_empty_example_span_name_is_none() -> None:
     def answer(kind: str, text: str) -> str:
         return _verdict(kind, "yes", _all_traces_in(text)[:1], span="")
@@ -391,10 +495,84 @@ def test_the_cost_cap_stops_further_calls() -> None:
 def test_a_trace_too_large_alone_is_not_sent() -> None:
     traces = {f"t{i:02d}": _spans(_agent_trace(_days_ago(i))) for i in range(1, 4)}
 
-    batches, too_large = make_batches(traces, char_budget=10)
+    batches, too_large, unreadable = make_batches(traces, char_budget=10)
 
     assert batches == []
     assert too_large == ["t01", "t02", "t03"]
+    assert unreadable == []
+
+
+def test_a_trace_that_fills_the_budget_alone_is_cut_to_fit_not_dropped() -> None:
+    spans = _spans(_agent_trace(_days_ago(1)))
+    # A long tool result, so the trace is well over the serializer's smallest budget.
+    spans = [
+        (
+            s.__class__(
+                **{
+                    **s.__dict__,
+                    "raw_data": {"attributes": {"output": {"value": "R" * 6_000}}},
+                },
+            )
+            if (s.span_kind or "").upper() == "TOOL"
+            else s
+        )
+        for s in spans
+    ]
+    traces = {"t01": spans}
+    [whole], _, _ = make_batches(traces)
+
+    # A budget the trace's whole text would fill, leaving no room for the facts and tags.
+    budget = len(whole.text) - 20
+    batches, too_large, _ = make_batches(traces, char_budget=budget)
+
+    assert too_large == []
+    [batch] = batches
+    assert len(batch.text) <= budget
+    assert "TRUNCATED" in batch.text
+
+
+def test_a_trace_that_cannot_be_read_leaves_the_others_to_run() -> None:
+    traces = _traces(3)
+    bad = next(iter(traces))
+    # An input message the serializer cannot handle, as the GenAI Engine's module stands.
+    traces[bad][0] = traces[bad][0].__class__(
+        **{
+            **traces[bad][0].__dict__,
+            "span_kind": "LLM",
+            "raw_data": {
+                "attributes": {"llm": {"input_messages": [{"message": None}]}}
+            },
+        },
+    )
+    engine = FakeEngine()
+
+    run = run_llm_insights(engine, traces, logger, sleep=_no_sleep)
+
+    assert run.traces == 2
+    sent = {t for _, text in engine.calls for t in _all_traces_in(text)}
+    assert sent == {"t02", "t03"}
+    assert len(run.verdicts) == len(INSIGHT_KINDS)
+
+
+def test_a_token_count_that_is_not_a_number_is_left_out() -> None:
+    [span] = _spans(_agent_trace(_days_ago(1)))[:1]
+    llm = span.__class__(
+        **{
+            **span.__dict__,
+            "span_kind": "LLM",
+            "raw_data": {"attributes": {"llm": {"token_count": {"total": "unknown"}}}},
+        },
+    )
+    counted = span.__class__(
+        **{
+            **span.__dict__,
+            "span_id": "other",
+            "span_kind": "LLM",
+            "raw_data": {"attributes": {"llm": {"token_count": {"total": 40}}}},
+        },
+    )
+
+    assert trace_facts([llm, counted])["tokens"] == 40
 
 
 # --- Through the job ----------------------------------------------------------------------
@@ -473,7 +651,10 @@ def test_the_job_completes_when_every_insight_call_fails(
 ) -> None:
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]
 
-    result = _job(rows, FakeEngine(fail=lambda kind, attempt: True))
+    with patch("job_executors.onboarding_insights.time.sleep") as slept:
+        result = _job(rows, FakeEngine(fail=lambda kind, attempt: True))
+    # The job's run waits out its backoff through time.sleep, which the test replaces.
+    assert slept.call_count == len(INSIGHT_KINDS) * 2
 
     assert result.outcome == OnboardingOutcome.COMPLETED
     report = _report(result)

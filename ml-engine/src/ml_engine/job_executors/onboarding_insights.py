@@ -204,8 +204,12 @@ class HttpInsightEngineClient:
             raise PromptRejected(resp.status_code)
         resp.raise_for_status()
         body = resp.json()
+        content = body.get("content")
+        if isinstance(content, dict):
+            # A verdict returned as an object rather than as JSON text.
+            content = json.dumps(content)
         return PromptCompletion(
-            content=body.get("content") or "",
+            content=content if isinstance(content, str) else "",
             cost_usd=float(body.get("cost") or 0),
         )
 
@@ -266,6 +270,14 @@ def _letters_and_digits(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+def _count(value: Any) -> int:
+    """A count from span attributes, or 0 when it is not a number."""
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def trace_facts(spans: Sequence[InsightSpan]) -> dict[str, Any]:
     """Per-trace hints the prompts read before the traces: evidence, not the answer."""
     tools = [s for s in spans if (s.span_kind or "").upper() == "TOOL"]
@@ -300,7 +312,7 @@ def trace_facts(spans: Sequence[InsightSpan]) -> dict[str, Any]:
         "models": sorted(
             {m for s in llms if (m := _get(_attrs(s), "llm.model_name"))},
         ),
-        "tokens": sum(int(_get(_attrs(s), "llm.token_count.total") or 0) for s in llms),
+        "tokens": sum(_count(_get(_attrs(s), "llm.token_count.total")) for s in llms),
         "guardrail_spans": sum(
             (s.span_kind or "").upper() == "GUARDRAIL" for s in spans
         ),
@@ -331,27 +343,55 @@ class Batch:
     text: str
 
 
+def _trace_block(short_id: str, text: str) -> str:
+    return f"<trace id={short_id}>\n{text}\n</trace>"
+
+
 def _render_batch(
     short_ids: list[str],
     traces: Mapping[str, Sequence[InsightSpan]],
     facts: dict[str, dict[str, Any]],
-    max_chars: int,
+    char_budget: int,
 ) -> str:
+    """The batch's text. Each trace gets an equal share of what the facts and the
+    framing leave of the budget, so a trace that fits its share is sent whole."""
     facts_block = "\n".join(_facts_line(t, facts[t]) for t in short_ids)
+    head = f"FACTS\n{facts_block}\n\nTRACES\n"
+    framing = len(head) + sum(len(_trace_block(t, "")) + 2 for t in short_ids)
+    max_chars = max(MIN_MAX_CHARS, (char_budget - framing) // len(short_ids))
     traces_block = "\n\n".join(
-        f"<trace id={t}>\n{serialize_trace(traces[t], max_chars=max_chars)[0]}\n</trace>"
+        _trace_block(t, serialize_trace(traces[t], max_chars=max_chars)[0])
         for t in short_ids
     )
-    return f"FACTS\n{facts_block}\n\nTRACES\n{traces_block}"
+    return head + traces_block
+
+
+def _readable(
+    traces: Mapping[str, Sequence[InsightSpan]],
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """The facts of each trace that can be read, and the traces that cannot: span data
+    the serializer cannot handle leaves that trace out, not the run."""
+    facts: dict[str, dict[str, Any]] = {}
+    unreadable: list[str] = []
+    for short_id, spans in traces.items():
+        try:
+            trace = trace_facts(spans)
+            serialize_trace(spans, max_chars=MIN_MAX_CHARS)
+        except Exception:
+            unreadable.append(short_id)
+        else:
+            facts[short_id] = trace
+    return facts, unreadable
 
 
 def make_batches(
     traces: Mapping[str, Sequence[InsightSpan]],
     char_budget: int = BATCH_CHAR_BUDGET,
-) -> tuple[list[Batch], list[str]]:
-    """Batches within the budget, and the traces too large to send even alone."""
-    facts = {t: trace_facts(spans) for t, spans in traces.items()}
-    ids = list(traces)
+) -> tuple[list[Batch], list[str], list[str]]:
+    """Batches within the budget, the traces too large to send even alone, and the
+    traces that could not be read."""
+    facts, unreadable = _readable(traces)
+    ids = [t for t in traces if t in facts]
     batches: list[Batch] = []
     too_large: list[str] = []
     i = 0
@@ -359,8 +399,7 @@ def make_batches(
         size = min(TARGET_BATCH, len(ids) - i)
         while True:
             chunk = ids[i : i + size]
-            max_chars = max(MIN_MAX_CHARS, char_budget // size)
-            text = _render_batch(chunk, traces, facts, max_chars)
+            text = _render_batch(chunk, traces, facts, char_budget)
             if len(text) <= char_budget:
                 batches.append(Batch(short_ids=chunk, text=text))
                 i += size
@@ -370,7 +409,7 @@ def make_batches(
                 i += 1
                 break
             size = max(1, size // 2)
-    return batches, too_large
+    return batches, too_large, unreadable
 
 
 # ---------------------------------------------------------------- calls
@@ -410,6 +449,9 @@ def _parse_verdict(content: str) -> Optional[dict[str, Any]]:
         "cannot_tell",
     ):
         return None
+    matched = verdict.get("matched_traces", [])
+    if not isinstance(matched, list) or not all(isinstance(t, str) for t in matched):
+        return None
     return verdict
 
 
@@ -430,11 +472,13 @@ class _Asker:
 
     def ask(self, batch: Batch, kind: str) -> dict[str, Any]:
         """The verdict, or {"skipped": reason}: never raises."""
-        if self.rejected.is_set():
-            return {"skipped": "model_rejected"}
-        if self.spend.over_cap():
-            return {"skipped": "cost_cap"}
         for attempt in range(CALL_ATTEMPTS):
+            # Before every attempt: another call may have been refused, or reached the
+            # cap, while this one waited out its backoff.
+            if self.rejected.is_set():
+                return {"skipped": "model_rejected"}
+            if self.spend.over_cap():
+                return {"skipped": "cost_cap"}
             try:
                 completion = self.client.run_prompt(PROMPT_PREFIX + kind, batch.text)
                 break
@@ -463,7 +507,14 @@ class _Asker:
                 self.sleep(FIRST_BACKOFF_SECONDS * 2**attempt)
         self.spend.add(completion.cost_usd)
         verdict = _parse_verdict(completion.content)
-        return verdict if verdict is not None else {"skipped": "unparsed_reply"}
+        if verdict is None:
+            return {"skipped": "unparsed_reply"}
+        # Only traces this batch held: the model cannot have seen any other.
+        shown = set(batch.short_ids)
+        verdict["matched_traces"] = [
+            t for t in verdict.get("matched_traces", []) if t in shown
+        ]
+        return verdict
 
 
 def _merge(
@@ -516,9 +567,13 @@ def run_llm_insights(
     traces: Mapping[str, Sequence[InsightSpan]],
     logger: logging.Logger,
     cost_cap_usd: float = COST_CAP_USD,
-    sleep: Callable[[float], None] = time.sleep,
+    sleep: Optional[Callable[[float], None]] = None,
 ) -> InsightRun:
-    """Ask every insight of the sampled traces, keyed by trace id. Never raises."""
+    """Ask every insight of the sampled traces, keyed by trace id. Never raises.
+
+    `sleep` waits out a retry's backoff; by default `time.sleep`, looked up when the
+    run starts so that a test can patch it."""
+    sleep = sleep or time.sleep
     run = InsightRun(traces=len(traces))
     try:
         enabled = client.insights_enabled()
@@ -546,13 +601,17 @@ def run_llm_insights(
     # Short ids keep the prompt small, and are what the model cites back.
     short = {trace_id: f"t{i:02d}" for i, trace_id in enumerate(traces, 1)}
     trace_ids = {s: trace_id for trace_id, s in short.items()}
-    batches, too_large = make_batches(
+    batches, too_large, unreadable = make_batches(
         {short[t]: spans for t, spans in traces.items()},
         char_budget=batch_char_budget(default_model),
     )
     if too_large:
         logger.warning(
             f"{len(too_large)} sampled trace(s) too large to send for insights",
+        )
+    if unreadable:
+        logger.warning(
+            f"{len(unreadable)} sampled trace(s) could not be read for insights",
         )
     # The findings count what the model was shown, not what was sampled.
     run.traces = sum(len(batch.short_ids) for batch in batches)
@@ -579,10 +638,14 @@ def run_llm_insights(
         if verdict is not None:
             run.verdicts.append(verdict)
         else:
-            # With nothing sent, it is because every trace was too large alone.
-            run.skipped.append(
-                (kind, reason or ("too_large" if too_large else "no_batches"))
-            )
+            # With nothing sent, say why no trace could be.
+            if reason is None:
+                reason = (
+                    "too_large"
+                    if too_large
+                    else "unreadable" if unreadable else "no_batches"
+                )
+            run.skipped.append((kind, reason))
     run.cost_usd = spend.usd
     run.calls = spend.calls
     logger.info(
