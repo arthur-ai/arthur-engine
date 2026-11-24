@@ -67,6 +67,7 @@ MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024
 # to_be_retrieved are still running; success carries `url`; failed carries `errorCode`.
 _DONE = "success"
 _FAILED = "failed"
+_PICKED_UP = frozenset({"in_progress", "to_be_retrieved"})
 # errorCode for a task that ran out of GravityZone's own execution time.
 TIMED_OUT_ERROR_CODE = -99997
 
@@ -111,6 +112,9 @@ class CommandOutput:
     url: Optional[str] = None
     # GravityZone's errorCode for a failed task, e.g. TIMED_OUT_ERROR_CODE.
     error_code: Optional[int] = None
+    # Whether the endpoint has started the task: in_progress or to_be_retrieved, rather
+    # than pending (assigned, not started).
+    picked_up: bool = False
 
 
 # Module -> the API name an administrator ticks when creating the key, for the 403 hint.
@@ -383,8 +387,8 @@ class GravityZoneClient:
             )
         url = result.get("url")
         if state == _DONE and url:
-            return CommandOutput("done", str(url))
-        return CommandOutput("pending")
+            return CommandOutput("done", str(url), picked_up=True)
+        return CommandOutput("pending", picked_up=state in _PICKED_UP)
 
     def download(self, url: str) -> bytes:
         """The output archive, bounded.

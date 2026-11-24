@@ -38,6 +38,7 @@ from discovery.endpoint.gravityzone.client import (
 from discovery.endpoint.gravityzone.connector import (
     COMMAND,
     INVENTORY_PATH,
+    WINDOWS_COMMAND,
     GravityZoneConnector,
     _settings_from,
     command_value,
@@ -170,9 +171,13 @@ class FakeGravityZone:
         self.posts: list[dict[str, Any]] = []
         self.downloads: list[dict[str, Any]] = []
         self.polls: dict[str, int] = {}
+        # Set by connector_for, so a test can see when each call was made.
+        self.clock: Optional[Any] = None
 
     def post(self, url: str, **kw: Any) -> FakeResponse:
-        self.posts.append({"url": url, **kw})
+        self.posts.append(
+            {"url": url, "at": self.clock() if self.clock else None, **kw}
+        )
         body = kw["json"]
         method, params = body["method"], body["params"]
         self.calls.append((method, params))
@@ -227,6 +232,9 @@ class FakeGravityZone:
                     200,
                     {"result": {"status": "failed", "errorCode": -99997}},
                 )
+            if out == "offline":
+                # Assigned, never started: the endpoint is off.
+                return FakeResponse(200, {"result": {"status": "pending"}})
             if out == "pending" or out is None:
                 return FakeResponse(200, {"result": {"status": "in_progress"}})
             # The first poll finds it collected but not yet uploaded.
@@ -283,6 +291,7 @@ def connector_for(
     fake: FakeGravityZone, clock: Optional[FakeClock] = None
 ) -> GravityZoneConnector:
     clock = clock or FakeClock()
+    fake.clock = clock
     return GravityZoneConnector(
         client_factory=lambda settings, log: GravityZoneClient(
             settings,
@@ -431,11 +440,10 @@ def test_a_missing_collector_file_reads_as_no_cache() -> None:
 # --- coverage gaps --------------------------------------------------------------
 
 
-def test_offline_windows_and_stale_endpoints_are_gaps_and_get_no_command() -> None:
+def test_offline_and_stale_endpoints_are_gaps_and_get_no_command() -> None:
     fake = FakeGravityZone(
         [
             endpoint("off", state=2),
-            endpoint("win", "Windows 11 Enterprise"),
             endpoint("old", last_seen="2026-01-01T00:00:00"),
             endpoint("ok"),
         ],
@@ -449,17 +457,48 @@ def test_offline_windows_and_stale_endpoints_are_gaps_and_get_no_command() -> No
     ]
     coverage = connector.device_coverage()
     assert coverage is not None
-    assert coverage.unreadable_by_reason == {
-        "offline": 1,
-        "unsupported-platform": 1,
-        "not-seen-in-window": 1,
-    }
+    assert coverage.unreadable_by_reason == {"offline": 1, "not-seen-in-window": 1}
     listed = {d.device_key: d.reason for d in coverage.unreadable_devices}
-    assert listed == {
-        "off": "offline",
-        "win": "unsupported-platform",
-        "old": "not-seen-in-window",
+    assert listed == {"off": "offline", "old": "not-seen-in-window"}
+
+
+def test_a_windows_endpoint_is_asked_with_the_windows_command() -> None:
+    """The Windows collector frames too, under %ProgramData%\\Arthur, and cmd.exe prints
+    it with CRLF line ends."""
+    fake = FakeGravityZone(
+        [endpoint("win", "Windows 11 Enterprise"), endpoint("mac")],
+        {
+            "win": f"ARTHUR-BEGIN\r\n{CODEX}\r\n\r\nARTHUR-END\r\n".encode(),
+            "mac": CODEX,
+        },
+    )
+    records = agent_records([scan_all(fake)])
+    sent = {
+        p["targetId"]: p["command"]
+        for p in fake.sent("startCommandExecutionOnEndpoint")
     }
+    assert sent == {"win": WINDOWS_COMMAND, "mac": COMMAND}
+    assert {r.external_id.split(":")[0] for r in records} == {"win", "mac"}
+    win = next(r for r in records if r.external_id.startswith("win:"))
+    assert win.platform is Platform.WINDOWS
+
+
+def test_the_windows_command_reads_the_collector_file_in_cmd_and_powershell_alike() -> (
+    None
+):
+    """GravityZone does not say which shell runs a Windows command, so the command is a
+    cmd.exe invocation, which both run the same way."""
+    assert len(WINDOWS_COMMAND) <= 10_000
+    assert WINDOWS_COMMAND.startswith('cmd /c "') and WINDOWS_COMMAND.endswith('"')
+    assert WINDOWS_COMMAND.count('"') == 2, "no inner quotes for PowerShell to re-split"
+    assert r"type %ProgramData%\Arthur\inventory.ea" in WINDOWS_COMMAND
+    assert "|| echo no-cache" in WINDOWS_COMMAND
+    # Each marker is followed by `&`, never a line break, so an echoed command line is not
+    # mistaken for the output that follows it.
+    echoed = f"C:\\> {WINDOWS_COMMAND}\r\nARTHUR-BEGIN\r\n{CODEX}\r\n\r\nARTHUR-END\r\n"
+    assert command_value([echoed]) == CODEX
+    missing = "ARTHUR-BEGIN\r\nno-cache\r\n\r\nARTHUR-END\r\n"
+    assert command_value([missing]) == "no-cache"
 
 
 def test_a_lookback_of_zero_asks_every_endpoint_however_long_ago_it_was_seen() -> None:
@@ -514,16 +553,92 @@ def test_a_command_refused_on_every_endpoint_fails_the_scan_as_permission_denied
     assert failure_code(caught.value) is DiscoveryErrorCode.PERMISSION_DENIED
 
 
-def test_commands_go_out_in_bounded_waves() -> None:
-    count = gz.WAVE_SIZE + 3
+def _in_flight_peak(fake: FakeGravityZone) -> int:
+    """The most commands started and not yet finished at once, read off the calls."""
+    live: set[str] = set()
+    peak = 0
+    for method, params in fake.calls:
+        if method == "startCommandExecutionOnEndpoint":
+            live.add(params["targetId"])
+            peak = max(peak, len(live))
+        elif (
+            method == "getInvestigationFileUrl"
+            and fake.polls.get(params["targetId"], 0) >= 2
+        ):
+            live.discard(params["targetId"])
+    return peak
+
+
+def test_no_more_than_max_in_flight_commands_run_at_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(gz, "MAX_IN_FLIGHT", 5)
+    count = 23
+    fake = FakeGravityZone(
+        [endpoint(f"e{i}") for i in range(count)],
+        {f"e{i}": CODEX for i in range(count)},
+    )
+    assert len(agent_records([scan_all(fake)])) == count
+    assert _in_flight_peak(fake) == 5
+
+
+def test_a_stuck_endpoint_does_not_hold_up_the_others(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A sliding window: the endpoint that never answers keeps one slot, and every other
+    endpoint is read long before it times out."""
+    monkeypatch.setattr(gz, "MAX_IN_FLIGHT", 3)
+    ids = ["stuck"] + [f"e{i}" for i in range(12)]
+    fake = FakeGravityZone(
+        [endpoint(i) for i in ids],
+        {"stuck": "pending", **{i: CODEX for i in ids[1:]}},
+    )
+    clock = FakeClock()
+    connector = connector_for(fake, clock)
+    decoded_at: list[float] = []
+    for batch in connector.scan(FakeConfig(), 24, CREDS, FIELDS, LOG):  # type: ignore[arg-type]
+        decoded_at.append(clock.now)
+    assert len(decoded_at) == 12
+    assert max(decoded_at) < gz.PICKUP_TIMEOUT_SECONDS
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"command-timed-out": 1}
+
+
+def test_an_endpoint_that_never_picks_the_command_up_is_offline_after_the_pickup_timeout() -> (
+    None
+):
+    fake = FakeGravityZone(
+        [endpoint("asleep"), endpoint("ok")], {"asleep": "offline", "ok": CODEX}
+    )
+    clock = FakeClock()
+    connector = connector_for(fake, clock)
+    assert len(agent_records([scan_all(fake, connector=connector)])) == 1
+    coverage = connector.device_coverage()
+    assert coverage is not None
+    assert coverage.unreadable_by_reason == {"offline": 1}
+    assert gz.PICKUP_TIMEOUT_SECONDS <= clock.now < gz.COMMAND_TIMEOUT_SECONDS
+
+
+def test_calls_stay_under_eight_a_second_with_many_commands_in_flight() -> None:
+    """Polling a full window must not spend the key's budget: every call is spaced, and no
+    one-second window holds more than eight."""
+    count = 150
     fake = FakeGravityZone(
         [endpoint(f"e{i}") for i in range(count)],
         {f"e{i}": CODEX for i in range(count)},
     )
     scan_all(fake)
-    methods = [m for m, _ in fake.calls if m != "getManagedEndpointDetails"]
-    first_poll = methods.index("getInvestigationFileUrl")
-    assert methods[:first_poll].count("startCommandExecutionOnEndpoint") == gz.WAVE_SIZE
+    times = [p["at"] for p in fake.posts]
+    assert len(times) > 4 * count
+    gaps = [b - a for a, b in zip(times, times[1:])]
+    assert min(gaps) >= 0.125 - 1e-9
+    for i, start in enumerate(times):
+        assert sum(1 for t in times[i:] if t < start + 1.0) <= 8
+    polls = sum(1 for m, _ in fake.calls if m == "getInvestigationFileUrl")
+    # Every command needs two polls here (to_be_retrieved, then success); pacing must not
+    # have turned the window into a stream of early ones.
+    assert polls == 2 * count
 
 
 # --- the key and the API --------------------------------------------------------

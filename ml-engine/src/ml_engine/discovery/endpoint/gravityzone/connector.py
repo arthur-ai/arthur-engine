@@ -7,26 +7,30 @@ for its value: `startCommandExecutionOnEndpoint` runs `COMMAND`, which prints th
 collector wrote, and `getInvestigationFileUrl` hands back the output to download. From
 the value on, `discovery.endpoint.records` builds the records exactly as it does for Jamf.
 
-THE COLLECTOR IS SCHEDULED BY THE CUSTOMER, NOT BY THIS SCAN. `dist/collect.sh` and
-`collect-linux.sh` are about 55 KB and a command is capped at 10,000 characters, so the
-collector cannot travel inline; fetching and running it from the scan would make every
-scan an unattended root download. The customer installs it with the LaunchDaemon or
-systemd timer the other runbooks use (`integrations/endpoint-ai-discovery/docs/mdm/
-gravityzone.md`), and the command only reads `/var/lib/arthur/inventory.ea`.
+THE COLLECTOR IS SCHEDULED BY THE CUSTOMER, NOT BY THIS SCAN. The collectors are 55 to 68 KB
+and a command is capped at 10,000 characters, so the collector cannot travel inline;
+fetching and running it from the scan would make every scan an unattended root download.
+The customer schedules it (a LaunchDaemon, a systemd timer, a Windows scheduled task; see
+`integrations/endpoint-ai-discovery/docs/mdm/gravityzone.md`), and the command only prints
+the framed value it wrote: `/var/lib/arthur/inventory.ea`, or
+`%ProgramData%\\Arthur\\inventory.ea` on Windows.
 
-AN ENDPOINT THAT CANNOT ANSWER IS A GAP, NOT A FAILURE. Offline, out of the lookback
-window, Windows (whose collector writes no framed value), a command refused, failed or
-still running at `COMMAND_TIMEOUT_SECONDS`, an output that cannot be read: each is
-counted and listed in the run's device coverage under its own reason, and the scan goes on.
+AN ENDPOINT THAT CANNOT ANSWER IS A GAP, NOT A FAILURE. Offline (reported so, or not picking
+the command up within `PICKUP_TIMEOUT_SECONDS`), out of the lookback window, a command
+refused, failed or still running at `COMMAND_TIMEOUT_SECONDS`, an output that cannot be
+read: each is counted and listed in the run's device coverage under its own reason, and the
+scan goes on.
 A key GravityZone refuses (401) ends it, and so does a command refused on every endpoint it
 was sent to, because that is the key or the licence, not the fleet.
 
 EVERY RUN ENUMERATES THE WHOLE ROSTER. GravityZone cannot filter or sort on `lastSeen`, so
 the lookback is applied to each endpoint's `lastSeen` after listing it.
 
-BOUNDED: commands go out in waves of `WAVE_SIZE`, polled together every
-`POLL_INTERVAL_SECONDS`, so at most that many run at once on the customer's fleet, and the
-client spaces every call under GravityZone's per-key rate limit.
+BOUNDED: at most `MAX_IN_FLIGHT` commands run at once, a new one starting as each finishes,
+and the client spaces every call under GravityZone's per-key rate limit. That limit sets
+the wall time: at least four calls an endpoint (details, start, a poll, the download) at
+eight a second is 1.4 hours for 10,000 endpoints, and about 2 hours measured against a fake
+that needs two polls each; see the runbook.
 """
 
 import logging
@@ -62,8 +66,10 @@ ACCESS_URL_FIELD = "access_url"
 # Sensitive: the API key.
 API_KEY_FIELD = "api_key"
 
-# Where `collect.sh` and `collect-linux.sh` write the framed value.
+# Where `collect.sh` and `collect-linux.sh` write the framed value, and where
+# `collect-windows.ps1` does, under %ProgramData%.
 INVENTORY_PATH = "/var/lib/arthur/inventory.ea"
+WINDOWS_INVENTORY_PATH = r"%ProgramData%\Arthur\inventory.ea"
 
 # Read-only, and a constant: nothing from a source field is ever spliced into a command
 # that runs as root. The markers are printed with `%s` so that the literal marker never
@@ -74,15 +80,37 @@ COMMAND = (
     f"cat {INVENTORY_PATH} 2>/dev/null || printf 'no-cache'; "
     "printf '\\nARTHUR-%s\\n' END"
 )
+# The same, for Windows. GRAVITYZONE DOES NOT SAY WHICH SHELL RUNS A WINDOWS COMMAND, so this
+# is written to mean the same in both: `cmd /c "..."` is cmd.exe's own syntax inside cmd,
+# and a native call to cmd.exe from PowerShell. Inside it, `&` separates, `||` runs the
+# fallback when `type` finds no file, `echo.` ends the value's line (the driver writes it
+# with no newline), and %ProgramData% is expanded by cmd.exe either way. The markers do
+# appear in this command, but each is followed by `&`, never by the line break the parser
+# needs after ARTHUR-BEGIN, so an echoed command line is not read as output.
+WINDOWS_COMMAND = (
+    'cmd /c "echo ARTHUR-BEGIN& '
+    f"(type {WINDOWS_INVENTORY_PATH} 2>nul || echo no-cache)& "
+    'echo.& echo ARTHUR-END"'
+)
 _VALUE = re.compile(r"ARTHUR-BEGIN\r?\n(.*?)\r?\n?ARTHUR-END", re.DOTALL)
 
 # The name the value is given as a ManagedDevice attribute. `records_for` finds the value
 # by its prefix, never by this name.
 OUTPUT_ATTRIBUTE = "GravityZone command output"
 
-# Commands in flight at once, and how often they are polled.
-WAVE_SIZE = 20
-POLL_INTERVAL_SECONDS = 5.0
+# A SLIDING WINDOW, NOT WAVES. Up to MAX_IN_FLIGHT commands run at once, and a new one starts
+# as soon as one finishes, so an endpoint that never answers holds one slot, not a wave.
+# Polling is paced by the budget it may spend, POLL_REQUESTS_PER_SECOND of the client's
+# eight a second, which leaves the rest for listing, details, starts and downloads: a
+# command is polled at most every max(MIN_POLL_INTERVAL_SECONDS, in-flight / budget)
+# seconds, oldest-due first.
+MAX_IN_FLIGHT = 100
+POLL_REQUESTS_PER_SECOND = 4.0
+MIN_POLL_INTERVAL_SECONDS = 5.0
+# A task GravityZone still reports `pending` (assigned, not started) this long after it was
+# started was not picked up: the endpoint is off or unreachable. Its slot goes to the next
+# endpoint rather than waiting out the full timeout.
+PICKUP_TIMEOUT_SECONDS = 90.0
 # From the start of a command to giving up on its output. GravityZone has its own execution
 # limit (a task past it fails with errorCode -99997, 77209-1565959), but does not publish
 # its length.
@@ -91,7 +119,6 @@ COMMAND_TIMEOUT_SECONDS = 300.0
 # Coverage reasons this carrier adds to the endpoint pipeline's own.
 OFFLINE = "offline"
 NOT_SEEN_IN_WINDOW = "not-seen-in-window"
-UNSUPPORTED_PLATFORM = "unsupported-platform"
 COMMAND_REFUSED = "command-refused"
 COMMAND_FAILED = "command-failed"
 COMMAND_TIMED_OUT = "command-timed-out"
@@ -100,8 +127,8 @@ OUTPUT_UNREADABLE = "output-unreadable"
 # getManagedEndpointDetails `state` (77211-128484): 1 online, 2 offline, 3 suspended,
 # 0 unknown -- and 2 and 3 are returned only for endpoints in a virtualization integration,
 # so a laptop that is off reads 0 or 1. Anything but 2 and 3 is tried, and the command's
-# own outcome decides.
-_ONLINE, _OFFLINE_STATES = 1, frozenset({2, 3})
+# own outcome decides: a laptop that is off ends at PICKUP_TIMEOUT_SECONDS.
+_OFFLINE_STATES = frozenset({2, 3})
 
 _LINUX_NAMES = (
     "linux",
@@ -126,6 +153,13 @@ class _Running:
     device: ManagedDevice
     activity_id: str
     started_at: float
+    next_poll_at: float
+
+
+def command_for(device: ManagedDevice) -> str:
+    """The command for this endpoint's OS. An OS GravityZone names in a way this does not
+    recognise is asked as a POSIX one, which is what every non-Windows endpoint is."""
+    return WINDOWS_COMMAND if device.platform is Platform.WINDOWS else COMMAND
 
 
 class GravityZoneConnector:
@@ -203,23 +237,8 @@ class GravityZoneConnector:
             lookback_hours,
         )
 
-        wave: list[ManagedDevice] = []
-        for item in client.endpoints():
-            device, state = _device(item, client.endpoint_details(str(item["id"])))
-            coverage.devices_read += 1
-            coverage.devices_in_scope += 1
-            reason = _skip_reason(device, state, since)
-            if reason is not None:
-                coverage.count_unreadable(reason, device.unreadable(reason))
-            else:
-                wave.append(device)
-            if len(wave) >= WAVE_SIZE:
-                yield from self._run_wave(client, wave, matcher, coverage, logger)
-                wave = []
-            if self._stopping():
-                break
-        if wave and not self._stopped_early:
-            yield from self._run_wave(client, wave, matcher, coverage, logger)
+        targets = self._targets(client, since, coverage)
+        yield from self._run(client, targets, matcher, coverage, logger)
 
         if self._stopped_early:
             logger.info(
@@ -257,59 +276,103 @@ class GravityZoneConnector:
                 coverage.devices_in_scope,
             )
 
-    def _run_wave(
+    def _targets(
         self,
         client: GravityZoneClient,
-        wave: list[ManagedDevice],
+        since: Optional[datetime],
+        coverage: DeviceCoverage,
+    ) -> Iterator[ManagedDevice]:
+        """Every listed endpoint that is sent a command; the rest are counted as gaps."""
+        for item in client.endpoints():
+            device, state = _device(item, client.endpoint_details(str(item["id"])))
+            coverage.devices_read += 1
+            coverage.devices_in_scope += 1
+            reason = _skip_reason(device, state, since)
+            if reason is not None:
+                coverage.count_unreadable(reason, device.unreadable(reason))
+            else:
+                yield device
+            if self._stopping():
+                return
+
+    def _poll_interval(self, in_flight: int) -> float:
+        return max(MIN_POLL_INTERVAL_SECONDS, in_flight / POLL_REQUESTS_PER_SECOND)
+
+    def _run(
+        self,
+        client: GravityZoneClient,
+        targets: Iterator[ManagedDevice],
         matcher: Matcher,
         coverage: DeviceCoverage,
         logger: logging.Logger,
     ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
-        """Start the command on every endpoint in `wave`, then poll them together."""
+        """Keep up to MAX_IN_FLIGHT commands running, polling the one most overdue.
+
+        A slot is refilled before every poll, so a finished command is replaced at once and
+        a stuck one delays nothing but its own slot.
+        """
         running: list[_Running] = []
-        for device in wave:
+        exhausted = False
+        while True:
+            while not exhausted and len(running) < MAX_IN_FLIGHT:
+                device = next(targets, None)
+                if device is None or self._stopping():
+                    exhausted = True
+                    break
+                job = self._start(client, device, coverage, logger, len(running))
+                if job is not None:
+                    running.append(job)
+            if not running or self._stopping():
+                return
+            job = min(running, key=lambda j: j.next_poll_at)
+            wait = job.next_poll_at - self._clock()
+            if wait > 0:
+                self._sleep(wait)
             if self._stopping():
                 return
-            try:
-                activity = client.start_command(device.device_key, COMMAND)
-            except GravityZoneError as exc:
-                if exc.status_code == 401:
-                    raise
-                self._refused += 1
-                self._last_refusal = exc
-                logger.warning("%s: command not started (%s)", device.device_key, exc)
+            reason, value = self._poll(client, job, logger)
+            if reason is None and value is None:
+                job.next_poll_at = self._clock() + self._poll_interval(len(running))
+                continue
+            running.remove(job)
+            if reason is not None:
+                coverage.count_unreadable(reason, job.device.unreadable(reason))
+                continue
+            device = replace(job.device, attributes={OUTPUT_ATTRIBUTE: value})
+            read = records_for(device, matcher, VENDOR, logger)
+            if read.unreadable is not None:
                 coverage.count_unreadable(
-                    COMMAND_REFUSED,
-                    device.unreadable(COMMAND_REFUSED),
+                    read.unreadable.value,
+                    device.unreadable(read.unreadable.value),
                 )
                 continue
-            self._started += 1
-            running.append(_Running(device, activity, self._clock()))
+            coverage.devices_decoded += 1
+            if read.records:
+                yield read.records
 
-        while running:
-            for job in list(running):
-                if self._stopping():
-                    return
-                reason, value = self._poll(client, job, logger)
-                if reason is None and value is None:
-                    continue  # still running
-                running.remove(job)
-                if reason is not None:
-                    coverage.count_unreadable(reason, job.device.unreadable(reason))
-                    continue
-                device = replace(job.device, attributes={OUTPUT_ATTRIBUTE: value})
-                read = records_for(device, matcher, VENDOR, logger)
-                if read.unreadable is not None:
-                    coverage.count_unreadable(
-                        read.unreadable.value,
-                        device.unreadable(read.unreadable.value),
-                    )
-                    continue
-                coverage.devices_decoded += 1
-                if read.records:
-                    yield read.records
-            if running:
-                self._sleep(POLL_INTERVAL_SECONDS)
+    def _start(
+        self,
+        client: GravityZoneClient,
+        device: ManagedDevice,
+        coverage: DeviceCoverage,
+        logger: logging.Logger,
+        in_flight: int,
+    ) -> Optional[_Running]:
+        try:
+            activity = client.start_command(device.device_key, command_for(device))
+        except GravityZoneError as exc:
+            if exc.status_code == 401:
+                raise
+            self._refused += 1
+            self._last_refusal = exc
+            logger.warning("%s: command not started (%s)", device.device_key, exc)
+            coverage.count_unreadable(
+                COMMAND_REFUSED, device.unreadable(COMMAND_REFUSED)
+            )
+            return None
+        self._started += 1
+        now = self._clock()
+        return _Running(device, activity, now, now + self._poll_interval(in_flight + 1))
 
     def _poll(
         self,
@@ -339,7 +402,16 @@ class GravityZoneConnector:
                 return COMMAND_TIMED_OUT, None
             return COMMAND_FAILED, None
         if output.state != "done" or output.url is None:
-            if self._clock() - job.started_at >= COMMAND_TIMEOUT_SECONDS:
+            elapsed = self._clock() - job.started_at
+            if not output.picked_up and elapsed >= PICKUP_TIMEOUT_SECONDS:
+                logger.warning(
+                    "%s: command not picked up after %.0fs; the endpoint is off or "
+                    "unreachable",
+                    key,
+                    PICKUP_TIMEOUT_SECONDS,
+                )
+                return OFFLINE, None
+            if elapsed >= COMMAND_TIMEOUT_SECONDS:
                 logger.warning(
                     "%s: no command output after %.0fs",
                     key,
@@ -412,8 +484,6 @@ def _skip_reason(
         seen = _parse(device.last_reported)
         if seen is not None and seen < since:
             return NOT_SEEN_IN_WINDOW
-    if device.platform is Platform.WINDOWS:
-        return UNSUPPORTED_PLATFORM
     if state in _OFFLINE_STATES:
         return OFFLINE
     return None
