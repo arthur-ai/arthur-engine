@@ -332,14 +332,17 @@ def test_a_retry_past_the_cost_cap_is_not_sent() -> None:
 
     def backoff(seconds: float) -> None:
         # Other calls reach the cap while this one waits.
-        spends[0].add(100.0)
+        spends[0].usd += 100.0
 
     engine = FakeEngine(fail=lambda kind, attempt: attempt == 0)
     with patch.object(insights._Spend, "__init__", init):
         run = run_llm_insights(engine, _traces(3), logger, sleep=backoff)
 
     assert len(engine.calls) == 1
-    assert all(reason == "cost_cap" for _, reason in run.skipped)
+    assert sorted(run.skipped) == sorted(
+        [(kind, "cost_cap") for kind in INSIGHT_KINDS]
+        + [("llm_insights", "cost_cap_reached")]
+    )
 
 
 def test_the_http_client_reads_a_verdict_returned_as_an_object(
@@ -505,6 +508,46 @@ def test_the_cost_cap_stops_further_calls() -> None:
     assert ("tool_failures", "cost_cap") in run.skipped
 
 
+def test_parallel_calls_cannot_pass_the_cost_cap_together() -> None:
+    # Every call costs $1. After the first call of the batch (alone), each of the other
+    # five reserves $1 before it is sent: two fit under $3.50, the third would not.
+    engine = FakeEngine(cost_usd=1.0)
+
+    run = run_llm_insights(
+        engine,
+        _traces(3),
+        logger,
+        cost_cap_usd=3.5,
+        sleep=_no_sleep,
+    )
+
+    assert len(engine.calls) == 3
+    assert run.cost_usd == pytest.approx(3.0)
+    assert ("llm_insights", "cost_cap_reached") in run.skipped
+
+
+def test_after_the_cost_cap_the_counts_are_of_the_traces_analysed() -> None:
+    # 40 traces: a batch of 35, then a batch of 5. The six calls of the first batch
+    # spend the whole $6 cap, so the second batch is never asked.
+    engine = FakeEngine(cost_usd=1.0)
+
+    run = run_llm_insights(
+        engine,
+        _traces(40),
+        logger,
+        cost_cap_usd=6.0,
+        sleep=_no_sleep,
+    )
+
+    assert len(engine.calls) == len(INSIGHT_KINDS)
+    assert run.sampled == 40
+    assert run.traces == 35
+    assert {v.traces_answered for v in run.verdicts} == {35}
+    # Each "no" over 35 of the 40 traces cannot rule out the other 5.
+    assert {v.fired for v in run.verdicts} == {"cannot_tell"}
+    assert ("llm_insights", "cost_cap_reached") in run.skipped
+
+
 def test_a_trace_too_large_alone_is_not_sent() -> None:
     traces = {f"t{i:02d}": _spans(_agent_trace(_days_ago(i))) for i in range(1, 4)}
 
@@ -629,6 +672,7 @@ def test_the_job_reports_each_insight_as_a_finding(raw_data_enabled: None) -> No
         "fired": 1.0,
         "traces_matched": 2.0,
         "traces_in_sample": 15.0,
+        "traces_sampled": 15.0,
     }
     assert failures.detail is not None
     assert "Example span: lookup_order." in failures.detail
@@ -753,6 +797,23 @@ def test_an_engine_without_the_setting_has_insights_off(httpserver: Any) -> None
     client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
 
     assert client.insights_enabled() is False
+
+
+def test_the_http_client_sends_its_session_on_every_call(httpserver: Any) -> None:
+    session = {"X-Arthur-Session-Id": "onboarding_analysis:job-1"}
+    httpserver.expect_request(
+        f"/api/v1/tasks/{SYSTEM_TASK_ID}/prompts/onboarding_insight_user_facing"
+        "/versions/production/completions",
+        headers=session,
+    ).respond_with_json({"content": '{"fired": "no"}', "cost": 0.1})
+
+    client = HttpInsightEngineClient(
+        httpserver.url_for("/"),
+        "engine-key",
+        session_id="onboarding_analysis:job-1",
+    )
+
+    assert client.run_prompt("onboarding_insight_user_facing", "x").cost_usd == 0.1
 
 
 def test_the_http_client_reads_an_unset_default_model(httpserver: Any) -> None:

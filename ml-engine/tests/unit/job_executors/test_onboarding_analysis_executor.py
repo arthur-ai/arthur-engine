@@ -37,7 +37,9 @@ from job_executors.onboarding_analysis_executor import (
     PlatformOnboardingResultUploader,
     SampleSummary,
     _draw_sample,
+    _finding,
 )
+from job_executors.onboarding_insights import MergedVerdict
 
 NOW = datetime(2026, 11, 17, 12, 0, 0, tzinfo=timezone.utc)
 TASK_ID = str(uuid.uuid4())
@@ -673,6 +675,30 @@ def test_a_failed_upload_after_a_failure_reaches_the_job_log_by_type_only(
     # The engine's own log keeps both.
     assert "jo@example.com" in caplog.text
     assert "platform down" in caplog.text
+
+
+def test_a_finding_over_part_of_the_sample_says_so() -> None:
+    verdict = MergedVerdict(
+        kind="tool_failures",
+        fired="yes",
+        matched_trace_ids=[f"trace-{i}" for i in range(9)],
+        example_span_name=None,
+        reasons=["Tools failed."],
+        suggested_check=None,
+        traces_answered=105,
+    )
+
+    finding = _finding(verdict, sampled=473)
+
+    assert finding.title == (
+        "Tool failures: yes, in 9 of 105 traces analysed (473 sampled)"
+    )
+    assert finding.values == {
+        "fired": 1.0,
+        "traces_matched": 9.0,
+        "traces_in_sample": 105.0,
+        "traces_sampled": 473.0,
+    }
 
 
 def test_a_window_start_without_an_offset_is_read_as_utc() -> None:

@@ -478,7 +478,7 @@ class OnboardingAnalysisExecutor:
         traces = _sampled_traces(conn, sample_table)
         run = run_llm_insights(self.insight_client, traces, self.logger)
         skipped += [SkippedInsight(kind=k, reason=r) for k, r in run.skipped]
-        findings = [_finding(v, sample_traces=run.traces) for v in run.verdicts]
+        findings = [_finding(v, sampled=run.sampled) for v in run.verdicts]
         return findings, skipped, run.insights_off
 
 
@@ -496,21 +496,30 @@ MAX_DETAIL_LENGTH = 2000
 MAX_TRACE_IDS_IN_DETAIL = 10
 
 
-def _finding(verdict: MergedVerdict, sample_traces: int) -> Finding:
+def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
     """An insight's verdict in the Platform's finding shape.
 
     `values["fired"]` is 1 for yes and 0 for no, and absent when the model could not
-    tell, which the title says. Trace ids, the example span and the suggested check are
-    text, so they go in `detail`, which the Platform keeps to 2,000 characters.
+    tell, which the title says. The counts are of the traces the verdict covers, those
+    in batches the model answered this insight for, which is fewer than the sample when
+    a call failed or the cost cap stopped the run. Trace ids, the example span and the
+    suggested check are text, so they go in `detail`, which the Platform keeps to 2,000
+    characters.
     """
     matched = len(verdict.matched_trace_ids)
+    answered = verdict.traces_answered
     label = INSIGHT_TITLES.get(verdict.kind, verdict.kind)
+    of = (
+        f"{answered} sampled traces"
+        if answered >= sampled
+        else f"{answered} traces analysed ({sampled} sampled)"
+    )
     if verdict.fired == "yes":
-        title = f"{label}: yes, in {matched} of {sample_traces} sampled traces"
+        title = f"{label}: yes, in {matched} of {of}"
     elif verdict.fired == "no":
-        title = f"{label}: no, in {sample_traces} sampled traces"
+        title = f"{label}: no, in {of}"
     else:
-        title = f"{label}: cannot tell from {sample_traces} sampled traces"
+        title = f"{label}: cannot tell from {of}"
     parts = [" ".join(verdict.reasons)]
     if verdict.example_span_name:
         parts.append(f"Example span: {verdict.example_span_name}.")
@@ -526,7 +535,8 @@ def _finding(verdict: MergedVerdict, sample_traces: int) -> Finding:
         )
     values = {
         "traces_matched": float(matched),
-        "traces_in_sample": float(sample_traces),
+        "traces_in_sample": float(answered),
+        "traces_sampled": float(sampled),
     }
     if verdict.fired in ("yes", "no"):
         values["fired"] = 1.0 if verdict.fired == "yes" else 0.0

@@ -472,7 +472,9 @@ class JobExecutor:
                                     self.jobs_client.api_client,
                                 ),
                                 self.logger,
-                                insight_client=self._onboarding_insight_client(),
+                                insight_client=self._onboarding_insight_client(
+                                    job.id,
+                                ),
                             ).execute(
                                 job.id,
                                 job_run.id,
@@ -526,9 +528,13 @@ class JobExecutor:
                 )
                 return JobState.FAILED
 
-    def _onboarding_insight_client(self) -> HttpInsightEngineClient | None:
+    def _onboarding_insight_client(
+        self,
+        job_id: str,
+    ) -> HttpInsightEngineClient | None:
         """The GenAI Engine that runs the onboarding insight prompts, or None, which
-        skips the LLM insights rather than failing the analysis."""
+        skips the LLM insights rather than failing the analysis. Its calls for this job
+        are recorded in the engine as one session, named after the job."""
         host = Config.settings.GENAI_ENGINE_INTERNAL_HOST
         api_key = Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
         if not host or not api_key:
@@ -537,7 +543,11 @@ class JobExecutor:
                 "LLM insights.",
             )
             return None
-        return HttpInsightEngineClient(host, api_key)
+        return HttpInsightEngineClient(
+            host,
+            api_key,
+            session_id=f"onboarding_analysis:{job_id}",
+        )
 
     def _genai_engine_config(self) -> tuple[str, str]:
         """The GenAI Engine a discovery job talks to, from this engine's environment."""

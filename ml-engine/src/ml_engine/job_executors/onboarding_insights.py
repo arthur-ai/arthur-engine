@@ -37,6 +37,8 @@ from tools.trace_serializer import MIN_MAX_CHARS, serialize_trace
 # The GenAI Engine's system task, present on every engine, where the prompts are saved.
 SYSTEM_TASK_ID = "fcba8383-55ce-42ec-a5c3-528f3492ea8a"
 PROMPT_PREFIX = "onboarding_insight_"
+# Groups one analysis's prompt runs in the engine's system task (one session, one trace).
+SESSION_HEADER = "X-Arthur-Session-Id"
 
 INSIGHT_KINDS = (
     "internet_access",
@@ -157,11 +159,21 @@ class HttpInsightEngineClient:
     """The GenAI Engine's configuration and saved-prompt completions routes.
 
     Called over plain HTTP: the insights setting is newer than the generated client.
+    Every call carries `session_id` as X-Arthur-Session-Id: the engine records each run
+    of a system task prompt as an LLM span there, and runs with one session id share a
+    session and a trace, so one analysis's calls read as one trace.
     """
 
-    def __init__(self, host: str, api_key: str) -> None:
+    def __init__(
+        self,
+        host: str,
+        api_key: str,
+        session_id: Optional[str] = None,
+    ) -> None:
         self.host = host.rstrip("/")
         self.headers = {"Authorization": f"Bearer {api_key}"}
+        if session_id:
+            self.headers[SESSION_HEADER] = session_id
 
     def insights_enabled(self) -> bool:
         resp = requests.get(
@@ -224,6 +236,8 @@ class MergedVerdict:
     example_span_name: Optional[str]
     reasons: list[str]
     suggested_check: Optional[str]
+    # Traces in the batches that answered this insight: what its verdict covers.
+    traces_answered: int = 0
 
 
 @dataclass
@@ -233,7 +247,8 @@ class InsightRun:
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (kind, reason)
     cost_usd: float = 0.0
     calls: int = 0
-    traces: int = 0
+    traces: int = 0  # traces in the batches at least one insight was answered for
+    sampled: int = 0  # traces in the sample handed to the run
 
 
 # ---------------------------------------------------------------- rule facts (no LLM)
@@ -416,20 +431,44 @@ def make_batches(
 
 
 class _Spend:
+    """The run's spend against its cap. Each call reserves its estimated cost before it
+    is sent, so calls running in parallel cannot together pass the cap: a call is sent
+    only while the spend so far plus every reservation, its own included, stays within
+    it. The estimate is the highest cost per character of batch seen so far, times this
+    batch's length; before any call has finished it is 0, and the first call of the
+    first batch runs alone."""
+
     def __init__(self, cap_usd: float) -> None:
         self.cap_usd = cap_usd
         self.usd = 0.0
+        self.reserved = 0.0
         self.calls = 0
+        self.usd_per_char = 0.0
         self.lock = threading.Lock()
 
-    def over_cap(self) -> bool:
+    def reserve(self, chars: int) -> Optional[float]:
+        """The amount reserved for a call on `chars` characters, or None when it would
+        pass the cap."""
         with self.lock:
-            return self.usd >= self.cap_usd
+            estimate = self.usd_per_char * chars
+            if self.usd >= self.cap_usd or (
+                self.usd + self.reserved + estimate > self.cap_usd
+            ):
+                return None
+            self.reserved += estimate
+            return estimate
 
-    def add(self, cost_usd: float) -> None:
+    def release(self, reserved: float) -> None:
         with self.lock:
+            self.reserved -= reserved
+
+    def settle(self, reserved: float, cost_usd: float, chars: int) -> None:
+        with self.lock:
+            self.reserved -= reserved
             self.usd += cost_usd
             self.calls += 1
+            if chars:
+                self.usd_per_char = max(self.usd_per_char, cost_usd / chars)
 
 
 _JSON_OBJECT = re.compile(r"\{.*\}", re.S)
@@ -480,18 +519,20 @@ class _Asker:
             # cap, while this one waited out its backoff.
             if self.rejected.is_set():
                 return {"skipped": "model_rejected"}
-            if self.spend.over_cap():
+            reserved = self.spend.reserve(len(batch.text))
+            if reserved is None:
                 return {"skipped": "cost_cap"}
             try:
                 completion = self.client.run_prompt(PROMPT_PREFIX + kind, batch.text)
-                break
             except PromptTooLarge:
+                self.spend.release(reserved)
                 self.logger.warning(
                     f"Onboarding insight {kind}: a batch of {len(batch.short_ids)} "
                     "traces is longer than the default model's input window",
                 )
                 return {"skipped": "too_large"}
             except PromptRejected as e:
+                self.spend.release(reserved)
                 # The engine's message is not logged: it can name the prompt's text.
                 self.logger.warning(
                     f"Onboarding insight {kind} refused by the engine ({e}); "
@@ -500,6 +541,7 @@ class _Asker:
                 self.rejected.set()
                 return {"skipped": "model_rejected"}
             except Exception as e:
+                self.spend.release(reserved)
                 if attempt == CALL_ATTEMPTS - 1:
                     # The type only: a provider's message can echo the prompt.
                     self.logger.warning(
@@ -508,7 +550,9 @@ class _Asker:
                     )
                     return {"skipped": "model_unavailable"}
                 self.sleep(FIRST_BACKOFF_SECONDS * 2**attempt)
-        self.spend.add(completion.cost_usd)
+            else:
+                self.spend.settle(reserved, completion.cost_usd, len(batch.text))
+                break
         verdict = _parse_verdict(completion.content)
         if verdict is None:
             return {"skipped": "unparsed_reply"}
@@ -522,10 +566,12 @@ class _Asker:
 
 def _merge(
     kind: str,
-    answers: list[dict[str, Any]],
+    asked: list[tuple[dict[str, Any], int]],
     trace_ids: dict[str, str],
 ) -> tuple[Optional[MergedVerdict], Optional[str]]:
-    """The insight's verdict over every batch, or why there is none."""
+    """The insight's verdict over every batch, or why there is none. `asked` holds each
+    batch's answer with the number of traces that batch held."""
+    answers = [answer for answer, _ in asked]
     verdicts = [a for a in answers if "skipped" not in a]
     if not verdicts:
         reasons = sorted({a["skipped"] for a in answers})
@@ -560,6 +606,7 @@ def _merge(
             ),
             reasons=[str(v.get("reason") or "") for v in verdicts if v.get("reason")],
             suggested_check=SUGGESTED_CHECK.get(kind) if state == "yes" else None,
+            traces_answered=sum(n for answer, n in asked if "skipped" not in answer),
         ),
         None,
     )
@@ -616,12 +663,12 @@ def run_llm_insights(
         logger.warning(
             f"{len(unreadable)} sampled trace(s) could not be read for insights",
         )
-    # The findings count what the model was shown, not what was sampled.
-    run.traces = sum(len(batch.short_ids) for batch in batches)
+    run.sampled = len(traces)
 
     spend = _Spend(cost_cap_usd)
     asker = _Asker(client, spend, logger, sleep)
-    answers: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    answers: dict[str, list[tuple[dict[str, Any], int]]] = defaultdict(list)
+    analysed = 0
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=MAX_PARALLEL_CALLS) as pool:
         for batch in batches:
@@ -629,12 +676,14 @@ def run_llm_insights(
             # by itself (OpenAI does) can serve the batch to the other five from its
             # cache. The engine marks no saved prompt for caching, so Anthropic does not.
             first, *rest = INSIGHT_KINDS
-            answers[first].append(asker.ask(batch, first))
-            for kind, answer in zip(
-                rest,
-                pool.map(lambda k: asker.ask(batch, k), rest),
-            ):
-                answers[kind].append(answer)
+            batch_answers = [(first, asker.ask(batch, first))]
+            batch_answers += zip(rest, pool.map(lambda k: asker.ask(batch, k), rest))
+            for kind, answer in batch_answers:
+                answers[kind].append((answer, len(batch.short_ids)))
+            if any("skipped" not in answer for _, answer in batch_answers):
+                analysed += len(batch.short_ids)
+    # The traces the findings speak for: those in a batch the model answered for.
+    run.traces = analysed
 
     for kind in INSIGHT_KINDS:
         verdict, reason = _merge(kind, answers[kind], trace_ids)
@@ -649,11 +698,21 @@ def run_llm_insights(
                     else "unreadable" if unreadable else "no_batches"
                 )
             run.skipped.append((kind, reason))
+    if any(
+        a.get("skipped") == "cost_cap" for kind in answers for a, _ in answers[kind]
+    ):
+        # The findings then cover only the traces analysed before the cap.
+        run.skipped.append(("llm_insights", "cost_cap_reached"))
+        logger.warning(
+            f"Onboarding insights stopped at the ${cost_cap_usd:.2f} cost cap: "
+            f"{run.traces} of {run.sampled} sampled traces analysed",
+        )
     run.cost_usd = spend.usd
     run.calls = spend.calls
     logger.info(
-        f"Onboarding insights: {run.calls} calls over {len(batches)} batch(es) of "
-        f"{len(traces)} traces in {time.monotonic() - started:.0f}s, "
+        f"Onboarding insights: {run.calls} calls over {len(batches)} batch(es), "
+        f"{run.traces} of {len(traces)} traces analysed, in "
+        f"{time.monotonic() - started:.0f}s, "
         f"cost ${run.cost_usd:.2f} (cap ${cost_cap_usd:.2f})",
     )
     return run
