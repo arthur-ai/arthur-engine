@@ -14,8 +14,9 @@ call's cost:
 Traces go in batches that fit a fixed character budget, every insight is asked of every
 batch, and the verdicts are merged per insight. Nothing here fails the job: a call that
 still fails after its retries, a reply that is not a verdict, or the cost cap leaves that
-insight's verdict out and says why. The insights setting off, no default model, or the
-engine refusing a call (the default model cannot give structured output) skips them all.
+insight's verdict out and says why. No default model provider on the engine, which is
+how insights are turned off, or the engine refusing a call (the default model cannot give
+structured output) skips them all.
 """
 
 import json
@@ -148,17 +149,15 @@ _CONTENT_TOO_LARGE = 413
 
 
 class InsightEngineClient(Protocol):
-    def insights_enabled(self) -> bool: ...
-
     def default_model(self) -> Optional[DefaultModel]: ...
 
     def run_prompt(self, prompt_name: str, traces_text: str) -> PromptCompletion: ...
 
 
 class HttpInsightEngineClient:
-    """The GenAI Engine's configuration and saved-prompt completions routes.
+    """The GenAI Engine's default model provider and saved-prompt completions routes.
 
-    Called over plain HTTP: the insights setting is newer than the generated client.
+    Called over plain HTTP: both are newer than the generated client.
     Every call carries `session_id` as X-Arthur-Session-Id: the engine records each run
     of a system task prompt as an LLM span there, and runs with one session id share a
     session and a trace, so one analysis's calls read as one trace.
@@ -174,16 +173,6 @@ class HttpInsightEngineClient:
         self.headers = {"Authorization": f"Bearer {api_key}"}
         if session_id:
             self.headers[SESSION_HEADER] = session_id
-
-    def insights_enabled(self) -> bool:
-        resp = requests.get(
-            f"{self.host}/api/v2/configuration",
-            headers=self.headers,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        # An engine that predates the setting has no insights prompts either.
-        return bool(resp.json().get("insights_generation_enabled", False))
 
     def default_model(self) -> Optional[DefaultModel]:
         resp = requests.get(
@@ -242,7 +231,6 @@ class MergedVerdict:
 
 @dataclass
 class InsightRun:
-    insights_off: bool = False
     verdicts: list[MergedVerdict] = field(default_factory=list)
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (kind, reason)
     cost_usd: float = 0.0
@@ -625,17 +613,8 @@ def run_llm_insights(
     run starts so that a test can patch it."""
     sleep = sleep or time.sleep
     run = InsightRun(traces=len(traces))
-    try:
-        enabled = client.insights_enabled()
-    except Exception as e:
-        logger.warning(f"Could not read the insights setting ({type(e).__name__})")
-        run.skipped.append(("llm_insights", "model_unavailable"))
-        return run
-    if not enabled:
-        run.insights_off = True
-        run.skipped.append(("llm_insights", "insights_off"))
-        return run
-    # The prompts name no model: with no default model provider every call would fail.
+    # The prompts name no model, so the default model provider is what turns insights
+    # on: with none set they are off, and no call is made.
     try:
         default_model = client.default_model()
     except Exception as e:

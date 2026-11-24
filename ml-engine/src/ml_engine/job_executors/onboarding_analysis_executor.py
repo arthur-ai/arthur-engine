@@ -11,9 +11,9 @@ names, into DuckDB through the loader the metrics job uses, and hands one result
    span names seen, so transforms can be built.
 4. Totals by SQL.
 5. Sample up to `sample_size` traces and `max_spans` spans, drawn in DuckDB.
-6. Insights. When a GenAI Engine is configured, its insights setting is on and it has a
-   default model provider, the LLM insights send the sampled traces to its saved
-   insight prompts (`onboarding_insights`). An insight that at least one batch answered
+6. Insights. When a GenAI Engine is configured and has a default model provider (none
+   set is how insights are turned off), the LLM insights send the sampled traces to its
+   saved insight prompts (`onboarding_insights`). An insight that at least one batch answered
    becomes a finding, even if its calls on other batches failed or were skipped. One
    that no batch answered (not run, or every call failed or was skipped) is listed in
    `skipped` with the reason, never reported as "nothing found". The rule insights are
@@ -152,7 +152,6 @@ class OnboardingOutcome(str, Enum):
     INSUFFICIENT_TRACES = "insufficient_traces"
     RAW_DATA_DISABLED = "raw_data_disabled"
     FAILED = "failed"
-    LLM_INSIGHTS_OFF = "llm_insights_off"
 
 
 class OnboardingErrorCode(str, Enum):
@@ -421,13 +420,9 @@ class OnboardingAnalysisExecutor:
                 )
 
             sample = _draw_sample(conn, traces_table, SAMPLE_TABLE, spec, salt=job_id)
-            findings, skipped, insights_off = self._insights(conn, SAMPLE_TABLE)
+            findings, skipped = self._insights(conn, SAMPLE_TABLE)
             return OnboardingAnalysisResult(
-                outcome=(
-                    OnboardingOutcome.LLM_INSIGHTS_OFF
-                    if insights_off
-                    else OnboardingOutcome.COMPLETED
-                ),
+                outcome=OnboardingOutcome.COMPLETED,
                 report=OnboardingReport(
                     window=window,
                     totals=totals,
@@ -465,21 +460,20 @@ class OnboardingAnalysisExecutor:
         self,
         conn: DuckDBPyConnection,
         sample_table: str,
-    ) -> tuple[list[Finding], list[SkippedInsight], bool]:
-        """The findings, the insights that could not run, and whether the insights
-        setting is off."""
+    ) -> tuple[list[Finding], list[SkippedInsight]]:
+        """The findings, and the insights that could not run."""
         # TODO: rule insights over the sample, no LLM, and the PII detector.
         skipped = [SkippedInsight(kind="rule_insights", reason=INSIGHT_NOT_IMPLEMENTED)]
         if self.insight_client is None:
             skipped.append(
                 SkippedInsight(kind="llm_insights", reason="engine_not_configured"),
             )
-            return [], skipped, False
+            return [], skipped
         traces = _sampled_traces(conn, sample_table)
         run = run_llm_insights(self.insight_client, traces, self.logger)
         skipped += [SkippedInsight(kind=k, reason=r) for k, r in run.skipped]
         findings = [_finding(v, sampled=run.sampled) for v in run.verdicts]
-        return findings, skipped, run.insights_off
+        return findings, skipped
 
 
 # What the title calls each insight.

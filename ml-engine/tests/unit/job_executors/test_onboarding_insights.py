@@ -68,7 +68,6 @@ def _all_traces_in(text: str) -> list[str]:
 class FakeEngine:
     def __init__(
         self,
-        enabled: bool = True,
         answer: Answer | None = None,
         cost_usd: float = 0.1,
         fail: Callable[[str, int], bool] = lambda kind, attempt: False,
@@ -76,7 +75,6 @@ class FakeEngine:
         reject: bool = False,
         too_large: Callable[[str], bool] = lambda text: False,
     ) -> None:
-        self.enabled = enabled
         self.default_set = default_set
         self.reject = reject
         self.too_large = too_large
@@ -86,9 +84,6 @@ class FakeEngine:
         self.calls: list[tuple[str, str]] = []
         self.attempts: dict[str, int] = {}
         self.lock = threading.Lock()
-
-    def insights_enabled(self) -> bool:
-        return self.enabled
 
     def default_model(self) -> DefaultModel | None:
         # A model litellm knows with a window of 200k tokens or more: the tuned batch size.
@@ -143,36 +138,15 @@ def _traces(n: int) -> dict[str, list[InsightSpan]]:
     return {t["trace_id"]: _spans(t) for t in traces}
 
 
-# --- The setting and the calls ------------------------------------------------------------
-
-
-def test_insights_off_runs_no_prompt() -> None:
-    engine = FakeEngine(enabled=False)
-
-    run = run_llm_insights(engine, _traces(12), logger, sleep=_no_sleep)
-
-    assert run.insights_off is True
-    assert run.skipped == [("llm_insights", "insights_off")]
-    assert engine.calls == []
-
-
-def test_an_unreadable_setting_skips_the_insights() -> None:
-    class Unreachable(FakeEngine):
-        def insights_enabled(self) -> bool:
-            raise ConnectionError("engine down")
-
-    run = run_llm_insights(Unreachable(), _traces(12), logger, sleep=_no_sleep)
-
-    assert run.insights_off is False
-    assert run.skipped == [("llm_insights", "model_unavailable")]
+# --- The default model and the calls ------------------------------------------------------
 
 
 def test_no_default_model_runs_no_prompt() -> None:
+    # No default model provider is how insights are turned off.
     engine = FakeEngine(default_set=False)
 
     run = run_llm_insights(engine, _traces(12), logger, sleep=_no_sleep)
 
-    assert run.insights_off is False
     assert run.skipped == [("llm_insights", "default_model_not_configured")]
     assert engine.calls == []
 
@@ -685,24 +659,6 @@ def test_the_job_reports_each_insight_as_a_finding(raw_data_enabled: None) -> No
     ]
 
 
-def test_the_job_ends_llm_insights_off_when_the_setting_is_off(
-    raw_data_enabled: None,
-) -> None:
-    rows = [_agent_trace(_days_ago(i)) for i in range(12)]
-    engine = FakeEngine(enabled=False)
-
-    result = _job(rows, engine)
-
-    assert result.outcome == OnboardingOutcome.LLM_INSIGHTS_OFF
-    report = _report(result)
-    assert report.findings == []
-    assert ("llm_insights", "insights_off") in [
-        (s.kind, s.reason) for s in report.skipped
-    ]
-    assert report.totals.traces == 12
-    assert engine.calls == []
-
-
 def test_the_job_completes_when_every_insight_call_fails(
     raw_data_enabled: None,
 ) -> None:
@@ -758,15 +714,10 @@ def test_a_cannot_tell_finding_has_no_fired_value(raw_data_enabled: None) -> Non
 # --- The HTTP client -------------------------------------------------------------------------
 
 
-def test_the_http_client_reads_the_setting_and_runs_a_saved_prompt(
+def test_the_http_client_reads_the_default_model_and_runs_a_saved_prompt(
     httpserver: Any,
 ) -> None:
     auth = {"Authorization": "Bearer engine-key"}
-    httpserver.expect_request(
-        "/api/v2/configuration",
-        method="GET",
-        headers=auth,
-    ).respond_with_json({"insights_generation_enabled": True})
     httpserver.expect_request(
         "/api/v1/default_model_provider",
         method="GET",
@@ -784,19 +735,10 @@ def test_the_http_client_reads_the_setting_and_runs_a_saved_prompt(
     ).respond_with_json({"content": '{"fired": "no"}', "cost": 0.12})
     client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
 
-    assert client.insights_enabled() is True
     assert client.default_model() == DefaultModel("openai", "gpt-4.1-mini")
     completion = client.run_prompt("onboarding_insight_user_facing", "FACTS\n...")
 
     assert completion == PromptCompletion(content='{"fired": "no"}', cost_usd=0.12)
-
-
-def test_an_engine_without_the_setting_has_insights_off(httpserver: Any) -> None:
-    httpserver.expect_request("/api/v2/configuration").respond_with_json({})
-
-    client = HttpInsightEngineClient(httpserver.url_for("/"), "engine-key")
-
-    assert client.insights_enabled() is False
 
 
 def test_the_http_client_sends_its_session_on_every_call(httpserver: Any) -> None:
