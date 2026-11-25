@@ -31,7 +31,9 @@ Each trace is a tree of spans in execution order: [n] numbers each span, childre
 
 Each trace has an id like t07. Before the traces you get FACTS: per-trace hints that cheap rules extracted. Facts are evidence, not the answer: check them against the traces.
 
-"fired" is "yes" only when the traces show it; list every trace that shows it in matched_traces (empty when "no")."""
+"fired" is "yes" only when the traces show it; list every trace that shows it in matched_traces (empty when "no").
+
+Your reason is shown to the agent's owner: one sentence naming the general theme, not any one trace. Never output sensitive data anywhere in your answer: API keys, secrets, tokens, passwords, URLs, hostnames, IP addresses, environment variable names, email addresses, personal data, trace ids, or quotes from the traces. matched_traces is the only place trace ids belong; it is used internally for counts and never shown."""
 
 # One question per insight kind; the ML engine asks each of every batch.
 ONBOARDING_INSIGHT_QUESTIONS = {
@@ -84,7 +86,7 @@ def onboarding_insight_response_format(kind: str) -> LLMResponseFormat:
                         ),
                         "reason": JsonPropertySchema(
                             type="string",
-                            description="2-4 sentences citing trace ids and span names.",
+                            description="One sentence naming the general theme. No trace ids, span names, quotes, URLs, hostnames, keys, tokens, environment variable names, emails or personal data.",
                         ),
                     },
                     required=[
