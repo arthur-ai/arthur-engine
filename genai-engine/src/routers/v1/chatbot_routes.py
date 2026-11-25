@@ -73,7 +73,7 @@ async def stream_chatbot(
 @chatbot_routes.get(
     "/chatbot/config",
     summary="Get chatbot model configuration",
-    description="Returns the model provider, model name, blacklisted endpoints, and available endpoints.",
+    description="Returns the model the chatbot uses (the default model provider), blacklisted endpoints, and available endpoints.",
     response_model=ChatbotConfigResponse,
     tags=["Chatbot"],
 )
@@ -93,7 +93,7 @@ def get_chatbot_config(
 @chatbot_routes.put(
     "/chatbot/config",
     summary="Update chatbot model configuration",
-    description="Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.",
+    description="Updates the endpoints the chatbot may not call. The chatbot always uses the default model provider, set on the Model Providers page; sending model_provider or model_name returns 400.",
     response_model=ChatbotConfigResponse,
     tags=["Chatbot"],
 )

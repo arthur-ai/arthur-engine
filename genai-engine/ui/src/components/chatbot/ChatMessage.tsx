@@ -1,7 +1,8 @@
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import { Box, Chip, CircularProgress, keyframes, Paper, Table, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, keyframes, Paper, Table, Tooltip, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
+import { useNavigate } from "react-router";
 import remarkGfm from "remark-gfm";
 
 import { ApiToolCallPayload, ChatMessage as ChatMessageType, ToolCallPayload, WikiToolCallPayload } from "@/hooks/useChatbot";
@@ -70,6 +71,15 @@ function WikiToolCallChip({ payload }: { payload: WikiToolCallPayload }) {
   );
 }
 
+function SetDefaultModelButton() {
+  const navigate = useNavigate();
+  return (
+    <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={() => navigate("/settings/model-providers")}>
+      Open Model Providers
+    </Button>
+  );
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
 
@@ -128,6 +138,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             >
               {message.content}
             </ReactMarkdown>
+            {message.action === "set_default_model" && <SetDefaultModelButton />}
           </Typography>
         )}
       </Paper>

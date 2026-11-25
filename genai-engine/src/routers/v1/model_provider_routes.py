@@ -18,11 +18,13 @@ from schemas.internal_schemas import (
     User,
 )
 from schemas.request_schemas import (
+    PutDefaultModelProvider,
     PutModelProviderCredentials,
     PutModelProviderEvalDefaults,
     PutModelProviderWhitelist,
 )
 from schemas.response_schemas import (
+    DefaultModelProvider,
     ModelProviderEvalDefaults,
     ModelProviderList,
     ModelProviderModelList,
@@ -338,3 +340,64 @@ def get_model_reasoning_options(
             ),
         },
     )
+
+
+@model_provider_routes.get(
+    "/default_model_provider",
+    summary="Get the default model provider and model.",
+    description=(
+        "Returns the provider and model used wherever no model is named: Arthur's "
+        "own features, such as synthetic data and the chatbot. Evals keep the model "
+        "they were saved with. Both are null when no default is set."
+    ),
+    tags=["Model Providers"],
+    response_model=DefaultModelProvider,
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
+def get_default_model_provider(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DefaultModelProvider:
+    return ModelProviderRepository(db_session).get_default_model_provider()
+
+
+@model_provider_routes.put(
+    "/default_model_provider",
+    summary="Set the default model provider and model.",
+    description=(
+        "Sets the provider and model used wherever no model is named. The provider "
+        "must already be configured. Everything using the default picks up a change "
+        "on its next call; a model picked for a feature always wins."
+    ),
+    tags=["Model Providers"],
+    status_code=HTTP_204_NO_CONTENT,
+    responses={HTTP_204_NO_CONTENT: {"description": "Default model provider set."}},
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
+def set_default_model_provider(
+    request: PutDefaultModelProvider,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    ModelProviderRepository(db_session).set_default_model_provider(request)
+    return Response(status_code=HTTP_204_NO_CONTENT)
+
+
+@model_provider_routes.delete(
+    "/default_model_provider",
+    summary="Clear the default model provider and model.",
+    description=(
+        "Clears the default. Features that use the default fail with a "
+        "'no default model provider' error until a default is set again."
+    ),
+    tags=["Model Providers"],
+    status_code=HTTP_204_NO_CONTENT,
+    responses={HTTP_204_NO_CONTENT: {"description": "Default model provider cleared."}},
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
+def clear_default_model_provider(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    ModelProviderRepository(db_session).clear_default_model_provider()
+    return Response(status_code=HTTP_204_NO_CONTENT)
