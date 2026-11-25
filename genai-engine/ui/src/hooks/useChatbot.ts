@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { API_BASE_URL } from "@/lib/api";
 import type { OpenAIMessageInput } from "@/lib/api-client/api-client";
-import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
+import { getTokenLimitDetail, isDefaultModelNotSetError, isTokenLimitExceededError } from "@/lib/api-errors";
 import { queryClient } from "@/lib/queryClient";
 import { useChatbotStore } from "@/stores/chatbot.store";
 
@@ -38,6 +38,8 @@ export interface ChatMessage {
   content: string;
   toolCall?: ToolCallPayload;
   rawToolCall?: RawToolCall;
+  /** A next step to offer with the message, e.g. a link to set the default model. */
+  action?: "set_default_model";
 }
 
 export type ChatbotVariant = "default" | "demo";
@@ -196,6 +198,20 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
             // inline chat error so the user knows to contact Arthur.
             if (response.status === 429 && isTokenLimitExceededError(errorData)) {
               showOutOfCredits(getTokenLimitDetail(errorData));
+              return;
+            }
+            // The chatbot runs on the default model provider: say none is set and
+            // offer the page where it is set.
+            if (isDefaultModelNotSetError(response.status, errorData)) {
+              updateMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  role: "assistant",
+                  content: "The AI Assistant needs a default model. Set one on the Model Providers page, then ask again.",
+                  action: "set_default_model",
+                };
+                return updated;
+              });
               return;
             }
             throw new Error(typeof errorData.detail === "string" ? errorData.detail : `HTTP ${response.status}`);

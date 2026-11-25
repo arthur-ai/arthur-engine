@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1124"
+        "version": "2.1.1130"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -1134,7 +1134,7 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models) and provenance. Returns only agentic tasks. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
+                "description": "Get tasks with enriched agent metadata (tools, sub-agents, models), provenance, and activity: trace and inference counts and the time of the newest trace or inference. Set `include_span_details` to false to list many tasks without reading their spans. Filter by `discovery_source_id` and `reported_since` to get the tasks one discovery source reported in a window, or set `unreported` to get the tasks no discovery source has reported. Paged by cursor: a caller that needs every matching task passes the last task's ID as `after_task_id` until a page comes back with fewer than `page_size` tasks. A task created or archived mid-walk never repeats or skips another.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
                 "security": [
                     {
@@ -1224,6 +1224,18 @@
                             "title": "Page Size"
                         },
                         "description": "Tasks per page. A page shorter than this is the last one."
+                    },
+                    {
+                        "name": "include_span_details",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Read each task's tools, sub-agents, models and data sources from its spans. False leaves them null and reads no spans, which keeps a listing of many busy tasks cheap; `num_spans` then comes from the tasks' trace metadata.",
+                            "default": true,
+                            "title": "Include Span Details"
+                        },
+                        "description": "Read each task's tools, sub-agents, models and data sources from its spans. False leaves them null and reads no spans, which keeps a listing of many busy tasks cheap; `num_spans` then comes from the tasks' trace metadata."
                     }
                 ],
                 "responses": {
@@ -9556,6 +9568,89 @@
                 }
             }
         },
+        "/api/v1/default_model_provider": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the default model provider and model.",
+                "description": "Returns the provider and model used wherever no model is named: Arthur's own features, such as synthetic data and the chatbot. Evals keep the model they were saved with. Both are null when no default is set.",
+                "operationId": "get_default_model_provider_api_v1_default_model_provider_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultModelProvider"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set the default model provider and model.",
+                "description": "Sets the provider and model used wherever no model is named. The provider must already be configured. Everything using the default picks up a change on its next call; a model picked for a feature always wins.",
+                "operationId": "set_default_model_provider_api_v1_default_model_provider_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutDefaultModelProvider"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Default model provider set."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Clear the default model provider and model.",
+                "description": "Clears the default. Features that use the default fail with a 'no default model provider' error until a default is set again.",
+                "operationId": "clear_default_model_provider_api_v1_default_model_provider_delete",
+                "responses": {
+                    "204": {
+                        "description": "Default model provider cleared."
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -17198,7 +17293,7 @@
                     "Chatbot"
                 ],
                 "summary": "Get chatbot model configuration",
-                "description": "Returns the model provider, model name, blacklisted endpoints, and available endpoints.",
+                "description": "Returns the model the chatbot uses (the default model provider), blacklisted endpoints, and available endpoints.",
                 "operationId": "get_chatbot_config_api_v1_chatbot_config_get",
                 "responses": {
                     "200": {
@@ -17223,7 +17318,7 @@
                     "Chatbot"
                 ],
                 "summary": "Update chatbot model configuration",
-                "description": "Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.",
+                "description": "Updates the endpoints the chatbot may not call. The chatbot always uses the default model provider, set on the Model Providers page; sending model_provider or model_name returns 400.",
                 "operationId": "update_chatbot_config_api_v1_chatbot_config_put",
                 "requestBody": {
                     "content": {
@@ -20630,11 +20725,27 @@
             "ChatbotConfigResponse": {
                 "properties": {
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider the chatbot calls: the instance's default model provider. Null when none is set."
                     },
                     "model_name": {
-                        "type": "string",
-                        "title": "Model Name"
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "Model the chatbot calls: the instance's default model. Null when none is set."
                     },
                     "blacklist_endpoints": {
                         "items": {
@@ -20654,10 +20765,6 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "model_provider",
-                    "model_name"
-                ],
                 "title": "ChatbotConfigResponse"
             },
             "ChatbotConfigUpdateRequest": {
@@ -20670,7 +20777,8 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "description": "No longer accepted: the chatbot uses the default model provider. Sending it returns 400."
                     },
                     "model_name": {
                         "anyOf": [
@@ -20681,7 +20789,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Model Name"
+                        "title": "Model Name",
+                        "description": "No longer accepted: the chatbot uses the default model provider. Sending it returns 400."
                     },
                     "blacklist_endpoints": {
                         "anyOf": [
@@ -22394,6 +22503,35 @@
                 ],
                 "title": "DatasetVersionRowResponse"
             },
+            "DefaultModelProvider": {
+                "properties": {
+                    "provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider used wherever no model is named, or null when unset"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "Model of that provider, or null when unset"
+                    }
+                },
+                "type": "object",
+                "title": "DefaultModelProvider"
+            },
             "DemoTaskSignupResponse": {
                 "properties": {
                     "org_id": {
@@ -22890,6 +23028,45 @@
                         ],
                         "title": "Num Spans",
                         "description": "Number of spans associated with this task"
+                    },
+                    "trace_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Count",
+                        "description": "Number of traces GenAI Engine holds for this task; null if not computed"
+                    },
+                    "inference_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Inference Count",
+                        "description": "Number of inferences GenAI Engine holds for this task; null if not computed"
+                    },
+                    "last_activity_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Activity At",
+                        "description": "The later of the newest trace's end time and the newest inference's creation time for this task; null if it has neither, or if not computed. The counts tell the two apart"
                     },
                     "rules": {
                         "items": {
@@ -29007,6 +29184,26 @@
                 "title": "ProvenanceSource",
                 "description": "One source's contribution to a task's provenance.\n\nProvenance holds a list of these rather than scalars beside a list of source\nclasses: with scalars, an agent corroborated by two sources has two entries in\nfound_by but one address, and nothing says which source it belongs to."
             },
+            "PutDefaultModelProvider": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Configured provider used wherever no model is named"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Model Name",
+                        "description": "Model of that provider, e.g. 'gpt-4.1-mini'"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name"
+                ],
+                "title": "PutDefaultModelProvider"
+            },
             "PutModelProviderCredentials": {
                 "properties": {
                     "api_key": {
@@ -32931,7 +33128,13 @@
                     "is_placeholder": {
                         "type": "boolean",
                         "title": "Is Placeholder",
-                        "description": "True when the prompt uses the empty placeholder model"
+                        "description": "True when the prompt uses the empty placeholder model and no default model provider is set"
+                    },
+                    "uses_default_model": {
+                        "type": "boolean",
+                        "title": "Uses Default Model",
+                        "description": "True when the prompt uses the empty placeholder, so the model shown is the instance's default model provider",
+                        "default": false
                     }
                 },
                 "type": "object",

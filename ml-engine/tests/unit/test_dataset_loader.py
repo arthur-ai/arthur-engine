@@ -4,21 +4,21 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import duckdb
-import pytest
 from arthur_client.api_bindings import (
     ConnectorType,
+    Dataset,
     DatasetColumn,
     DatasetConnector,
     DatasetLocator,
     DatasetScalarType,
     DatasetSchema,
-    Dataset,
     Definition,
 )
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.schema_definitions import STATIC_DATASET_TIMESTAMP_COL
 from arthur_common.tools.functions import uuid_to_base26
 
+from connectors.connector import ConnectorReadResult
 from dataset_loader import DatasetLoader
 
 logger = logging.getLogger("test_dataset_loader")
@@ -81,9 +81,15 @@ def _make_static_dataset_dict() -> dict:
     }
 
 
-def _make_loader_with_mock_connector(data: list[dict]) -> tuple[DatasetLoader, duckdb.DuckDBPyConnection]:
+def _make_loader_with_mock_connector(
+    data: list[dict],
+    total_count: int | None = None,
+) -> tuple[DatasetLoader, duckdb.DuckDBPyConnection]:
     mock_connector = Mock()
-    mock_connector.read.return_value = data
+    mock_connector.read_with_total_count.return_value = ConnectorReadResult(
+        rows=data,
+        total_count=total_count,
+    )
     mock_connector_constructor = Mock()
     mock_connector_constructor.get_connector_from_spec.return_value = mock_connector
     conn = duckdb.connect()
@@ -102,7 +108,9 @@ def test_static_dataset_synthetic_column_added_with_uuid_name():
     end = datetime(2024, 1, 2, tzinfo=timezone.utc)
     loader.load_physical_dataset(conn, dataset, start, end)
 
-    column_names = [col[0] for col in conn.execute(f'DESCRIBE "{table_name}"').fetchall()]
+    column_names = [
+        col[0] for col in conn.execute(f'DESCRIBE "{table_name}"').fetchall()
+    ]
 
     # Column must exist under its UUID, not under the source name
     assert _STATIC_TS_COL_ID in column_names
@@ -112,7 +120,7 @@ def test_static_dataset_synthetic_column_added_with_uuid_name():
 def test_static_dataset_synthetic_column_populated():
     """Every row in a static dataset must have a non-null value for the synthetic timestamp column."""
     loader, conn = _make_loader_with_mock_connector(
-        [{"value": 1.0}, {"value": 2.0}, {"value": 3.0}]
+        [{"value": 1.0}, {"value": 2.0}, {"value": 3.0}],
     )
     dataset = Dataset.model_validate(_make_static_dataset_dict())
     table_name = uuid_to_base26(dataset.id)
@@ -128,7 +136,8 @@ def test_static_dataset_synthetic_column_populated():
 
 def test_static_dataset_does_not_fail_on_missing_source_column():
     """DuckDB must not fail with a column count mismatch when the source data doesn't contain
-    __arthur_calculated_at — the column is stripped from the schema before loading and added after."""
+    __arthur_calculated_at — the column is stripped from the schema before loading and added after.
+    """
     # Connector returns data without __arthur_calculated_at (realistic case)
     loader, conn = _make_loader_with_mock_connector([{"value": 42.0}])
     dataset = Dataset.model_validate(_make_static_dataset_dict())
@@ -142,3 +151,14 @@ def test_static_dataset_does_not_fail_on_missing_source_column():
 
     count = conn.execute(f'SELECT count(*) FROM "{table_name}"').fetchone()[0]
     assert count == 1
+
+
+def test_load_physical_dataset_records_connector_total_count():
+    loader, conn = _make_loader_with_mock_connector([{"value": 1.0}], total_count=137)
+    dataset = Dataset.model_validate(_make_static_dataset_dict())
+
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    end = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    loader.load_physical_dataset(conn, dataset, start, end)
+
+    assert loader.total_counts == {dataset.id: 137}
