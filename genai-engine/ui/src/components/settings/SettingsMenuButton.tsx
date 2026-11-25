@@ -87,12 +87,9 @@ export const SettingsMenuButton: React.FC = () => {
         }
       }
 
-      if (settings.traceRetentionDays !== undefined || settings.insightsGenerationEnabled !== undefined) {
+      if (settings.traceRetentionDays !== undefined) {
         try {
-          await updateConfiguration({
-            trace_retention_days: settings.traceRetentionDays,
-            insights_generation_enabled: settings.insightsGenerationEnabled,
-          });
+          await updateConfiguration({ trace_retention_days: settings.traceRetentionDays });
           enqueueSnackbar("Application configuration updated", { variant: "success" });
         } catch (err) {
           const message = err instanceof Error ? err.message : "Failed to update configuration";
@@ -200,8 +197,6 @@ export const SettingsMenuButton: React.FC = () => {
         initialTraceRetentionDays={appConfig?.trace_retention_days}
         allowedTraceRetentionDays={appConfig?.allowed_trace_retention_days}
         isLoadingTraceRetention={isLoadingAppConfig}
-        insightsGenerationAvailable={!appConfigError && !!appConfig}
-        initialInsightsGenerationEnabled={appConfig?.insights_generation_enabled ?? false}
         isSaving={isSavingSettings}
         onSave={handleSettingsSave}
       />

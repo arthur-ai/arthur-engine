@@ -4,8 +4,6 @@ export interface UserSettings {
   traceRetentionDays?: number;
   enableChatbot?: boolean;
   blacklistEndpoints?: string[];
-  /** Instance-wide insights switch; only set when it changed. */
-  insightsGenerationEnabled?: boolean;
 }
 
 export interface TimezoneOption {
@@ -38,10 +36,6 @@ export interface UserSettingsModalProps {
   initialTraceRetentionDays?: number;
   /** Allowed retention day values from the server. When empty, the retention selector is hidden. */
   allowedTraceRetentionDays?: number[];
-  /** Whether the instance-wide insights switch can be shown (the application configuration loaded). */
-  insightsGenerationAvailable?: boolean;
-  /** Current instance-wide insights setting from the server. */
-  initialInsightsGenerationEnabled?: boolean;
   /** Whether the application configuration is still loading. */
   isLoadingTraceRetention?: boolean;
   /** True for org-scoped tenant users; hides global-config subsections (chatbot, trace retention). */

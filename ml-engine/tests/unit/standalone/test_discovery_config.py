@@ -22,6 +22,7 @@ from standalone.discovery_config import (
     load_config,
     standalone_config_path,
 )
+from standalone.sinks.csv_file import CsvDestination
 from standalone.sinks.siem.elasticsearch import ElasticsearchDestination
 from standalone.sinks.siem.splunk_hec import SplunkHecDestination
 from standalone.sinks.webhook import WebhookDestination
@@ -308,13 +309,14 @@ def test_every_registered_connector_declares_its_secrets() -> None:
     """Without it a connector can only be scanned via the Platform."""
     for vendor, connector in standalone_connectors().items():
         assert isinstance(
-            getattr(connector, "SENSITIVE_FIELDS", None), frozenset
+            getattr(connector, "SENSITIVE_FIELDS", None),
+            frozenset,
         ), vendor
 
 
 def test_an_unknown_query_language_is_refused(tmp_path: Path) -> None:
     text = minimal(
-        sources=VERTEX_SOURCE.replace("query_language: none", "query_language: sql")
+        sources=VERTEX_SOURCE.replace("query_language: none", "query_language: sql"),
     )
 
     assert "query_language must be one of" in load_error(tmp_path, text)
@@ -525,6 +527,39 @@ def test_an_elasticsearch_destination_reads_its_key_from_a_file(
     assert isinstance(config.destination, ElasticsearchDestination)
     assert config.destination.api_key is not None
     assert config.destination.api_key.get_secret_value() == "es-api-key-value-0005"
+
+
+def test_a_csv_destination_path_resolves_beside_the_config(tmp_path: Path) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: csv
+              path: output/agents.csv
+            """,
+        ),
+    )
+
+    config = load_config(write(tmp_path, text))
+
+    assert config is not None
+    assert isinstance(config.destination, CsvDestination)
+    assert config.destination.path == str(tmp_path / "output" / "agents.csv")
+
+
+def test_a_csv_destination_takes_no_http_settings(tmp_path: Path) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: csv
+              path: /var/lib/arthur/discovery/agents.csv
+              url: https://hooks.example.com/ingest
+            """,
+        ),
+    )
+
+    assert "url" in load_error(tmp_path, text)
 
 
 @pytest.mark.parametrize("allow", [False, True])
