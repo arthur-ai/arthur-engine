@@ -7,7 +7,11 @@ from typing import Any
 import pytest
 
 import job_agent
-from standalone.discovery_config import DISCOVERY_CONFIG_ENV_VAR
+from standalone.discovery_config import (
+    DISCOVERY_CONFIG_ENV_VAR,
+    StandaloneDiscoveryConfig,
+    config_fingerprint,
+)
 from standalone.sinks.webhook import WebhookSink
 
 ENABLED = """
@@ -28,6 +32,8 @@ class Started:
         self.engines: list[str] = []
         self.config: Any = None
         self.sink: Any = None
+        self.config_path: Any = None
+        self.fingerprint: Any = None
 
 
 @pytest.fixture
@@ -39,9 +45,17 @@ def started(monkeypatch: pytest.MonkeyPatch) -> Started:
             record.engines.append("platform")
 
     class FakeStandaloneAgent:
-        def __init__(self, config: Any, sink: Any) -> None:
+        def __init__(
+            self,
+            config: Any,
+            sink: Any,
+            config_path: Any,
+            fingerprint: Any,
+        ) -> None:
             record.config = config
             record.sink = sink
+            record.config_path = config_path
+            record.fingerprint = fingerprint
 
         def run(self) -> None:
             record.engines.append("standalone")
@@ -80,6 +94,31 @@ def test_an_enabled_config_runs_standalone(
     assert started.config.sources[0].name == "vertex"
     # Built once from the config's destination, before the agent starts.
     assert isinstance(started.sink, WebhookSink)
+    # And watches the file it was started from.
+    assert started.config_path == tmp_path / "discovery.yaml"
+    assert started.fingerprint == config_fingerprint(tmp_path / "discovery.yaml")
+
+
+def test_an_edit_made_while_the_config_loads_is_still_seen_as_a_change(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    started: Started,
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    point_at(monkeypatch, path, ENABLED)
+    load = job_agent.load_config
+
+    def load_then_edit(at: Path) -> StandaloneDiscoveryConfig | None:
+        config = load(at)
+        at.write_text(at.read_text().replace("value: p", "value: q"))
+        return config
+
+    monkeypatch.setattr(job_agent, "load_config", load_then_edit)
+
+    job_agent.main()
+
+    # The agent holds the file it loaded, not the edit, so its next check reloads.
+    assert started.fingerprint != config_fingerprint(path)
 
 
 def test_a_disabled_config_polls_the_platform(

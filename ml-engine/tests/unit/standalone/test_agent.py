@@ -7,6 +7,7 @@ scan is never doubled up, capacity is never exceeded, and shutdown waits only so
 
 import logging
 import threading
+import time
 from typing import Any, Callable
 
 import pytest
@@ -84,7 +85,19 @@ class HoldingRunner:
             self._gates[scan.source_name] = gate
         gate.wait(5)
 
+    def wait_for(self, name: str, runs: int = 1) -> None:
+        """Until `name` has started `runs` times: `tick` starts a scan's thread and
+        returns, possibly before the thread has recorded the start."""
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            with self._lock:
+                if self.started.count(name) >= runs:
+                    return
+            time.sleep(0.005)
+        raise AssertionError(f"{name} did not start {runs} time(s): {self.started}")
+
     def release(self, name: str) -> None:
+        self.wait_for(name)
         self._gates[name].set()
 
     def release_all(self) -> None:
@@ -174,6 +187,7 @@ def test_scans_beyond_capacity_wait_for_a_free_slot(runner: HoldingRunner) -> No
     subject = agent(runner, Clock(), max_concurrent_scans=1)
 
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.started == ["vertex-0"]
     subject.tick()
     assert runner.started == ["vertex-0"]  # still full
@@ -181,6 +195,7 @@ def test_scans_beyond_capacity_wait_for_a_free_slot(runner: HoldingRunner) -> No
     runner.release("vertex-0")
     wait_until_idle(subject)
     subject.tick()
+    runner.wait_for("vertex-1")
     assert runner.started == ["vertex-0", "vertex-1"]
 
 
@@ -191,11 +206,13 @@ def test_a_running_scan_is_not_started_again(runner: HoldingRunner) -> None:
     subject.tick()
     clock.now += 2 * INTERVAL  # overdue, but still running
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.started == ["vertex-0"]
 
     runner.release("vertex-0")
     wait_until_idle(subject)
     subject.tick()  # overdue and finished: starts right away
+    runner.wait_for("vertex-0", runs=2)
     assert runner.started == ["vertex-0", "vertex-0"]
 
 
@@ -206,6 +223,7 @@ def test_a_scan_past_its_timeout_is_told_to_stop_and_frees_its_slot(
     subject = agent(runner, clock, max_concurrent_scans=1, scan_timeout="1m")
 
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.started == ["vertex-0"]
 
     clock.now += 59
@@ -216,6 +234,7 @@ def test_a_scan_past_its_timeout_is_told_to_stop_and_frees_its_slot(
     clock.now += 1  # vertex-0 hangs past scan_timeout
     subject.tick()
     assert runner.stop_checks[0]() is True
+    runner.wait_for("vertex-1")
     assert runner.started == ["vertex-0", "vertex-1"]
     assert runner.stop_checks[1]() is False
     assert subject.running_scans() == ["vertex-1/c"]
@@ -231,11 +250,13 @@ def test_a_timed_out_scan_is_not_started_again_until_it_ends(
     clock.now += 2 * INTERVAL  # timed out, overdue, and its thread still alive
     subject.tick()
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.started == ["vertex-0"]
 
     runner.release("vertex-0")
     wait_until_idle(subject)
     subject.tick()
+    runner.wait_for("vertex-0", runs=2)
     assert runner.started == ["vertex-0", "vertex-0"]
     assert runner.stop_checks[1]() is False  # the new run has a fresh stop check
 
@@ -268,21 +289,34 @@ def test_the_next_run_is_one_interval_after_the_last_started(
 
     clock.now += INTERVAL - 1
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.started == ["vertex-0"]
 
     clock.now += 1
     subject.tick()
+    runner.wait_for("vertex-0", runs=2)
     assert runner.started == ["vertex-0", "vertex-0"]
 
 
 def test_shutdown_tells_running_scans_to_stop(runner: HoldingRunner) -> None:
     subject = agent(runner, Clock(), sources=1)
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.stop_checks[0]() is False
 
     subject.request_stop()
 
     assert runner.stop_checks[0]() is True
+
+
+def test_no_scan_starts_once_shutdown_has_begun(runner: HoldingRunner) -> None:
+    subject = agent(runner, Clock(), sources=1)
+
+    subject.request_stop()
+    subject.tick()  # as a control request under way when the stop came would
+
+    assert subject.running_scans() == []
+    assert runner.started == []
 
 
 def test_shutdown_waits_for_scans_only_as_long_as_the_grace_period(
@@ -357,3 +391,71 @@ def test_scan_loggers_scrub_the_sinks_secrets(
         loggers[0].info(f"sending with {SINK_SECRET}")
 
     assert SINK_SECRET not in caplog.text and "[redacted]" in caplog.text
+
+
+def test_a_scan_asked_for_starts_at_the_next_tick(runner: HoldingRunner) -> None:
+    clock = Clock()
+    subject = agent(runner, clock, run_on_start=False)
+    source_id = subject._slots[1].scan.config.discovery_source_id
+
+    states = subject.run_now(source_id)
+
+    assert [(s.source_name, s.status) for s in states] == [("vertex-1", "waiting")]
+    subject.tick()
+    runner.wait_for("vertex-1")
+    assert runner.started == ["vertex-1"]
+    # Its next run is one interval after this one, not the original schedule.
+    assert subject._slots[1].next_due == clock.now + INTERVAL
+
+
+def test_a_running_scan_asked_for_again_is_not_doubled_up(
+    runner: HoldingRunner,
+) -> None:
+    subject = agent(runner, Clock(), sources=1)
+    subject.tick()
+    source_id = subject._slots[0].scan.config.discovery_source_id
+
+    states = subject.run_now(source_id, "c")
+    subject.tick()
+
+    assert [s.status for s in states] == ["running"]
+    runner.wait_for("vertex-0")
+    assert runner.started == ["vertex-0"]
+
+
+def test_a_scan_asked_for_by_a_name_that_is_not_configured_matches_nothing(
+    runner: HoldingRunner,
+) -> None:
+    subject = agent(runner, Clock(), sources=1)
+    source_id = subject._slots[0].scan.config.discovery_source_id
+
+    assert subject.run_now(source_id, "no-such-config") == []
+    assert subject.run_now("no-such-source") == []
+
+
+def test_scan_states_say_when_each_scan_last_started_and_is_next_due(
+    runner: HoldingRunner,
+) -> None:
+    from datetime import datetime, timezone
+
+    clock = Clock()
+    wall = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    subject = StandaloneDiscoveryAgent(
+        config(sources=1),
+        FakeSink(),
+        runner=runner,
+        clock=clock,
+        health_check=FakeHealthCheck(),  # type: ignore[arg-type]
+        wall_clock=lambda: wall,
+    )
+    subject.tick()
+    (running,) = subject.scan_states()
+    assert running.status == "running"
+    assert running.last_started_at == wall and running.next_due_at is None
+    assert running.vendor == "gcp_vertex" and running.config_name == "c"
+
+    runner.release("vertex-0")
+    wait_until_idle(subject)
+    (done,) = subject.scan_states()
+    assert done.status == "scheduled"
+    assert (done.next_due_at - wall).total_seconds() == INTERVAL  # type: ignore[operator]
