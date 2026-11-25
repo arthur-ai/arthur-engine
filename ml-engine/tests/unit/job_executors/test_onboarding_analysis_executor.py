@@ -9,7 +9,7 @@ taken over every span, GUARDRAIL ones included, as the engine stores them.
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import arthur_client.api_bindings as api_bindings
@@ -30,6 +30,7 @@ from job_executors.onboarding_analysis_executor import (
     OnboardingAnalysisExecutor,
     OnboardingAnalysisJobSpec,
     OnboardingAnalysisResult,
+    OnboardingError,
     OnboardingErrorCode,
     OnboardingOutcome,
     OnboardingReport,
@@ -175,11 +176,14 @@ def _days_ago(days: float) -> datetime:
     return NOW - timedelta(days=days)
 
 
-@pytest.fixture
-def raw_data_enabled() -> Iterator[None]:
-    with patch.object(Config, "settings") as settings:
-        settings.as_dict.return_value = {"FETCH_RAW_DATA_ENABLED": "true"}
-        yield
+def _failed_result() -> OnboardingAnalysisResult:
+    return OnboardingAnalysisResult(
+        outcome=OnboardingOutcome.FAILED,
+        error=OnboardingError(
+            code=OnboardingErrorCode.INTERNAL,
+            message="The analysis failed (ValueError).",
+        ),
+    )
 
 
 class _Run:
@@ -265,7 +269,7 @@ def _sampled_trace_ids(
 # --- Every trace counts ------------------------------------------------------------------
 
 
-def test_validate_only_traces_proceed_past_the_minimum(raw_data_enabled: None) -> None:
+def test_validate_only_traces_proceed_past_the_minimum() -> None:
     # A validate-only agent: each validate call is a trace of its own, GUARDRAIL spans only.
     run = _Run([_validate_only_trace(_days_ago(i)) for i in range(15)])
 
@@ -319,7 +323,7 @@ def test_a_mixed_trace_keeps_every_span_with_its_kind() -> None:
     assert total_tokens == 200
 
 
-def test_a_span_with_no_kind_is_kept(raw_data_enabled: None) -> None:
+def test_a_span_with_no_kind_is_kept() -> None:
     rows = []
     for i in range(10):
         trace_id = uuid.uuid4().hex
@@ -348,21 +352,21 @@ def test_a_span_with_no_kind_is_kept(raw_data_enabled: None) -> None:
 # --- Outcomes ----------------------------------------------------------------------------
 
 
-def test_raw_data_disabled_reads_nothing() -> None:
+def test_raw_data_disabled_does_not_stop_the_analysis() -> None:
+    # The traces are analysed on this engine and only the result leaves it, so the
+    # raw data setting, which guards data fetch jobs, does not apply.
     run = _Run([_agent_trace(_days_ago(1)) for _ in range(20)])
 
     with patch.object(Config, "settings") as settings:
         settings.as_dict.return_value = {"FETCH_RAW_DATA_ENABLED": "false"}
         result = run()
 
-    assert result.outcome == OnboardingOutcome.RAW_DATA_DISABLED
-    run.connector.read.assert_not_called()
-    assert result.report is None and result.error is None
+    assert result.outcome == OnboardingOutcome.COMPLETED
+    run.connector.read.assert_called_once()
+    assert _report(result).totals.traces == 20
 
 
-def test_too_few_traces_ends_insufficient_traces_with_the_span_names_seen(
-    raw_data_enabled: None,
-) -> None:
+def test_too_few_traces_ends_insufficient_traces_with_the_span_names_seen() -> None:
     rows = [_validate_only_trace(_days_ago(i)) for i in range(4)]
     rows += [_agent_trace(_days_ago(i)) for i in range(3)]
     run = _Run(rows)
@@ -376,7 +380,7 @@ def test_too_few_traces_ends_insufficient_traces_with_the_span_names_seen(
     assert report.sample is None
 
 
-def test_completed_counts_every_trace(raw_data_enabled: None) -> None:
+def test_completed_counts_every_trace() -> None:
     rows = [_validate_only_trace(_days_ago(i % 30)) for i in range(30)]
     rows += [
         _agent_trace(
@@ -418,9 +422,7 @@ def test_completed_counts_every_trace(raw_data_enabled: None) -> None:
     ]
 
 
-def test_a_run_that_fails_uploads_a_failed_result_and_fails(
-    raw_data_enabled: None,
-) -> None:
+def test_a_run_that_fails_uploads_a_failed_result_and_fails() -> None:
     run = _Run([])
     run.connector.read.side_effect = RuntimeError("customer text from a trace")
     spec = OnboardingAnalysisJobSpec(
@@ -443,7 +445,7 @@ def test_a_run_that_fails_uploads_a_failed_result_and_fails(
     assert result.error.message == "The analysis failed (RuntimeError)."
 
 
-def test_a_provider_project_is_not_read_yet(raw_data_enabled: None) -> None:
+def test_a_provider_project_is_not_read_yet() -> None:
     run = _Run([])
     spec = OnboardingAnalysisJobSpec(
         connector_id="connector-1",
@@ -458,7 +460,7 @@ def test_a_provider_project_is_not_read_yet(raw_data_enabled: None) -> None:
     assert result.outcome == OnboardingOutcome.FAILED
 
 
-def test_the_read_names_the_connector_task_and_window(raw_data_enabled: None) -> None:
+def test_the_read_names_the_connector_task_and_window() -> None:
     run = _Run([])
 
     result = run()
@@ -480,7 +482,7 @@ def test_the_read_names_the_connector_task_and_window(raw_data_enabled: None) ->
 # --- The sample --------------------------------------------------------------------------
 
 
-def test_sample_is_capped_by_traces(raw_data_enabled: None) -> None:
+def test_sample_is_capped_by_traces() -> None:
     run = _Run([_agent_trace(_days_ago(i * 0.5)) for i in range(40)])
 
     report = _report(run(sample_size=10))
@@ -585,7 +587,7 @@ def test_the_upload_puts_the_result_on_this_attempt(
         api_bindings, "PutOnboardingAnalysisResult", _FakeResultBody, raising=False
     )
     client = _unreachable_client()
-    result = OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
+    result = _failed_result()
 
     PlatformOnboardingResultUploader(client).upload("job-1", "run-1", result)
 
@@ -618,7 +620,7 @@ def test_a_result_the_client_rejects_is_not_sent(
     monkeypatch.setattr(
         api_bindings, "PutOnboardingAnalysisResult", RejectingBody, raising=False
     )
-    result = OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
+    result = _failed_result()
 
     with pytest.raises(OnboardingResultNotSent):
         PlatformOnboardingResultUploader(_unreachable_client()).upload(
@@ -699,6 +701,9 @@ def test_a_finding_over_part_of_the_sample_says_so() -> None:
         "traces_in_sample": 105.0,
         "traces_sampled": 473.0,
     }
+    # The Platform shows findings to the customer, so they carry counts, not trace ids.
+    assert "trace-" not in finding.title
+    assert finding.detail is not None and "trace-" not in finding.detail
 
 
 def test_a_window_start_without_an_offset_is_read_as_utc() -> None:
@@ -720,7 +725,7 @@ def test_a_client_without_the_route_cannot_upload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delattr(api_bindings, "OnboardingV1Api", raising=False)
-    result = OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
+    result = _failed_result()
     with pytest.raises(NotImplementedError, match="onboarding result route"):
         PlatformOnboardingResultUploader(_unreachable_client()).upload(
             "job", "run", result
@@ -731,7 +736,7 @@ def test_a_client_without_the_route_cannot_upload(
     not ONBOARDING_ANALYSIS_SUPPORTED,
     reason="this arthur-client cannot run onboarding analysis jobs",
 )
-def test_a_completed_result_is_a_valid_platform_upload(raw_data_enabled: None) -> None:
+def test_a_completed_result_is_a_valid_platform_upload() -> None:
     # The Platform refuses any field it does not declare. Building the client's own
     # body model from a real run's result checks the two sides still agree.
     rows = [
@@ -762,7 +767,7 @@ def test_the_engine_does_not_take_jobs_it_cannot_upload() -> None:
     transport = MagicMock(wraps=_unreachable_client())
     transport.call_api = MagicMock()
     transport.response_deserialize = MagicMock()
-    result = OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
+    result = _failed_result()
 
     PlatformOnboardingResultUploader(transport).upload("job", "run", result)
 
@@ -790,7 +795,6 @@ def test_a_malformed_spec_uploads_a_failed_result_and_fails() -> None:
 
 
 def test_span_names_stay_within_the_platform_bounds(
-    raw_data_enabled: None,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(onboarding_analysis_executor, "MAX_SPAN_NAMES", 2)
@@ -828,9 +832,7 @@ class _NoModelEngine:
         self.summaries.append(summary)
 
 
-def test_the_job_reports_its_steps_and_result_for_its_trace(
-    raw_data_enabled: None,
-) -> None:
+def test_the_job_reports_its_steps_and_result_for_its_trace() -> None:
     engine = _NoModelEngine()
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]
 
@@ -863,9 +865,7 @@ def test_the_job_reports_its_steps_and_result_for_its_trace(
     }
 
 
-def test_a_summary_that_cannot_be_sent_does_not_fail_the_job(
-    raw_data_enabled: None,
-) -> None:
+def test_a_summary_that_cannot_be_sent_does_not_fail_the_job() -> None:
     engine = _NoModelEngine()
     engine.report_session = MagicMock(side_effect=ConnectionError())  # type: ignore[method-assign]
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]

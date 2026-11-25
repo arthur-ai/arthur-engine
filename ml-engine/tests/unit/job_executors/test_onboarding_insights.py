@@ -22,7 +22,6 @@ from test_onboarding_analysis_executor import (
     _validate_only_trace,
 )
 
-from config import Config
 from job_executors.onboarding_analysis_executor import (
     OnboardingAnalysisResult,
     OnboardingOutcome,
@@ -608,13 +607,6 @@ def test_a_token_count_that_is_not_a_number_is_left_out() -> None:
 # --- Through the job ----------------------------------------------------------------------
 
 
-@pytest.fixture
-def raw_data_enabled() -> Iterator[None]:
-    with patch.object(Config, "settings") as settings:
-        settings.as_dict.return_value = {"FETCH_RAW_DATA_ENABLED": "true"}
-        yield
-
-
 @pytest.fixture(autouse=True)
 def no_backoff() -> Iterator[None]:
     with patch("job_executors.onboarding_insights.time.sleep"):
@@ -625,7 +617,7 @@ def _job(rows: list[dict[str, Any]], engine: FakeEngine) -> OnboardingAnalysisRe
     return _Run(rows, insight_client=engine)(min_traces=10)
 
 
-def test_the_job_reports_each_insight_as_a_finding(raw_data_enabled: None) -> None:
+def test_the_job_reports_each_insight_as_a_finding() -> None:
     rows = [_agent_trace(_days_ago(i), failed=i % 3 == 0) for i in range(12)]
     rows += [_validate_only_trace(_days_ago(i)) for i in range(3)]
 
@@ -651,7 +643,10 @@ def test_the_job_reports_each_insight_as_a_finding(raw_data_enabled: None) -> No
     assert failures.detail is not None
     assert "Example span: lookup_order." in failures.detail
     assert "Suggested: " in failures.detail
-    assert "Matched traces: " in failures.detail
+    # The Platform shows findings to the customer: counts, never trace ids.
+    for row in rows:
+        assert row["trace_id"] not in failures.title
+        assert row["trace_id"] not in failures.detail
     assert findings["internet_access"].values["fired"] == 0.0
     # Only the rule insights are still not built.
     assert [(s.kind, s.reason) for s in report.skipped] == [
@@ -659,9 +654,7 @@ def test_the_job_reports_each_insight_as_a_finding(raw_data_enabled: None) -> No
     ]
 
 
-def test_the_job_completes_when_every_insight_call_fails(
-    raw_data_enabled: None,
-) -> None:
+def test_the_job_completes_when_every_insight_call_fails() -> None:
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]
 
     with patch("job_executors.onboarding_insights.time.sleep") as slept:
@@ -679,7 +672,7 @@ def test_the_job_completes_when_every_insight_call_fails(
     )
 
 
-def test_the_job_completes_without_a_default_model(raw_data_enabled: None) -> None:
+def test_the_job_completes_without_a_default_model() -> None:
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]
     engine = FakeEngine(default_set=False)
 
@@ -695,7 +688,7 @@ def test_the_job_completes_without_a_default_model(raw_data_enabled: None) -> No
     assert engine.calls == []
 
 
-def test_a_cannot_tell_finding_has_no_fired_value(raw_data_enabled: None) -> None:
+def test_a_cannot_tell_finding_has_no_fired_value() -> None:
     rows = [_agent_trace(_days_ago(i)) for i in range(12)]
 
     def answer(kind: str, text: str) -> str:

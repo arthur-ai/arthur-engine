@@ -4,21 +4,23 @@ The job runs before the application exists, so it loads no model and computes, u
 or queues no metrics. It reads the agent's recent traces through the connector the job
 names, into DuckDB through the loader the metrics job uses, and hands one result back:
 
-1. Raw data check. An engine with FETCH_RAW_DATA_ENABLED off has said that no trace
-   content may leave it, so the job reads nothing and ends `raw_data_disabled`.
-2. Read the window (the last 30 days unless the spec says otherwise) into DuckDB.
-3. Below `min_traces` traces, end `insufficient_traces`, still with the totals and the
+1. Read the window (the last 30 days unless the spec says otherwise) into DuckDB.
+2. Below `min_traces` traces, end `insufficient_traces`, still with the totals and the
    span names seen, so transforms can be built.
-4. Totals by SQL.
-5. Sample up to `sample_size` traces and `max_spans` spans, drawn in DuckDB.
-6. Insights. When a GenAI Engine is configured and has a default model provider (none
+3. Totals by SQL.
+4. Sample up to `sample_size` traces and `max_spans` spans, drawn in DuckDB.
+5. Insights. When a GenAI Engine is configured and has a default model provider (none
    set is how insights are turned off), the LLM insights send the sampled traces to its
    saved insight prompts (`onboarding_insights`). An insight that at least one batch answered
    becomes a finding, even if its calls on other batches failed or were skipped. One
    that no batch answered (not run, or every call failed or was skipped) is listed in
    `skipped` with the reason, never reported as "nothing found". The rule insights are
    not built yet.
-7. Upload the one result.
+6. Upload the one result.
+
+FETCH_RAW_DATA_ENABLED does not stop the analysis: the traces are read and analysed on
+this engine, and only the result, which carries no trace content, goes to the Platform.
+The default model is what turns the insights on or off.
 
 Every trace read counts and is analysed, GUARDRAIL spans included. A validate call made
 without a traceparent opens a trace of its own whose only spans are GUARDRAIL ones, and
@@ -60,7 +62,6 @@ from arthur_client_support import (
     ONBOARDING_RESULT_METHOD,
     ONBOARDING_RESULT_MODEL,
 )
-from config import Config
 from dataset_loader import DatasetLoader
 from job_executors.onboarding_insights import (
     InsightEngineClient,
@@ -152,7 +153,6 @@ class _EngineReport(BaseModel):
 class OnboardingOutcome(str, Enum):
     COMPLETED = "completed"
     INSUFFICIENT_TRACES = "insufficient_traces"
-    RAW_DATA_DISABLED = "raw_data_disabled"
     FAILED = "failed"
 
 
@@ -231,8 +231,7 @@ class OnboardingReport(_EngineReport):
 
 
 class OnboardingAnalysisResult(_EngineReport):
-    """The one result a run uploads: how it ended, and what it found unless it read
-    nothing."""
+    """The one result a run uploads: how it ended, and what it found unless it failed."""
 
     outcome: OnboardingOutcome
     error: OnboardingError | None = None
@@ -243,13 +242,9 @@ class OnboardingAnalysisResult(_EngineReport):
         failed = self.outcome == OnboardingOutcome.FAILED
         if failed != (self.error is not None):
             raise ValueError("error is set when, and only when, outcome is failed.")
-        read_nothing = self.outcome in (
-            OnboardingOutcome.FAILED,
-            OnboardingOutcome.RAW_DATA_DISABLED,
-        )
-        if read_nothing != (self.report is None):
+        if failed != (self.report is None):
             raise ValueError(
-                f"A {self.outcome.value} result {'carries no' if read_nothing else 'needs a'} report.",
+                f"A {self.outcome.value} result {'carries no' if failed else 'needs a'} report.",
             )
         return self
 
@@ -471,12 +466,6 @@ class OnboardingAnalysisExecutor:
         start, end = spec.window(self.now())
         window = AnalysisWindow(start=start, end=end)
 
-        if not Config.get_bool("FETCH_RAW_DATA_ENABLED", default=True):
-            self.logger.info(
-                "Raw data access is disabled for this engine, so no traces are read for onboarding analysis.",
-            )
-            return OnboardingAnalysisResult(outcome=OnboardingOutcome.RAW_DATA_DISABLED)
-
         conn = duckdb.connect()
         try:
             with self._step("read_traces") as step:
@@ -575,7 +564,6 @@ INSIGHT_TITLES = {
 }
 MAX_TITLE_LENGTH = 300
 MAX_DETAIL_LENGTH = 2000
-MAX_TRACE_IDS_IN_DETAIL = 10
 
 
 def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
@@ -584,9 +572,10 @@ def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
     `values["fired"]` is 1 for yes and 0 for no, and absent when the model could not
     tell, which the title says. The counts are of the traces the verdict covers, those
     in batches the model answered this insight for, which is fewer than the sample when
-    a call failed or the cost cap stopped the run. Trace ids, the example span and the
+    a call failed or the cost cap stopped the run. The reasons, the example span and the
     suggested check are text, so they go in `detail`, which the Platform keeps to 2,000
-    characters.
+    characters. No trace id goes in the title or `detail`: the Platform shows them to the
+    customer, so a finding gives only how many traces matched.
     """
     matched = len(verdict.matched_trace_ids)
     answered = verdict.traces_answered
@@ -607,14 +596,6 @@ def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
         parts.append(f"Example span: {verdict.example_span_name}.")
     if verdict.suggested_check:
         parts.append(f"Suggested: {verdict.suggested_check}.")
-    if verdict.matched_trace_ids:
-        shown = verdict.matched_trace_ids[:MAX_TRACE_IDS_IN_DETAIL]
-        more = matched - len(shown)
-        parts.append(
-            "Matched traces: "
-            + ", ".join(shown)
-            + (f" and {more} more." if more else "."),
-        )
     values = {
         "traces_matched": float(matched),
         "traces_in_sample": float(answered),
