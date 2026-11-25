@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-17T06:20:38.705036067Z"
+exclude-newer = "2026-11-22T19:21:23.596176343Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.3043"
+version = "1.4.3082"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -173,9 +173,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/ed/bd609e2fd9b30321b2ac2a7b5da63028391817fc5fb5fcdc07cf4d1b039d/arthur_client-1.4.3043.tar.gz", hash = "sha256:b0e220ba1d6e3bd248fab59b26c4c61f81074b23209dad20937b527721510954", size = 608928, upload-time = "2026-11-20T05:10:18.207Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/05/539d8ad559e58dc812220f7d096723ac19c4b3a448f889bdeafcf3f9444e/arthur_client-1.4.3082.tar.gz", hash = "sha256:3718cde7c1c7063dd52869d018f8f5f064a6faf1e430406ac81f4f8a10cad5bb", size = 609172, upload-time = "2026-11-25T13:10:43.696Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/88/775fea414414f6fe5935312a9542120b5ca19ff7609d53a06c316b785af7/arthur_client-1.4.3043-py3-none-any.whl", hash = "sha256:42e0b064822c760a2d09fd073410ff70a7af97c8a72d75a7a3d4e92288586e04", size = 2043220, upload-time = "2026-11-20T05:10:16.211Z" },
+    { url = "https://files.pythonhosted.org/packages/45/72/7c18b120fa5927d594d2eb1b154c3304a3aaddcd223c78e6571d12141473/arthur_client-1.4.3082-py3-none-any.whl", hash = "sha256:2ca664fd9fd09b4de14a481fe0095d7b016ddc790d6928a67fb12b217b43bc3f", size = 2043531, upload-time = "2026-11-25T13:10:45.99Z" },
 ]
 
 [[package]]
@@ -717,19 +717,20 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.142.2"
+version = "0.165.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
+    { name = "anyio" },
     { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/4f/f7c30a73127e0a8bbffe788369b8359e530b01ae06e2757936fa35bc5e6d/fastapi-0.142.2.tar.gz", hash = "sha256:06366626f2e70576367714d9ab2fe8472e6c8456dba69b399f9f797ab5e92570", size = 466721, upload-time = "2026-09-30T09:51:11.277Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/f9/e7820ef181026fea100bde02d811445bf8e883362d7092b6928767147056/fastapi-0.165.0.tar.gz", hash = "sha256:dd94d4128319c1e1d50535ab023ab698f850a4d2822f0e181747b46f4ff3c0ab", size = 557984, upload-time = "2026-11-18T19:15:37.076Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/b6/78aaf9141fb46742928c113f3cf6ef2259d538cb02b604b7656c1dc9883c/fastapi-0.142.2-py3-none-any.whl", hash = "sha256:bd5f4d81f1e93a88bcd77caf4dfe3c2dbffc3805407a0007e9a114c18b3a670b", size = 144409, upload-time = "2026-09-30T09:51:09.8Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/c1/3b74c030262a1b38b1fee180f80b4007bbc11c9ac12028cb18c7bcecaec9/fastapi-0.165.0-py3-none-any.whl", hash = "sha256:896f48462042bb4f162147eb8fac7e858753dc1f486765709baf105d70e4fc5b", size = 159475, upload-time = "2026-11-18T19:15:35.345Z" },
 ]
 
 [[package]]
@@ -1164,11 +1165,11 @@ wheels = [
 
 [[package]]
 name = "gunicorn"
-version = "26.2.0"
+version = "27.0.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d9/8a/e4ef6ee11701b6cd64702848415ffb69eeff85cb388a3c6c7fe86f22f3f8/gunicorn-26.2.0.tar.gz", hash = "sha256:62b864895d9ebff0b2f9867ba04fe811c93121596540830c9c916d0769668447", size = 787921, upload-time = "2026-08-24T15:05:59.3Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/fc/7fd4bbebc1d17394a5c98f0ef565da3341dbb664748d1bebedefead356ee/gunicorn-27.0.1.tar.gz", hash = "sha256:b1514965361c8b7e8107a80aa2a92636878df1ccfac6dd204a676426e04d9e3e", size = 876901, upload-time = "2026-11-12T22:41:11.334Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/85/7522a52e5e2f42faf1a129113ab63e548c42e103e9af395b7bfe65e403e2/gunicorn-26.2.0-py3-none-any.whl", hash = "sha256:bd249d0b3f7972f7432f0a6b6ff3b3ee2d129f70cd1ff6c09a9dd9e29a2b88e3", size = 228389, upload-time = "2026-08-24T15:05:57.67Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/46/19ce73424bc4bcac3f0c104950fa776abdfa4515f25104916a62b63b672a/gunicorn-27.0.1-py3-none-any.whl", hash = "sha256:378b26b9a38adcf4592f28828233c1716acc55e833ea06bf48719782efaa0d10", size = 263696, upload-time = "2026-11-12T22:41:09.798Z" },
 ]
 
 [[package]]
@@ -1563,7 +1564,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1125"
+version = "2.1.1130"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1628,7 +1629,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.3043" },
+    { name = "arthur-client", specifier = "==1.4.3082" },
     { name = "arthur-common", specifier = "==2.4.111" },
     { name = "azure-ai-projects", specifier = "==2.4.0" },
     { name = "azure-identity", specifier = "==1.27.0" },
@@ -1644,7 +1645,7 @@ requires-dist = [
     { name = "google-cloud-aiplatform", specifier = ">=2.1.3,<3" },
     { name = "google-cloud-bigquery", specifier = "==3.47.0" },
     { name = "google-cloud-trace", specifier = ">=1.13.0,<2" },
-    { name = "gunicorn", specifier = ">=26,<27" },
+    { name = "gunicorn", specifier = ">=27,<28" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "numpy", specifier = "==2.3.2" },

@@ -1104,12 +1104,6 @@ export interface ApplicationConfigurationResponse {
   /** Default Currency */
   default_currency?: string | null;
   document_storage_configuration?: DocumentStorageConfigurationResponse | null;
-  /**
-   * Insights Generation Enabled
-   * Whether insights are generated for this instance. Off by default. Insights run on the default model provider.
-   * @default false
-   */
-  insights_generation_enabled?: boolean;
   /** Max Llm Rules Per Task Count */
   max_llm_rules_per_task_count: number;
   /** Trace Retention Days */
@@ -1123,11 +1117,6 @@ export interface ApplicationConfigurationUpdateRequest {
   /** Default Currency */
   default_currency?: string | null;
   document_storage_configuration?: DocumentStorageConfigurationUpdateRequest | null;
-  /**
-   * Insights Generation Enabled
-   * Turns insights generation on or off for the whole instance. Insights run on the default model provider.
-   */
-  insights_generation_enabled?: boolean | null;
   /** Max Llm Rules Per Task Count */
   max_llm_rules_per_task_count?: number | null;
   /** Trace Retention Days */

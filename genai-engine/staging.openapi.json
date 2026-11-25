@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1125"
+        "version": "2.1.1130"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -20184,12 +20184,6 @@
                         "type": "array",
                         "title": "Allowed Trace Retention Days",
                         "default": []
-                    },
-                    "insights_generation_enabled": {
-                        "type": "boolean",
-                        "title": "Insights Generation Enabled",
-                        "description": "Whether insights are generated for this instance. Off by default. Insights run on the default model provider.",
-                        "default": false
                     }
                 },
                 "type": "object",
@@ -20254,18 +20248,6 @@
                             }
                         ],
                         "title": "Trace Retention Days"
-                    },
-                    "insights_generation_enabled": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Insights Generation Enabled",
-                        "description": "Turns insights generation on or off for the whole instance. Insights run on the default model provider."
                     }
                 },
                 "type": "object",

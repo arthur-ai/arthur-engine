@@ -57,39 +57,10 @@ describe("UserSettingsModal", () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ enableChatbot: false }));
   });
 
-  it("saves the insights switch only when it changed", () => {
-    const onSave = vi.fn();
-    render(
-      <UserSettingsModal
-        {...baseProps}
-        onSave={onSave}
-        insightsGenerationAvailable
-        initialInsightsGenerationEnabled={false}
-        allowedTraceRetentionDays={RETENTION_DAYS}
-      />
-    );
+  it("shows the default model status when the AI Assistant is off on the server", () => {
+    render(<UserSettingsModal {...baseProps} chatbotEnabled={false} defaultModelLabel={null} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: undefined }));
-
-    fireEvent.click(screen.getByLabelText("Generate insights"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: true }));
-  });
-
-  it("keeps an insights change when no retention options are passed", () => {
-    const onSave = vi.fn();
-    render(<UserSettingsModal {...baseProps} onSave={onSave} insightsGenerationAvailable initialInsightsGenerationEnabled={false} />);
-
-    fireEvent.click(screen.getByLabelText("Generate insights"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ insightsGenerationEnabled: true }));
-  });
-
-  it("shows the insights switch when the AI Assistant is off on the server", () => {
-    render(<UserSettingsModal {...baseProps} chatbotEnabled={false} insightsGenerationAvailable defaultModelLabel={null} />);
-
-    expect(screen.getByLabelText("Generate insights")).toBeTruthy();
+    expect(screen.queryByLabelText("Generate insights")).toBeNull();
     expect(screen.queryByLabelText("Enable AI Assistant")).toBeNull();
     expect(screen.getByText(/No default model is set/)).toBeTruthy();
   });
