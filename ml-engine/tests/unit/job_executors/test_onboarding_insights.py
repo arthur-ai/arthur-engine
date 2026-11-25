@@ -25,6 +25,7 @@ from test_onboarding_analysis_executor import (
 from job_executors.onboarding_analysis_executor import (
     OnboardingAnalysisResult,
     OnboardingOutcome,
+    _finding,
 )
 from job_executors.onboarding_insights import (
     BATCH_CHAR_BUDGET,
@@ -413,6 +414,56 @@ def test_verdicts_merge_across_batches_into_real_trace_ids() -> None:
 # --- Nothing fails the job ----------------------------------------------------------------
 
 
+def test_a_finding_over_several_batches_gives_one_reason_and_no_span() -> None:
+    def answer(kind: str, text: str) -> str:
+        ids = _all_traces_in(text)
+        first = "t01" in ids
+        fired, matched, reason = {
+            # The second batch matches more traces, so its reason is the one given.
+            "tool_failures": ("yes", ids[:1] if first else ids[:3], "Tools fail."),
+            # Both batches match one trace: the earliest batch's reason.
+            "user_facing": ("yes", ids[:1], "A person reads the answer."),
+        }.get(kind, ("no", [], "Nothing here."))
+        batch = "first" if first else "second"
+        return json.dumps(
+            {
+                "kind": kind,
+                "fired": fired,
+                "matched_traces": matched,
+                "example_span_name": "lookup_order",
+                "reason": f"{reason[:-1]} in the {batch} batch.",
+            },
+        )
+
+    run = run_llm_insights(
+        FakeEngine(answer=answer), _traces(40), logger, sleep=_no_sleep
+    )
+
+    by_kind = {v.kind: v for v in run.verdicts}
+    failures = _finding(by_kind["tool_failures"], sampled=run.sampled)
+    assert failures.title == "Tool failures: yes, in 4 of 40 sampled traces"
+    assert failures.detail == (
+        "Tools fail in the second batch. Suggested: an error-recovery judge on the"
+        " whole trace, and an alert on its failure rate."
+    )
+    assert _finding(by_kind["user_facing"], sampled=run.sampled).detail == (
+        "A person reads the answer in the first batch. Suggested: toxicity checks on"
+        " model inputs and outputs, and a task-completion judge."
+    )
+    # A no takes the first batch's reason, and has nothing to suggest.
+    assert (
+        _finding(by_kind["internet_access"], sampled=run.sampled).detail
+        == "Nothing here in the first batch."
+    )
+    # The span is kept on the verdict, but a finding names no span to the customer.
+    assert by_kind["tool_failures"].example_span_name == "lookup_order"
+    for verdict in run.verdicts:
+        finding = _finding(verdict, sampled=run.sampled)
+        assert finding.detail is not None
+        assert "lookup_order" not in finding.detail
+        assert "Example span" not in finding.detail
+
+
 def test_a_call_that_fails_once_is_retried_with_backoff() -> None:
     slept: list[float] = []
     engine = FakeEngine(
@@ -641,7 +692,11 @@ def test_the_job_reports_each_insight_as_a_finding() -> None:
         "traces_sampled": 15.0,
     }
     assert failures.detail is not None
-    assert "Example span: lookup_order." in failures.detail
+    # The batch's one reason and the suggested check: no span to look at.
+    assert failures.detail == (
+        "tool_failures reason citing t01, t04 Suggested: an error-recovery judge on"
+        " the whole trace, and an alert on its failure rate."
+    )
     assert "Suggested: " in failures.detail
     # The Platform shows findings to the customer: counts, never trace ids.
     for row in rows:

@@ -572,10 +572,11 @@ def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
     `values["fired"]` is 1 for yes and 0 for no, and absent when the model could not
     tell, which the title says. The counts are of the traces the verdict covers, those
     in batches the model answered this insight for, which is fewer than the sample when
-    a call failed or the cost cap stopped the run. The reasons, the example span and the
-    suggested check are text, so they go in `detail`, which the Platform keeps to 2,000
-    characters. No trace id goes in the title or `detail`: the Platform shows them to the
-    customer, so a finding gives only how many traces matched.
+    a call failed or the cost cap stopped the run. The reason and the suggested check are
+    text, so they go in `detail`, which the Platform keeps to 2,000 characters: one
+    high-level sentence, not a span or trace to look at. No trace id goes in the title or
+    `detail`: the Platform shows them to the customer, so a finding gives only how many
+    traces matched.
     """
     matched = len(verdict.matched_trace_ids)
     answered = verdict.traces_answered
@@ -591,9 +592,7 @@ def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
         title = f"{label}: no, in {of}"
     else:
         title = f"{label}: cannot tell from {of}"
-    parts = [" ".join(verdict.reasons)]
-    if verdict.example_span_name:
-        parts.append(f"Example span: {verdict.example_span_name}.")
+    parts = [verdict.reason or ""]
     if verdict.suggested_check:
         parts.append(f"Suggested: {verdict.suggested_check}.")
     values = {
@@ -603,8 +602,8 @@ def _finding(verdict: MergedVerdict, sampled: int) -> Finding:
     }
     if verdict.fired in ("yes", "no"):
         values["fired"] = 1.0 if verdict.fired == "yes" else 0.0
-    # TODO: scrub personal data from the model's reasons in the GenAI Engine before
-    # they leave it, as the design requires of free text.
+    # TODO: scrub personal data from the model's reason in the GenAI Engine before
+    # it leaves it, as the design requires of free text.
     return Finding(
         kind=verdict.kind,
         title=title[:MAX_TITLE_LENGTH],

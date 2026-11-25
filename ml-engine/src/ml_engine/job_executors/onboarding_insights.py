@@ -239,7 +239,8 @@ class MergedVerdict:
     fired: str  # yes, no or cannot_tell
     matched_trace_ids: list[str]
     example_span_name: Optional[str]
-    reasons: list[str]
+    # One batch's reason, not one a batch: each batch restates the same theme.
+    reason: Optional[str]
     suggested_check: Optional[str]
     # Traces in the batches that answered this insight: what its verdict covers.
     traces_answered: int = 0
@@ -568,6 +569,28 @@ class _Asker:
         return verdict
 
 
+def _matched(verdict: dict[str, Any], trace_ids: dict[str, str]) -> set[str]:
+    return {
+        t
+        for t in verdict.get("matched_traces") or []
+        if isinstance(t, str) and t in trace_ids
+    }
+
+
+def _reason(
+    verdicts: list[dict[str, Any]], state: str, trace_ids: dict[str, str]
+) -> Optional[str]:
+    """The reason from the batch whose verdict matched the most traces, the earliest on
+    a tie. A batch that gave the merged answer is preferred, so a no takes the first
+    batch's reason."""
+    given = [v for v in verdicts if v.get("reason")]
+    agreeing = [v for v in given if v["fired"] == state] or given
+    if not agreeing:
+        return None
+    # `max` keeps the first of equals: the earliest batch.
+    return str(max(agreeing, key=lambda v: len(_matched(v, trace_ids)))["reason"])
+
+
 def _merge(
     kind: str,
     asked: list[tuple[dict[str, Any], int]],
@@ -589,12 +612,7 @@ def _merge(
         state = "cannot_tell"
     else:
         state = "no"
-    matched = {
-        trace_ids[t]
-        for v in fired
-        for t in v.get("matched_traces") or []
-        if isinstance(t, str) and t in trace_ids
-    }
+    matched = {trace_ids[t] for v in fired for t in _matched(v, trace_ids)}
     return (
         MergedVerdict(
             kind=kind,
@@ -608,7 +626,7 @@ def _merge(
                 ),
                 None,
             ),
-            reasons=[str(v.get("reason") or "") for v in verdicts if v.get("reason")],
+            reason=_reason(verdicts, state, trace_ids),
             suggested_check=SUGGESTED_CHECK.get(kind) if state == "yes" else None,
             traces_answered=sum(n for answer, n in asked if "skipped" not in answer),
         ),

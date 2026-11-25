@@ -693,7 +693,7 @@ def test_a_finding_over_part_of_the_sample_says_so() -> None:
         fired="yes",
         matched_trace_ids=[f"trace-{i}" for i in range(9)],
         example_span_name=None,
-        reasons=["Tools failed."],
+        reason="Tools failed.",
         suggested_check=None,
         traces_answered=105,
     )
