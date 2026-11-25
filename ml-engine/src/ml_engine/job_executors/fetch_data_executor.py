@@ -98,7 +98,7 @@ class FetchDataExecutor:
             pagination_options = ConnectorPaginationOptions.model_validate(
                 job_spec.pagination_options.model_dump(),
             )
-            data = self._load_data(
+            data, total_count = self._load_data(
                 dataset_id,
                 job_spec.start_timestamp,
                 job_spec.end_timestamp,
@@ -130,6 +130,7 @@ class FetchDataExecutor:
                 job_spec.available_dataset_id,
                 job_spec.operation_id,
                 data,
+                total_count,
             )
 
         self.logger.info(f"Fetch data job completed for dataset {dataset_id}")
@@ -180,7 +181,7 @@ class FetchDataExecutor:
         end_time: datetime,
         filters: list[DataResultFilter] | None = None,
         pagination_options: ConnectorPaginationOptions | None = None,
-    ) -> list[Dict[str, Any]]:
+    ) -> tuple[list[Dict[str, Any]], int | None]:
         dataset_loader = DatasetLoader(
             self.connector_constructor,
             self.datasets_client,
@@ -200,7 +201,10 @@ class FetchDataExecutor:
         result = duckdb_conn.sql(f"select * from {table_name}")
         columns = result.columns
         rows = result.fetchall()
-        return [dict(zip(columns, row)) for row in rows]
+        return (
+            [dict(zip(columns, row)) for row in rows],
+            dataset_loader.total_counts.get(dataset_id),
+        )
 
     @staticmethod
     def _serialize_data(data: list[Dict[str, Any]]) -> str:
@@ -213,6 +217,7 @@ class FetchDataExecutor:
         available_dataset_id: Optional[str],
         operation_id: str,
         data: list[Dict[str, Any]],
+        total_count: int | None,
     ) -> None:
         try:
             data_content = self._serialize_data(data)
@@ -223,6 +228,7 @@ class FetchDataExecutor:
                     operation_id=operation_id,
                     put_retrieved_data=PutRetrievedData(
                         content=data_content,
+                        total_count=total_count,
                     ),
                 )
                 self.logger.info(f"Stored retrieved data for dataset {dataset_id}")
@@ -232,6 +238,7 @@ class FetchDataExecutor:
                     operation_id=operation_id,
                     put_retrieved_data=PutRetrievedData(
                         content=data_content,
+                        total_count=total_count,
                     ),
                 )
                 self.logger.info(
