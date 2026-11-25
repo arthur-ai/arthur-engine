@@ -37,11 +37,16 @@ from arthur_common.models.request_schemas import (
 from arthur_common.models.request_schemas import (
     NewMetricRequest as ArthurCommonNewMetricRequest,
 )
-from arthur_common.models.request_schemas import NewRuleRequest
+from arthur_common.models.request_schemas import (
+    NewRuleRequest,
+)
 from arthur_common.models.response_schemas import (
     MetricResponse as ArthurCommonMetricResponse,
 )
-from arthur_common.models.response_schemas import RuleResponse, TaskResponse
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    TaskResponse,
+)
 from genai_client import AgentMetadata as GenaiAgentMetadata
 from genai_client import (
     ApiClient,
@@ -78,7 +83,7 @@ from genai_client.models import (
 from pydantic import ValidationError
 
 from config.config import Config
-from connectors.connector import Connector
+from connectors.connector import Connector, ConnectorReadResult
 from tools.agentic_filters import (
     SHIELD_SORT_FILTER,
     add_default_sort_filter,
@@ -163,11 +168,30 @@ class ShieldBaseConnector(Connector, ABC):
         filters: list[DataResultFilter] | None = None,
         pagination_options: ConnectorPaginationOptions | None = None,
     ) -> list[dict[str, Any]] | pd.DataFrame:
+        return self.read_with_total_count(
+            dataset,
+            start_time,
+            end_time,
+            filters,
+            pagination_options,
+        ).rows
+
+    def read_with_total_count(
+        self,
+        dataset: Dataset | AvailableDataset,
+        start_time: datetime,
+        end_time: datetime,
+        filters: list[DataResultFilter] | None = None,
+        pagination_options: ConnectorPaginationOptions | None = None,
+    ) -> ConnectorReadResult:
         """
         Reads data from the shield /api/v1/inferences/query endpoint. By default, will fetch all data between start/end
         matching the filters. If the pagination is set, it will only fetch that single page. Note that it
         may return less than page_size rows if there is not enough data in the query.
         Starts from end_time and works backward.
+
+        The total count is the engine's trace count for agentic datasets. Inference queries send
+        include_count=False, so their total count is None.
         """
         # Shield datasets are always time-series — static datasets are not supported
         if dataset.is_static:
@@ -184,6 +208,7 @@ class ShieldBaseConnector(Connector, ABC):
         is_agentic = dataset.model_problem_type == ModelProblemType.AGENTIC_TRACE
         key = "traces" if is_agentic else "inferences"
         paginated_data: list[dict[str, Any]] = []
+        total_count: int | None = None
 
         dataset_locator_fields = {
             f.key: f.value for f in dataset.dataset_locator.fields
@@ -263,7 +288,10 @@ class ShieldBaseConnector(Connector, ABC):
                 )
             self.logger.info(f"Read response code: {resp.status_code}")
             # load raw JSON response
-            paginated_data.extend(json.loads(resp.raw_data)[key])
+            response_json = json.loads(resp.raw_data)
+            paginated_data.extend(response_json[key])
+            if is_agentic and total_count is None:
+                total_count = response_json["count"]
 
             if single_page_requested:
                 paginated_data = paginated_data[:page_size]
@@ -275,7 +303,7 @@ class ShieldBaseConnector(Connector, ABC):
 
             params["page"] += 1
 
-        return paginated_data
+        return ConnectorReadResult(rows=paginated_data, total_count=total_count)
 
     def test_connection(self) -> ConnectorCheckResult:
         try:
