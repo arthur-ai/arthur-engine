@@ -29,6 +29,45 @@ from utils.transform_executor import execute_transform
 
 logger = logging.getLogger(__name__)
 
+# Statuses of runs that made, or are about to make, an LLM call
+_LLM_CALL_RUN_STATUSES = (
+    ContinuousEvalRunStatus.PENDING.value,
+    ContinuousEvalRunStatus.RUNNING.value,
+    ContinuousEvalRunStatus.PASSED.value,
+    ContinuousEvalRunStatus.FAILED.value,
+)
+
+# A prompt cache write costs 1.25x the uncached input price and lasts 5 minutes, so
+# a continuous eval only gets a cache breakpoint once it runs often enough to read
+# the cache back before it expires
+CACHE_BREAKPOINT_WINDOW = timedelta(minutes=5)
+CACHE_BREAKPOINT_MIN_RECENT_RUNS = 2
+
+
+def runs_often_enough_to_cache(
+    db_session: Session,
+    continuous_eval_id: uuid.UUID,
+) -> bool:
+    """Whether the continuous eval has had enough runs created within the cache
+    lifetime, test runs included, for a cache write to be read back. Skipped and
+    errored runs made no LLM call, so they don't count.
+
+    Range-scans the (continuous_eval_id, created_at) index and stops at
+    CACHE_BREAKPOINT_MIN_RECENT_RUNS matching rows, so busy evals stay cheap to
+    check."""
+    recent_runs = (
+        db_session.query(DatabaseAgenticAnnotation.continuous_eval_id)
+        .filter(
+            DatabaseAgenticAnnotation.continuous_eval_id == continuous_eval_id,
+            DatabaseAgenticAnnotation.created_at
+            >= datetime.now() - CACHE_BREAKPOINT_WINDOW,
+            DatabaseAgenticAnnotation.run_status.in_(_LLM_CALL_RUN_STATUSES),
+        )
+        .limit(CACHE_BREAKPOINT_MIN_RECENT_RUNS)
+        .count()
+    )
+    return recent_runs >= CACHE_BREAKPOINT_MIN_RECENT_RUNS
+
 
 class ContinuousEvalJob(BaseQueueJob):
     """Represents a continuous eval job to be executed."""
@@ -333,6 +372,10 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 variable_mapping=continuous_eval.transform_variable_mapping,
                 resolved_variables=resolved_variables,
                 org_id=annotation.org_id,
+                add_cache_breakpoint=(
+                    eval_type == EvalKind.LLM_AS_A_JUDGE
+                    and runs_often_enough_to_cache(db_session, job.continuous_eval_id)
+                ),
             )
             run_status = (
                 ContinuousEvalRunStatus.PASSED.value

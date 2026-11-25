@@ -47,6 +47,8 @@ const TransformVersionDrawer = ({ transformId, transformName, selectedVersionId,
           width: 400,
           boxSizing: "border-box",
           position: "relative",
+          // An in-page column: MUI's drawer z-index would lift it over the floating Assistant panel.
+          zIndex: "auto",
           height: "100%",
           borderRight: "1px solid",
           borderColor: "divider",

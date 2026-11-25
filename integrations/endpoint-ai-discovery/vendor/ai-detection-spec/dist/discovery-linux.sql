@@ -41,10 +41,20 @@ SELECT 'desktop', filename, '', path, '', '' FROM file
 UNION ALL
 
 -- from filesystem-linux.sql
-SELECT 'file' AS kind, path AS id, '' AS ver, path AS loc, '' AS extra, '' AS perms
-  FROM file
-  WHERE path LIKE '/home/%/.local/bin/%'
-     OR path LIKE '/root/.local/bin/%'
+SELECT 'file' AS kind, s.path AS id, coalesce(max(v.ver), '') AS ver, s.path AS loc,
+       '' AS extra, '' AS perms
+  FROM file s
+  LEFT JOIN (SELECT path, inode, regex_match(path, '/versions/([^/]+)$', 1) AS ver
+               FROM file
+              WHERE (path LIKE '/home/%/.local/share/%/versions/%'
+                     OR path LIKE '/root/.local/share/%/versions/%')
+                AND symlink = 0) v
+    ON v.inode = s.inode
+   AND substr(v.path, 1, instr(s.path, '/.local/bin/'))
+       = substr(s.path, 1, instr(s.path, '/.local/bin/'))
+  WHERE s.path LIKE '/home/%/.local/bin/%'
+     OR s.path LIKE '/root/.local/bin/%'
+  GROUP BY s.path
 UNION ALL
 -- STATE DIRECTORIES. The trailing slash is load-bearing, and `.` and `..` are excluded,
 -- as in filesystem.sql.
@@ -157,8 +167,11 @@ UNION ALL
 -- RUNNING FROM A HOME DIRECTORY, by executable path: Claude Code's native install runs from
 -- ~/.local/share/claude/versions/<version>, not the ~/.local/bin/claude link `binaries`
 -- names, so process_paths carries its own value. `path` only: an unreadable path leaves
--- argv[0], the launcher a user typed, which no value names.
-SELECT 'proc', path, '', path, '', ''
+-- argv[0], the launcher a user typed, which no value names. `ver` is the release, read off
+-- that layout as queries/filesystem.sql reads a shim's, and empty elsewhere.
+SELECT 'proc', path,
+       coalesce(regex_match(path, '^(?:/Users/[^/]+|/home/[^/]+|/root)/\.local/share/[^/]+/versions/([^/]+)$', 1), ''),
+       path, '', ''
   FROM processes
   WHERE path LIKE '/Users/%/%' OR path LIKE '/home/%/%' OR path LIKE '/root/%'
   GROUP BY path

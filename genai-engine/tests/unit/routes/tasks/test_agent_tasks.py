@@ -1,8 +1,7 @@
 """Unit tests for the /api/v2/agent-tasks endpoint."""
 
 import random
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -35,7 +34,8 @@ def test_get_agent_tasks_returns_all_tasks(
     assert status_code == 200
 
     status_code, non_agentic_task = client.create_task(
-        non_agentic_name, is_agentic=False
+        non_agentic_name,
+        is_agentic=False,
     )
     assert status_code == 200
 
@@ -353,7 +353,7 @@ def test_get_agent_tasks_includes_rules(client: GenaiEngineTestClientBase):
     enriched_task = next((t for t in enriched_tasks if t.id == task.id), None)
     assert enriched_task is not None
 
-    # Should have rules (default rules are auto-added)
+    # The rules list is always present, even when the task has none
     assert enriched_task.rules is not None
     assert isinstance(enriched_task.rules, list)
 
@@ -469,4 +469,119 @@ def test_get_agent_tasks_last_fetched_is_the_newest_trace_end(
         ).delete(synchronize_session=False)
         db_session.commit()
         db_session.close()
+        client.delete_task(task.id)
+
+
+def _add_traces(
+    task_id: str, ends_and_span_counts: list[tuple[datetime, int]]
+) -> list[str]:
+    db_session = override_get_db_session()
+    trace_ids = []
+    for end_time, span_count in ends_and_span_counts:
+        trace = DatabaseTraceMetadata(
+            trace_id=str(uuid4()),
+            task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
+            session_id=None,
+            user_id=None,
+            span_count=span_count,
+            start_time=end_time,
+            end_time=end_time,
+            created_at=end_time,
+            updated_at=end_time,
+            input_content="in",
+            output_content="out",
+        )
+        db_session.add(trace)
+        trace_ids.append(trace.trace_id)
+    db_session.commit()
+    db_session.close()
+    return trace_ids
+
+
+def _delete_traces(trace_ids: list[str]) -> None:
+    db_session = override_get_db_session()
+    db_session.query(DatabaseTraceMetadata).filter(
+        DatabaseTraceMetadata.trace_id.in_(trace_ids),
+    ).delete(synchronize_session=False)
+    db_session.commit()
+    db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_get_agent_tasks_reports_each_tasks_activity(client: GenaiEngineTestClientBase):
+    """Trace and inference counts, and last activity as the later of the newest
+    trace's end and the newest inference."""
+    tasks = []
+    trace_ids: list[str] = []
+    try:
+        for name in ("busy", "traced", "idle"):
+            status_code, task = client.create_task(f"{name}_{random.random()}")
+            assert status_code == 200
+            tasks.append(task)
+        busy, traced, idle = tasks
+        old_trace_end = datetime.now(timezone.utc) - timedelta(hours=2)
+        newest_trace_end = datetime.now(timezone.utc) - timedelta(minutes=5)
+        trace_ids += _add_traces(
+            busy.id,
+            [
+                (old_trace_end.replace(tzinfo=None), 2),
+                (old_trace_end.replace(tzinfo=None), 3),
+            ],
+        )
+        trace_ids += _add_traces(
+            traced.id,
+            [(newest_trace_end.replace(tzinfo=None), 1)],
+        )
+        before = datetime.now(timezone.utc).replace(microsecond=0)
+        for _ in range(2):
+            status_code, _ = client.create_prompt(task_id=busy.id)
+            assert status_code == 200
+
+        status_code, enriched_tasks = client.get_agent_tasks()
+
+        assert status_code == 200
+        by_id = {t.id: t for t in enriched_tasks}
+        assert (by_id[busy.id].trace_count, by_id[busy.id].inference_count) == (2, 2)
+        assert by_id[busy.id].last_activity_at >= before
+        assert (by_id[traced.id].trace_count, by_id[traced.id].inference_count) == (
+            1,
+            0,
+        )
+        assert (
+            abs((by_id[traced.id].last_activity_at - newest_trace_end).total_seconds())
+            < 1
+        )
+        assert (by_id[idle.id].trace_count, by_id[idle.id].inference_count) == (0, 0)
+        assert by_id[idle.id].last_activity_at is None
+    finally:
+        _delete_traces(trace_ids)
+        for task in tasks:
+            client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+def test_get_agent_tasks_without_span_details_reads_no_spans(
+    client: GenaiEngineTestClientBase,
+):
+    """The span-derived lists are left null rather than read, and the span count comes
+    from the trace metadata instead."""
+    status_code, task = client.create_task(f"listed_{random.random()}")
+    assert status_code == 200
+    trace_end = (datetime.now(timezone.utc) - timedelta(minutes=5)).replace(tzinfo=None)
+    trace_ids: list[str] = []
+    try:
+        trace_ids += _add_traces(task.id, [(trace_end, 3), (trace_end, 4)])
+        status_code, enriched_tasks = client.get_agent_tasks(include_span_details=False)
+
+        assert status_code == 200
+        listed = next(t for t in enriched_tasks if t.id == task.id)
+        assert listed.tools is None
+        assert listed.sub_agents is None
+        assert listed.models is None
+        assert listed.data_sources is None
+        assert listed.num_spans == 7
+        assert listed.trace_count == 2
+    finally:
+        _delete_traces(trace_ids)
         client.delete_task(task.id)

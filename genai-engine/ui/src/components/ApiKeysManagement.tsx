@@ -433,7 +433,6 @@ export const ApiKeysManagement: React.FC = () => {
               >
                 <MenuItem value="VALIDATION-USER">Validation User</MenuItem>
                 <MenuItem value="TASK-ADMIN">Task Admin</MenuItem>
-                <MenuItem value="DEFAULT-RULE-ADMIN">Default Rule Admin</MenuItem>
                 <MenuItem value="ORG-AUDITOR">Organization Auditor</MenuItem>
                 <MenuItem value="ORG-ADMIN">Organization Admin</MenuItem>
               </Select>

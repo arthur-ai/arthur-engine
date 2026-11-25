@@ -2,7 +2,7 @@
 
 The ML Engine can run as a single-container agent discovery runner: it scans the
 discovery sources named in a config file on an interval and sends every agent it finds
-to a SIEM or webhook. In this mode it talks to no Arthur Platform and no GenAI Engine.
+to a SIEM, a webhook or a CSV file. In this mode it talks to no Arthur Platform and no GenAI Engine.
 
 - [Turning it on](#turning-it-on)
 - [The config file](#the-config-file)
@@ -558,10 +558,15 @@ the image):
 
 | File | Written by | Holds |
 |---|---|---|
-| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux. It needs [osquery](https://osquery.io/downloads) on the machine, and not root: run as a user, it sees what that user can read | the scan's rows |
+| `inventory.json` | the collector, run with `ARTHUR_OUT_DIR` set to the folder: [`dist/collect.sh`](../../integrations/endpoint-ai-discovery/dist/collect.sh) on macOS, [`dist/collect-linux.sh`](../../integrations/endpoint-ai-discovery/dist/collect-linux.sh) on Linux, [`dist/collect-windows.ps1`](../../integrations/endpoint-ai-discovery/dist/collect-windows.ps1) on Windows. It needs [osquery](https://osquery.io/downloads) on the machine (5.17.0 or later on Windows), and not root: run as a user, it sees what that user can read | the scan's rows |
 | `machine.json` | whatever ran the collector | who the machine is, below |
 
-The collector also writes `status.txt` and `inventory.ea` there; neither is read.
+The collector also writes `status.txt` there, and `inventory.ea` on macOS and Linux; neither
+is read.
+
+On Windows, a collector run with administrator rights refuses a folder that any account
+other than SYSTEM, the Administrators group and its own can write in. A clone outside your
+user folder is usually one. Run without administrator rights, it is not asked.
 
 `machine.json` names the machine, because an engine in a container cannot see the host's
 own id or hostname:
@@ -572,9 +577,9 @@ own id or hostname:
 
 | Key | Required | |
 |---|---|---|
-| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux. Never the hostname |
+| `device_id` | yes | The left half of every `external_id`, so it must not change while the machine does: the platform UUID on macOS (`ioreg -rd1 -c IOPlatformExpertDevice`, `IOPlatformUUID`), `/etc/machine-id` on Linux, `MachineGuid` under `HKLM\SOFTWARE\Microsoft\Cryptography` on Windows. Never the hostname |
 | `hostname` | no | Reported as each agent's `host_name` |
-| `platform` | no | `darwin` or `linux` |
+| `platform` | no | `darwin`, `linux` or `windows` |
 | `os_version` | no | Reported as each agent's `os_version` |
 
 **Freshness.** The engine re-reads the folder every interval; it changes only when the
@@ -754,6 +759,35 @@ principal with no access entry on that cluster, so that is the cluster's refusal
 credential's. A refused AWS credential ends the scan, and so does a scan refused every
 ECS and EKS listing, even when CloudTrail could be read: a source that listed no
 container reads as denied, not as an account without workloads.
+
+#### `azure_ai_foundry` — Azure AI Foundry agents
+
+Lists the Foundry Agent Service agents (prompt, hosted and workflow) in one Foundry
+project. Classic Assistants API agents are a different resource and are not listed.
+External agents, which Foundry only registers and which run elsewhere, are skipped.
+Only public Azure is supported.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_endpoint` | no | yes | The project endpoint from the project's overview page, `https://<resource>.services.ai.azure.com/api/projects/<project>`. Any other host is refused, since the scan sends it a token |
+| `tenant_id` | no | no | The service principal's Microsoft Entra tenant |
+| `client_id` | no | no | The service principal's application (client) ID |
+| `client_secret` | yes | no | The service principal's secret. Set all three of `tenant_id`, `client_id` and `client_secret`, or none; with none, the engine uses its `DefaultAzureCredential` (managed or workload identity, `az login`) only if `ARTHUR_ENGINE_AZURE_AI_FOUNDRY_ALLOW_DEFAULT_CREDENTIAL=true` is set |
+
+The principal needs a role on the project that can read its agents, such as `Azure AI
+User`. Use `query: ""`
+and `query_language: none`.
+
+Each agent is one record: `external_id` is `{project_endpoint}/agents/{agent name}`
+(lower-case host, no trailing slash), the address is the Foundry resource (`instance`),
+the project (`scope`) and the agent name (`resource_id`). `last_seen` is when the
+agent's latest version was created; the model deployment a prompt agent names and its
+tools are reported. A prompt agent's instructions and a hosted agent's environment
+variables arrive in the same listing and are never copied into the record or logged.
+
+The lookback window is not applied: the list is an inventory, so every scan reports
+every agent in the project. If Foundry's paging repeats an agent or a page token, the scan fails
+rather than report a partial inventory.
 
 #### `splunk_enterprise` — Splunk Enterprise
 
@@ -942,7 +976,7 @@ write route and reads no request or response bodies. The proxy writes its reques
 
 ### Destination
 
-Exactly one. Every destination has:
+Exactly one. Every HTTP destination (`splunk_hec`, `elasticsearch`, `webhook`) has:
 
 | Key | Default | |
 |---|---|---|
@@ -1036,6 +1070,30 @@ answering for the cluster, fails the batch.
 | `headers` | `{}` | Sent with every request; values are treated as secrets |
 
 Each request is a `POST` of a JSON array of events.
+
+#### `csv` — a CSV file on the engine's filesystem
+
+| Key | Default | |
+|---|---|---|
+| `path` | | The file to append to; a relative path is resolved against the config file's directory, as a `{file: ...}` reference is |
+
+Each discovered agent is appended to the file as one row (see
+[What the destination receives](#a-csv-file)). The file and its directory are created if
+missing, and the header is written only when the file is new or empty. A file that
+already starts with a different header, or one the engine cannot open for writing, stops
+the engine at startup rather than mixing two layouts in one file; move the old file aside
+or point `path` at a new one. A write that fails (a full disk) fails that batch with
+`publication_failed`.
+
+Scan outcomes are not written to the file — they are a different shape from an agent —
+so `emit_scan_outcomes` has no effect here. Every scan's outcome is still logged to
+stdout as its `discovery_scan_outcome` line.
+
+In a container, mount a directory the engine can write to and point `path` into it: the
+image runs as UID `65532`, so on a Linux host the directory has to be writable by that
+UID (`chown 65532:65532 output`). The
+[Docker Compose example](../../deployment/docker-compose/ml-engine-standalone-discovery/README.md)
+mounts `./output` at `/var/lib/arthur/discovery` for this.
 
 ## What the destination receives
 
@@ -1148,6 +1206,39 @@ credential is ever in it.
 The same agents arrive on every scan: each scan sends what the source reports now, and
 the destination dedupes on `agent.external_id` and `source.id` if it needs to.
 
+### A CSV file
+
+A `csv` destination writes each discovered-agent event as one row, UTF-8, with these
+columns in this order:
+
+| Column | From the event |
+|---|---|
+| `observed_at` | `observed_at` |
+| `source_id`, `source_name`, `source_vendor`, `source_config_name` | `source.id`, `source.name`, `source.vendor`, `source.config_name` |
+| `external_id`, `name`, `last_seen`, `runs_on`, `platform`, `task_id` | the same fields of `agent` |
+| `creation_source_type`, `creation_source_vendor` | `agent.creation_source.type` (`CLOUD`, `SIEM`, `ENDPOINT`, `NETWORK`) and `.vendor` |
+| `address_instance`, `address_scope`, `address_resource_kind`, `address_resource_id` | `agent.creation_source.address.*` |
+| `host_name`, `host_group`, `os_version`, `assigned_user`, `install_path`, `version`, `classification` | `agent.creation_source.observations.*` |
+| `llm_models`, `tools`, `sub_agents` | each item's `name` |
+| `data_sources` | each item's `url` |
+| `network_destinations` | each of `agent.creation_source.destinations`' `host` (network sources) |
+| `identity_basis` | `agent.creation_source.identity_basis` (gateway callers) |
+| `permissions`, `service_names` | `agent.creation_source.observations.*` |
+
+A list is joined into one cell with `; `. **An empty cell means the source did not report
+that field: read it as unknown, not as none.** A list the source reported as empty is an
+empty cell too, so where that difference matters, use a JSON destination. What the row
+leaves out (tool arguments, each destination's provider, `occurrences`, the address's
+`query`) is in the JSON event the other destinations receive.
+
+A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with a
+leading `'`, so a spreadsheet shows an agent's name or path as text instead of running it
+as a formula.
+
+Rows are only ever appended, and every scan writes a row for every agent it sees, so the
+same agent repeats once per scan. To get the current inventory, keep the row with the
+latest `observed_at` for each `source_id` and `external_id`.
+
 ## Running it
 
 With Docker Compose, see
@@ -1164,6 +1255,9 @@ docker run --rm \
   --stop-timeout 30 \
   arthurplatform/ml-engine:latest
 ```
+
+For a `csv` destination, also mount a directory the engine can write to, e.g.
+`-v "$PWD/output:/var/lib/arthur/discovery"`.
 
 From a checkout, after the developer setup in the [README](../README.md):
 

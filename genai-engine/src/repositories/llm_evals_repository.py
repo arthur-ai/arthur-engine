@@ -29,6 +29,10 @@ from schemas.response_schemas import (
     LLMVersionResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from services.prompt.prompt_caching import (
+    apply_eval_prompt_caching,
+    eval_prompt_cache_key,
+)
 
 llm_eval_system_instructions = """
 You are a helpful assistant that adheres exactly to the following instructions.
@@ -140,6 +144,12 @@ class LLMEvalsRepository(
             else:
                 config_dict = llm_eval.config.model_dump(exclude_none=True)
 
+        self.model_provider_repo.apply_eval_defaults(
+            llm_eval.model_provider,
+            llm_eval.model_name,
+            config_dict,
+        )
+
         if response_format is not None:
             config_dict["response_format"] = response_format
 
@@ -176,6 +186,7 @@ class LLMEvalsRepository(
         org_id: uuid.UUID,
         version: str = "latest",
         completion_request: Optional[BaseCompletionRequest] = None,
+        add_cache_breakpoint: bool = True,
     ) -> EvalRunResponse:
         if not self.model_provider_repo:
             raise ValueError("Model provider repository not initialized")
@@ -230,13 +241,22 @@ class LLMEvalsRepository(
             response_format=ReasonedScore,
         )
 
-        llm_model_response = (
-            self.chat_completion_service.run_chat_completion_raw_response(
-                agentic_prompt,
-                llm_client,
-                prompt_completion_request,
-                org_id=org_id,
-            )
+        model, completion_params = self.chat_completion_service._get_completion_params(
+            agentic_prompt,
+            prompt_completion_request,
+        )
+        apply_eval_prompt_caching(
+            completion_params,
+            provider=llm_eval.model_provider,
+            model_name=llm_eval.model_name,
+            instructions=llm_eval.instructions or "",
+            cache_key=eval_prompt_cache_key(task_id, eval_name, llm_eval.version),
+            add_cache_breakpoint=add_cache_breakpoint,
+        )
+        llm_model_response = llm_client.completion(
+            model=model,
+            org_id=org_id,
+            **completion_params,
         )
 
         if llm_model_response.structured_output_response is None:

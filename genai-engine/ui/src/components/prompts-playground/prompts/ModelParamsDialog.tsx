@@ -14,9 +14,8 @@ import React, { useEffect, useState } from "react";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { ModelParametersType } from "../types";
 
+import { REASONING_EFFORT_OPTIONS } from "@/constants/reasoning";
 import { track } from "@/services/analytics";
-
-const EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "default"];
 
 const ModelParamsDialog = ({
   open,
@@ -299,7 +298,7 @@ const ModelParamsDialog = ({
               className="w-2/5"
               type="text"
             >
-              {(Object.values(EFFORT_OPTIONS) as string[]).map((effort) => (
+              {REASONING_EFFORT_OPTIONS.map((effort) => (
                 <MenuItem key={effort} value={effort}>
                   {effort}
                 </MenuItem>
