@@ -24,15 +24,15 @@ from arthur_client.api_bindings import (
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
+from pydantic import ValidationError
+
+from config.config import Config
 from connectors.shield_connector import (
     EngineInternalConnector,
     ShieldBaseConnector,
     ShieldConnector,
 )
-from pydantic import ValidationError
 from tools.agentic_filters import SHIELD_SORT_DESC, SHIELD_SORT_FILTER
-
-from config.config import Config
 
 logger = logging.getLogger("job_logger")
 
@@ -420,14 +420,16 @@ def test_shield_read_data(
         DataResultFilter(field_name=k, op="equals", value=v)
         for k, v in connector_params.items()
     ]
-    rows = conn.read(
+    result = conn.read_with_total_count(
         avail_dataset,
         start_time=start_timestamp,
         end_time=end_timestamp,
         filters=filters,
         pagination_options=connector_pagination_params,
     )
-    assert len(rows) == expected_total_rows
+    assert len(result.rows) == expected_total_rows
+    # inference queries don't ask the engine for a count
+    assert result.total_count is None
     urllib3_mock.assert_all_responses_called()
 
 
@@ -789,6 +791,60 @@ def test_agentic_dataset_filter_parameter_mapping(
     )
 
     # Verify the correct URL was called
+    urllib3_mock.assert_all_responses_called()
+
+
+def test_agentic_read_reports_engine_trace_count(urllib3_mock: Urllib3Mock) -> None:
+    end_timestamp = datetime.now(timezone.utc)
+    start_timestamp = end_timestamp - timedelta(days=1)
+    agentic_dataset = AvailableDataset.model_validate(
+        {
+            **MOCK_SHIELD_AVAILABLE_DATASET,
+            "model_problem_type": ModelProblemType.AGENTIC_TRACE.value,
+        },
+    )
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    page_size = 25
+    traces = [
+        {
+            "trace_id": str(uuid4()),
+            "task_id": MOCK_SHIELD_TASK_ID,
+            "start_time": start_timestamp.isoformat(),
+            "end_time": end_timestamp.isoformat(),
+            "span_count": 1,
+            "duration_ms": 10.0,
+            "created_at": start_timestamp.isoformat(),
+            "updated_at": end_timestamp.isoformat(),
+        }
+        for _ in range(page_size)
+    ]
+    params = {
+        "task_ids": MOCK_SHIELD_TASK_ID,
+        "include_spans": "true",
+        "start_time": start_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        "end_time": end_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        "page": "1",
+        "page_size": str(page_size),
+        "sort": "desc",
+    }
+    urllib3_mock.add_response(
+        url=f"{MOCK_SHIELD_HOST}/api/v1/traces?" + parse.urlencode(params, doseq=True),
+        text=json.dumps({"count": 137, "traces": traces}),
+        method="GET",
+        status=200,
+    )
+
+    result = conn.read_with_total_count(
+        agentic_dataset,
+        start_time=start_timestamp,
+        end_time=end_timestamp,
+        pagination_options=ConnectorPaginationOptions(page=2, page_size=page_size),
+    )
+
+    assert len(result.rows) == page_size
+    assert result.total_count == 137
     urllib3_mock.assert_all_responses_called()
 
 

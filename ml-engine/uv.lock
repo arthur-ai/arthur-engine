@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-17T19:06:59.453020042Z"
+exclude-newer = "2026-11-22T14:38:39.568445806Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.3043"
+version = "1.4.3082"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -173,9 +173,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/ed/bd609e2fd9b30321b2ac2a7b5da63028391817fc5fb5fcdc07cf4d1b039d/arthur_client-1.4.3043.tar.gz", hash = "sha256:b0e220ba1d6e3bd248fab59b26c4c61f81074b23209dad20937b527721510954", size = 608928, upload-time = "2026-11-20T05:10:18.207Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/05/539d8ad559e58dc812220f7d096723ac19c4b3a448f889bdeafcf3f9444e/arthur_client-1.4.3082.tar.gz", hash = "sha256:3718cde7c1c7063dd52869d018f8f5f064a6faf1e430406ac81f4f8a10cad5bb", size = 609172, upload-time = "2026-11-25T13:10:43.696Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/88/775fea414414f6fe5935312a9542120b5ca19ff7609d53a06c316b785af7/arthur_client-1.4.3043-py3-none-any.whl", hash = "sha256:42e0b064822c760a2d09fd073410ff70a7af97c8a72d75a7a3d4e92288586e04", size = 2043220, upload-time = "2026-11-20T05:10:16.211Z" },
+    { url = "https://files.pythonhosted.org/packages/45/72/7c18b120fa5927d594d2eb1b154c3304a3aaddcd223c78e6571d12141473/arthur_client-1.4.3082-py3-none-any.whl", hash = "sha256:2ca664fd9fd09b4de14a481fe0095d7b016ddc790d6928a67fb12b217b43bc3f", size = 2043531, upload-time = "2026-11-25T13:10:45.99Z" },
 ]
 
 [[package]]
@@ -1563,7 +1563,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1126"
+version = "2.1.1127"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1628,7 +1628,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.3043" },
+    { name = "arthur-client", specifier = "==1.4.3082" },
     { name = "arthur-common", specifier = "==2.4.111" },
     { name = "azure-ai-projects", specifier = "==2.4.0" },
     { name = "azure-identity", specifier = "==1.27.0" },
