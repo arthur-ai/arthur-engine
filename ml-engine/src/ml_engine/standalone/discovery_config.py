@@ -93,6 +93,11 @@ class StandaloneConfigError(Exception):
     """The config file cannot be used as written. The message says where, not what."""
 
 
+class _SelfReference(Exception):
+    """A YAML alias that contains itself, as `sources: &a [*a]` does: walking it would
+    never end, so it is refused rather than left to exhaust the stack."""
+
+
 def _duration(value: Any) -> Any:
     """`90s`, `15m`, `6h`, `1d`, or a number of seconds."""
     if isinstance(value, bool):
@@ -358,8 +363,11 @@ def config_fingerprint(path: Path) -> str:
     except yaml.YAMLError:
         return digest.hexdigest()
     # The paths the loader reads: `${NAME}` expanded first, as it does. One that isn't
-    # set expands to nothing here; the load reports it.
-    raw = _interpolate(raw, [])
+    # set expands to nothing here; the load reports it, as it does a self-reference.
+    try:
+        raw = _interpolate(raw, [])
+    except _SelfReference:
+        return digest.hexdigest()
     if not isinstance(raw, dict):
         return digest.hexdigest()
 
@@ -446,7 +454,12 @@ def load_config(path: Path) -> Optional[StandaloneDiscoveryConfig]:
         return None
 
     missing: list[str] = []
-    interpolated = _interpolate(raw, missing)
+    try:
+        interpolated = _interpolate(raw, missing)
+    except _SelfReference:
+        raise StandaloneConfigError(
+            f"Discovery config {path} has a YAML alias that contains itself",
+        ) from None
     if missing:
         raise StandaloneConfigError(
             f"Discovery config {path} references environment variable(s) that are "
@@ -479,12 +492,29 @@ def load_config(path: Path) -> Optional[StandaloneDiscoveryConfig]:
     return config
 
 
-def _interpolate(value: Any, missing: list[str]) -> Any:
-    """`value` with every `${NAME}` in its strings replaced from the environment."""
-    if isinstance(value, dict):
-        return {key: _interpolate(item, missing) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_interpolate(item, missing) for item in value]
+def _interpolate(
+    value: Any,
+    missing: list[str],
+    _within: Optional[set[int]] = None,
+) -> Any:
+    """`value` with every `${NAME}` in its strings replaced from the environment.
+
+    The copy is a tree even where YAML aliases made `value` share a node, and raises
+    _SelfReference where one contains itself."""
+    if isinstance(value, (dict, list)):
+        within = set() if _within is None else _within
+        if id(value) in within:
+            raise _SelfReference()
+        within.add(id(value))
+        try:
+            if isinstance(value, dict):
+                return {
+                    key: _interpolate(item, missing, within)
+                    for key, item in value.items()
+                }
+            return [_interpolate(item, missing, within) for item in value]
+        finally:
+            within.discard(id(value))
     if isinstance(value, str):
 
         def substitute(match: re.Match[str]) -> str:

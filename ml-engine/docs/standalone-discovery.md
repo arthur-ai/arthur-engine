@@ -1352,16 +1352,24 @@ Every request needs `Authorization: Bearer <token>`.
   the Platform's has, without publishing anything. `source` is a `sources` entry as the
   config file holds one, but its values are taken as they are: a `${NAME}` is text, and
   a `{file: path}` is refused. `keep_secrets_from` names a configured source of the same
-  vendor whose secrets fill the ones `source` leaves blank, so a form that edits a source
-  can test it without reading its secrets back. `"validate_only": true` checks `source`
-  as the config file's loader would, without running a connector.
+  vendor whose secrets fill the ones `source` leaves blank, and whose values fill any
+  field given as `null`, so a form that edits a source can test it without reading its
+  secrets back. A kept secret goes only where the configured source sends it: if
+  `source` changes a field that decides that (a URL, a CA certificate,
+  `tls_verification`), the test is refused until the secret is given again. A source with
+  none of its vendor's secrets would run as the engine's own identity where the engine
+  allows that, so it is tested only when a configured source of that vendor has no
+  secrets either and the same settings; otherwise save it and scan it.
+  `"validate_only": true` checks `source` as the config file's loader would, without
+  running a connector; the rule on kept secrets applies to it too.
 
 An asked-for scan is an ordinary run. It waits for a free slot, a pair already running is
 not started again (its status says `running`), and its next scheduled run is one
-`interval` after it starts. The API changes no config. The token's
-holder can scan the configured sources more often, and test a source; with
-`keep_secrets_from` that can send a configured source's secrets to a host the holder
-names, so treat the token like those secrets. Publish the port only to what needs it.
+`interval` after it starts. The API changes no config. The token's holder can scan the
+configured sources more often, and test a source with credentials it sends or with a
+configured source's own, sent only where that source sends them. Treat the token like
+those secrets, and publish the port only to what needs it: `ML_ENGINE_CONTROL_HOST=127.0.0.1`
+where the caller shares the engine's network. A connection idle for 30 seconds is closed.
 
 ```bash
 curl -s -H "Authorization: Bearer $ML_ENGINE_CONTROL_TOKEN" \

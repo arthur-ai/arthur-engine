@@ -122,3 +122,113 @@ def test_validate_only_runs_no_connector(previewed: list[dict[str, Any]]) -> Non
     result = try_source(vertex(project_id="p"), None, [], validate_only=True)
 
     assert result == {"outcome": "valid"} and previewed == []
+
+
+def test_every_connector_says_where_its_secrets_go() -> None:
+    forms = {entry["vendor"]: entry for entry in source_types()}
+
+    assert sources.SECRET_DESTINATION_FIELDS.keys() == forms.keys()
+    for vendor, deciding in sources.SECRET_DESTINATION_FIELDS.items():
+        names = {f["name"] for f in forms[vendor]["fields"] if not f["is_sensitive"]}
+        assert deciding <= names, vendor
+
+
+def splunk(**fields: Any) -> dict[str, Any]:
+    return {
+        "name": "splunk",
+        "vendor": "splunk_enterprise",
+        "fields": [{"key": k, "value": v} for k, v in fields.items()],
+        "configs": [
+            {
+                "name": "c",
+                "query": "search index=main",
+                "query_language": "spl",
+                "lookback_window_seconds": 86400,
+            },
+        ],
+    }
+
+
+@pytest.fixture
+def configured_splunk() -> list[Any]:
+    return resolve_source(
+        source_from_values(
+            splunk(base_url="https://splunk.acme.com:8089", auth_token="TOKEN"),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"base_url": "https://evil.example.com:8089"},
+        {"ca_certificate": "-----BEGIN CERTIFICATE-----"},
+        {"tls_verification": "false"},
+    ],
+)
+@pytest.mark.parametrize("validate_only", [False, True])
+def test_a_kept_secret_is_not_sent_somewhere_new(
+    previewed: list[dict[str, Any]],
+    configured_splunk: list[Any],
+    changed: dict[str, str],
+    validate_only: bool,
+) -> None:
+    fields = {"base_url": "https://splunk.acme.com:8089", "auth_token": "", **changed}
+
+    with pytest.raises(StandaloneConfigError, match="again") as e:
+        try_source(splunk(**fields), None, configured_splunk, "splunk", validate_only)
+    assert "TOKEN" not in str(e.value) and previewed == []
+
+
+def test_a_secret_given_again_may_go_somewhere_new(
+    previewed: list[dict[str, Any]], configured_splunk: list[Any]
+) -> None:
+    raw = splunk(base_url="https://splunk2.acme.com:8089", auth_token="NEW")
+
+    try_source(raw, None, configured_splunk, "splunk")
+
+    assert previewed[0]["credentials"] == {"auth_token": "NEW"}
+
+
+def test_a_null_field_takes_the_configured_value(
+    previewed: list[dict[str, Any]], configured_splunk: list[Any]
+) -> None:
+    try_source(
+        splunk(base_url=None, auth_token=None), None, configured_splunk, "splunk"
+    )
+
+    assert previewed[0]["credentials"] == {"auth_token": "TOKEN"}
+    assert previewed[0]["config"].source_fields == {
+        "base_url": "https://splunk.acme.com:8089",
+    }
+
+
+def test_a_keyless_test_is_refused(previewed: list[dict[str, Any]]) -> None:
+    with pytest.raises(StandaloneConfigError, match="own identity"):
+        try_source(vertex(project_id="p"), None, [])
+    assert previewed == []
+
+
+def test_a_keyless_test_runs_as_configured(previewed: list[dict[str, Any]]) -> None:
+    configured = resolve_source(source_from_values(vertex(project_id="p")))
+
+    try_source(vertex(project_id="p"), None, configured)
+
+    assert previewed[0]["credentials"] == {}
+
+
+@pytest.mark.parametrize(
+    "configured",
+    [
+        vertex(project_id="p", location="europe-west4"),
+        vertex(project_id="p", service_account_key="KEY"),
+    ],
+)
+def test_a_keyless_test_unlike_what_is_configured_is_refused(
+    previewed: list[dict[str, Any]], configured: dict[str, Any]
+) -> None:
+    with pytest.raises(StandaloneConfigError, match="own identity"):
+        try_source(
+            vertex(project_id="p"), None, resolve_source(source_from_values(configured))
+        )
+    assert previewed == []

@@ -19,15 +19,19 @@ where each scan stands. Off unless the engine is given a token.
 Every route needs `Authorization: Bearer <token>`, the token given as ML_ENGINE_CONTROL_TOKEN or
 in the file ML_ENGINE_CONTROL_TOKEN_FILE names. The API changes nothing
 configured: a scan it asks for is a configured one brought forward, and a test runs a
-connector against credentials the caller sends -- or, asked for by source name, the
-configured source's own, which is what lets a form that edits a source test it without
-reading its secrets back. That last is the one way a caller holding the token can have
-a configured secret sent somewhere it chooses, so treat the token as you would those
-secrets. Sources are added by writing the config file, which the engine watches.
+connector against values the caller sends -- credentials among them. Asked for by
+source name, a test may also use the configured source's own secrets, which is what
+lets a form that edits a source test it without reading its secrets back; those are
+sent only where the configured source sends them, and a source with no secrets, which
+may run as the engine's own identity, is tested only as configured. See
+`standalone.sources`. Sources are added by writing the config file, which the engine
+watches.
 
 IT LISTENS ON EVERY INTERFACE. Its caller is a dashboard in another container, so
 loopback would not reach it; the token is what keeps anyone else out. Publish the port
-only to what needs it.
+only to what needs it, or set ML_ENGINE_CONTROL_HOST to 127.0.0.1 where the caller
+shares the engine's network. A connection idle for IDLE_TIMEOUT_SECONDS is closed, so
+connections left open cannot hold the server's threads.
 """
 
 import hmac
@@ -40,7 +44,7 @@ from typing import TYPE_CHECKING, Any, Optional, TypeGuard
 
 from flask import Flask, jsonify, request
 from flask.typing import ResponseReturnValue
-from werkzeug.serving import BaseWSGIServer, make_server
+from werkzeug.serving import BaseWSGIServer, WSGIRequestHandler, make_server
 
 from standalone.discovery_config import StandaloneConfigError
 from standalone.sources import source_types, try_source
@@ -64,6 +68,15 @@ MAX_BODY_BYTES = 256 * 1024
 MAX_SCAN_REQUEST_BYTES = 4 * 1024
 # Source IDs are UUIDs and config names are short; anything longer is not one.
 MAX_FIELD_LENGTH = 200
+# How long a connection may send nothing before it is closed. Each connection is served
+# by a thread, so without this one left open holds its thread for good. A Test
+# Connection can take longer than this to answer; that is the server's time, not the
+# connection's idle time, so it is unaffected.
+IDLE_TIMEOUT_SECONDS = 30
+
+
+class _RequestHandler(WSGIRequestHandler):
+    timeout = IDLE_TIMEOUT_SECONDS
 
 
 class ControlServer:
@@ -89,7 +102,13 @@ class ControlServer:
         self._server: Optional[BaseWSGIServer] = None
 
     def start(self) -> None:
-        self._server = make_server(self.host, self.port, self.app, threaded=True)
+        self._server = make_server(
+            self.host,
+            self.port,
+            self.app,
+            threaded=True,
+            request_handler=_RequestHandler,
+        )
         self.port = self._server.server_port  # the real one, when asked for port 0
         threading.Thread(
             target=self._server.serve_forever,

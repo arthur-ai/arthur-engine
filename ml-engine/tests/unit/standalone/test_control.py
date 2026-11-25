@@ -1,5 +1,6 @@
 """The control API, served for real on a free port against a fake agent."""
 
+import socket
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Optional
@@ -293,9 +294,7 @@ def test_a_scan_request_over_4_kb_is_refused(base: str, fake: FakeAgent) -> None
 def test_a_source_test_may_be_larger_than_a_scan_request(
     base: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        control, "try_source", lambda *a, **k: {"outcome": "succeeded"}
-    )
+    monkeypatch.setattr(control, "try_source", lambda *a, **k: {"outcome": "succeeded"})
     body = {"source": {"name": "w", "key": "k" * 20_000}}
 
     response = requests.post(f"{base}/sources/test", headers=AUTH, json=body, timeout=5)
@@ -310,3 +309,16 @@ def test_a_source_that_cannot_be_tested_says_why(base: str) -> None:
 
     assert response.status_code == 400
     assert "is not a discovery vendor" in response.json()["error"]
+
+
+def test_an_idle_connection_is_closed(
+    monkeypatch: pytest.MonkeyPatch, fake: FakeAgent
+) -> None:
+    monkeypatch.setattr(control._RequestHandler, "timeout", 0.2)
+    server = ControlServer(fake, TOKEN, host="127.0.0.1", port=0)  # type: ignore[arg-type]
+    server.start()
+    try:
+        with socket.create_connection(("127.0.0.1", server.port), timeout=5) as idle:
+            assert idle.recv(1) == b""  # closed by the server, not timed out here
+    finally:
+        server.stop()

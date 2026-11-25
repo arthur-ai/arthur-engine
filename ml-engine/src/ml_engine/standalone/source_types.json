@@ -11,7 +11,7 @@
         {
           "name": "regions",
           "is_sensitive": false,
-          "is_optional": true,
+          "is_optional": false,
           "d_type": "string",
           "description": "Required. AWS regions to read, comma-separated. Example: us-east-1,us-west-2",
           "allowed_values": null,

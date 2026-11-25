@@ -46,6 +46,10 @@ SCHEMA_KEYS = (
     "availability",
     "query_language",
 )
+# Fields the Platform marks optional only for sources saved before the field existed,
+# which a standalone engine has none of. Its form marks them required, as their
+# descriptions and connectors already treat them.
+REQUIRED_STANDALONE = {("aws_bedrock", "regions")}
 
 
 def schemas(raw: Any) -> list[dict[str, Any]]:
@@ -72,6 +76,9 @@ def main() -> None:
             ({key: field.get(key) for key in FIELD_KEYS} for field in schema["fields"]),
             key=lambda field: field["priority"],
         )
+        for field in entry["fields"]:
+            if (schema["vendor"], field["name"]) in REQUIRED_STANDALONE:
+                field["is_optional"] = False
         snapshot[schema["vendor"]] = entry
     missing = sorted(platform_vendors - snapshot.keys())
     if missing:

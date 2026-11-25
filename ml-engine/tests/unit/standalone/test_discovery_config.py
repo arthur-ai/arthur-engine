@@ -19,6 +19,7 @@ from discovery.endpoint.jamf.connector import _settings_from as jamf_settings_fr
 from standalone.discovery_config import (
     DISCOVERY_CONFIG_ENV_VAR,
     StandaloneConfigError,
+    config_fingerprint,
     load_config,
     standalone_config_path,
 )
@@ -762,3 +763,16 @@ def test_an_elasticsearch_credential_error_never_quotes_the_password(
     assert "not both" in message
     assert "es-passw0rd-value-0003" not in message
     assert "es-api-key-value-0005" not in message
+
+
+def test_an_alias_that_contains_itself_is_refused(tmp_path: Path) -> None:
+    text = "version: 1\nsources: &a [*a]\n"
+
+    assert "alias that contains itself" in load_error(tmp_path, text)
+    assert config_fingerprint(tmp_path / "discovery.yaml")
+
+
+def test_an_alias_used_twice_is_not_a_self_reference(tmp_path: Path) -> None:
+    text = minimal(sources=VERTEX_SOURCE + "x-again: &f {a: 1}\nx-more: *f\n")
+
+    assert "contains itself" not in load_error(tmp_path, text)
