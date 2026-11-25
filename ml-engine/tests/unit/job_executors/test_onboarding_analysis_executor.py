@@ -22,6 +22,7 @@ from pydantic import ValidationError
 
 from arthur_client_support import ONBOARDING_ANALYSIS_SUPPORTED
 from config import Config
+from connectors.connector import ConnectorReadResult
 from dataset_loader import DatasetLoader
 from job_executors import onboarding_analysis_executor
 from job_executors.onboarding_analysis_executor import (
@@ -195,7 +196,10 @@ class _Run:
         insight_client: Any = None,
     ) -> None:
         self.connector = MagicMock()
-        self.connector.read.return_value = rows
+        self.connector.read_with_total_count.return_value = ConnectorReadResult(
+            rows=rows,
+            total_count=len(rows),
+        )
         connector_constructor = MagicMock()
         connector_constructor.get_connector_from_spec.return_value = self.connector
         self.uploader = MagicMock()
@@ -362,7 +366,7 @@ def test_raw_data_disabled_does_not_stop_the_analysis() -> None:
         result = run()
 
     assert result.outcome == OnboardingOutcome.COMPLETED
-    run.connector.read.assert_called_once()
+    run.connector.read_with_total_count.assert_called_once()
     assert _report(result).totals.traces == 20
 
 
@@ -424,7 +428,9 @@ def test_completed_counts_every_trace() -> None:
 
 def test_a_run_that_fails_uploads_a_failed_result_and_fails() -> None:
     run = _Run([])
-    run.connector.read.side_effect = RuntimeError("customer text from a trace")
+    run.connector.read_with_total_count.side_effect = RuntimeError(
+        "customer text from a trace"
+    )
     spec = OnboardingAnalysisJobSpec(
         connector_id="connector-1",
         address=OnboardingAddress(task_id=TASK_ID),
@@ -455,7 +461,7 @@ def test_a_provider_project_is_not_read_yet() -> None:
     with pytest.raises(NotImplementedError):
         run.executor.execute(run.job_id, "run-1", spec)
 
-    run.connector.read.assert_not_called()
+    run.connector.read_with_total_count.assert_not_called()
     [result] = [c.args[2] for c in run.uploader.upload.call_args_list]
     assert result.outcome == OnboardingOutcome.FAILED
 
@@ -469,7 +475,9 @@ def test_the_read_names_the_connector_task_and_window() -> None:
     report = _report(result)
     assert report.totals.traces == 0
     assert report.totals.quietest_hour_utc is None
-    dataset, start, end, filters, pagination = run.connector.read.call_args.args
+    dataset, start, end, filters, pagination = (
+        run.connector.read_with_total_count.call_args.args
+    )
     assert dataset.connector_id == "connector-1"
     assert dataset.model_problem_type == ModelProblemType.AGENTIC_TRACE
     assert {f.key: f.value for f in dataset.dataset_locator.fields} == {
@@ -787,7 +795,7 @@ def test_a_malformed_spec_uploads_a_failed_result_and_fails() -> None:
     with pytest.raises(ValidationError):
         run.executor.execute(run.job_id, "run-1", raw_spec)
 
-    run.connector.read.assert_not_called()
+    run.connector.read_with_total_count.assert_not_called()
     [result] = [c.args[2] for c in run.uploader.upload.call_args_list]
     assert result.outcome == OnboardingOutcome.FAILED
     assert result.error is not None
