@@ -195,6 +195,7 @@ def test_scans_beyond_capacity_wait_for_a_free_slot(runner: HoldingRunner) -> No
     runner.release("vertex-0")
     wait_until_idle(subject)
     subject.tick()
+    runner.wait_for("vertex-1")
     assert runner.started == ["vertex-0", "vertex-1"]
 
 
@@ -211,6 +212,7 @@ def test_a_running_scan_is_not_started_again(runner: HoldingRunner) -> None:
     runner.release("vertex-0")
     wait_until_idle(subject)
     subject.tick()  # overdue and finished: starts right away
+    runner.wait_for("vertex-0", runs=2)
     assert runner.started == ["vertex-0", "vertex-0"]
 
 
@@ -232,6 +234,7 @@ def test_a_scan_past_its_timeout_is_told_to_stop_and_frees_its_slot(
     clock.now += 1  # vertex-0 hangs past scan_timeout
     subject.tick()
     assert runner.stop_checks[0]() is True
+    runner.wait_for("vertex-1")
     assert runner.started == ["vertex-0", "vertex-1"]
     assert runner.stop_checks[1]() is False
     assert subject.running_scans() == ["vertex-1/c"]
@@ -253,6 +256,7 @@ def test_a_timed_out_scan_is_not_started_again_until_it_ends(
     runner.release("vertex-0")
     wait_until_idle(subject)
     subject.tick()
+    runner.wait_for("vertex-0", runs=2)
     assert runner.started == ["vertex-0", "vertex-0"]
     assert runner.stop_checks[1]() is False  # the new run has a fresh stop check
 
@@ -290,17 +294,29 @@ def test_the_next_run_is_one_interval_after_the_last_started(
 
     clock.now += 1
     subject.tick()
+    runner.wait_for("vertex-0", runs=2)
     assert runner.started == ["vertex-0", "vertex-0"]
 
 
 def test_shutdown_tells_running_scans_to_stop(runner: HoldingRunner) -> None:
     subject = agent(runner, Clock(), sources=1)
     subject.tick()
+    runner.wait_for("vertex-0")
     assert runner.stop_checks[0]() is False
 
     subject.request_stop()
 
     assert runner.stop_checks[0]() is True
+
+
+def test_no_scan_starts_once_shutdown_has_begun(runner: HoldingRunner) -> None:
+    subject = agent(runner, Clock(), sources=1)
+
+    subject.request_stop()
+    subject.tick()  # as a control request under way when the stop came would
+
+    assert subject.running_scans() == []
+    assert runner.started == []
 
 
 def test_shutdown_waits_for_scans_only_as_long_as_the_grace_period(
@@ -403,6 +419,7 @@ def test_a_running_scan_asked_for_again_is_not_doubled_up(
     subject.tick()
 
     assert [s.status for s in states] == ["running"]
+    runner.wait_for("vertex-0")
     assert runner.started == ["vertex-0"]
 
 

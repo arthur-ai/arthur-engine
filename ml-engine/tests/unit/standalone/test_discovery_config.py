@@ -597,6 +597,8 @@ def test_http_destination_needs_an_explicit_opt_in(
         ('"3600"', None),  # a string with no unit is ambiguous
         ("6 hours", None),
         ("30s", None),  # under the minimum
+        ("99999999999d", None),  # past what a timedelta holds
+        ("1.0e+300", None),  # a YAML float of seconds, as large
     ],
 )
 def test_interval_formats(

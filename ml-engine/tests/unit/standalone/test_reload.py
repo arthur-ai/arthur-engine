@@ -260,6 +260,33 @@ def test_a_changed_secret_file_named_through_a_variable_counts_as_a_change(
     assert config_fingerprint(path) != before
 
 
+def test_a_secret_file_path_with_a_nul_in_it_is_reported_not_raised(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a")))
+    subject = start(path, runner, Clock())
+
+    path.write_text(config_text(source("a"), source("b", key_file='"key\\0.json"')))
+    status, _ = subject.apply_config_now()
+
+    assert status.error
+    assert names(subject) == ["a"]
+
+
+def test_an_interval_too_long_to_hold_is_reported_not_raised(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    path = tmp_path / "discovery.yaml"
+    path.write_text(config_text(source("a")))
+    subject = start(path, runner, Clock())
+
+    path.write_text(config_text(source("a"), interval="99999999999d"))
+    status, _ = subject.apply_config_now()
+
+    assert "schedule.interval" in (status.error or "")
+
+
 def test_fields_or_configs_that_are_not_lists_are_reported_not_raised(
     tmp_path: Path, runner: HoldingRunner
 ) -> None:

@@ -359,6 +359,10 @@ class StandaloneDiscoveryAgent:
         for slot in [*self._slots, *self._retired]:
             if slot.running() and now >= slot.deadline:
                 self._time_out(slot)
+        if self._stopping.is_set():
+            # Shutting down: no new scans, though a control request (a reload, a scan
+            # asked for) that was already under way still ticks.
+            return
         room = self._capacity - sum(
             slot.running() for slot in [*self._slots, *self._retired]
         )

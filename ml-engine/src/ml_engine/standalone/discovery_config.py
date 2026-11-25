@@ -97,14 +97,19 @@ def _duration(value: Any) -> Any:
     """`90s`, `15m`, `6h`, `1d`, or a number of seconds."""
     if isinstance(value, bool):
         raise ValueError("expected a duration like 15m, 6h or 1d")
-    if isinstance(value, (int, float)):
-        return timedelta(seconds=value)
-    if isinstance(value, str):
-        match = _DURATION.match(value)
-        if match is None:
-            raise ValueError("expected a duration like 15m, 6h or 1d")
-        amount, unit = match.groups()
-        return timedelta(**{_DURATION_UNITS[unit]: int(amount)})
+    try:
+        if isinstance(value, (int, float)):
+            return timedelta(seconds=value)
+        if isinstance(value, str):
+            match = _DURATION.match(value)
+            if match is None:
+                raise ValueError("expected a duration like 15m, 6h or 1d")
+            amount, unit = match.groups()
+            return timedelta(**{_DURATION_UNITS[unit]: int(amount)})
+    except OverflowError:
+        # Pydantic reports a ValueError as a validation error; an OverflowError would
+        # escape load_config, and a reload would neither apply nor report the file.
+        raise ValueError("duration is too long") from None
     return value
 
 
@@ -369,7 +374,8 @@ def config_fingerprint(path: Path) -> str:
                     digest.update(referenced.as_posix().encode())
                     try:
                         digest.update(referenced.read_bytes())
-                    except OSError:
+                    except (OSError, ValueError):
+                        # ValueError: a path with a NUL in it, which the load reports.
                         digest.update(b"\0unreadable")
     return digest.hexdigest()
 
