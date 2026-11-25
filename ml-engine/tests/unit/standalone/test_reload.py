@@ -260,6 +260,27 @@ def test_a_changed_secret_file_named_through_a_variable_counts_as_a_change(
     assert config_fingerprint(path) != before
 
 
+def test_a_changed_destination_secret_file_is_reported_as_needing_a_restart(
+    tmp_path: Path, runner: HoldingRunner
+) -> None:
+    (tmp_path / "token.txt").write_text("one")
+    path = tmp_path / "discovery.yaml"
+    path.write_text(
+        config_text(source("a")).replace(
+            "url: https://hooks.example.com/in",
+            "url: https://hooks.example.com/in\n"
+            "  headers:\n"
+            "    Authorization: {file: token.txt}",
+        )
+    )
+    subject = start(path, runner, Clock())
+
+    (tmp_path / "token.txt").write_text("two")
+    status, _ = subject.apply_config_now()
+
+    assert status.restart_required == ("destination",)
+
+
 def test_a_secret_file_path_with_a_nul_in_it_is_reported_not_raised(
     tmp_path: Path, runner: HoldingRunner
 ) -> None:

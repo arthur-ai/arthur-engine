@@ -360,24 +360,46 @@ def config_fingerprint(path: Path) -> str:
     # The paths the loader reads: `${NAME}` expanded first, as it does. One that isn't
     # set expands to nothing here; the load reports it.
     raw = _interpolate(raw, [])
-    sources = raw.get("sources") if isinstance(raw, dict) else None
+    if not isinstance(raw, dict):
+        return digest.hexdigest()
+
+    def add(value: Any) -> None:
+        if not (isinstance(value, dict) and isinstance(value.get("file"), str)):
+            return
+        referenced = resolve_path(value["file"], path.parent)
+        digest.update(referenced.as_posix().encode())
+        try:
+            digest.update(referenced.read_bytes())
+        except (OSError, ValueError):
+            # ValueError: a path with a NUL in it, which the load reports.
+            digest.update(b"\0unreadable")
+
+    sources = raw.get("sources")
     for source in sources if isinstance(sources, list) else []:
         if not isinstance(source, dict):
             continue
         entries = [*_entries(source, "fields"), *_entries(source, "configs")]
         for entry in entries:
-            if not isinstance(entry, dict):
-                continue
-            for value in (entry.get("value"), entry.get("query")):
-                if isinstance(value, dict) and isinstance(value.get("file"), str):
-                    referenced = resolve_path(value["file"], path.parent)
-                    digest.update(referenced.as_posix().encode())
-                    try:
-                        digest.update(referenced.read_bytes())
-                    except (OSError, ValueError):
-                        # ValueError: a path with a NUL in it, which the load reports.
-                        digest.update(b"\0unreadable")
+            if isinstance(entry, dict):
+                add(entry.get("value"))
+                add(entry.get("query"))
+    # A destination's credentials and certificate can be files too: a token, a
+    # header, an API key, a CA. A change to one is reported as needing a restart,
+    # as any destination change is.
+    for value in _file_references(raw.get("destination")):
+        add(value)
     return digest.hexdigest()
+
+
+def _file_references(value: Any) -> list[dict[str, Any]]:
+    """Every `{file: path}` value nested anywhere in value, in order."""
+    if isinstance(value, dict):
+        if set(value) == {"file"}:
+            return [value]
+        return [ref for item in value.values() for ref in _file_references(item)]
+    if isinstance(value, list):
+        return [ref for item in value for ref in _file_references(item)]
+    return []
 
 
 def standalone_config_path() -> Optional[Path]:
