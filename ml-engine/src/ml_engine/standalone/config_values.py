@@ -22,6 +22,14 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+def resolve_path(value: str, base_dir: Optional[Path]) -> Path:
+    """A path from the config file, a relative one taken from the config's directory."""
+    path = Path(value)
+    if not path.is_absolute() and base_dir is not None:
+        path = base_dir / path
+    return path
+
+
 def read_file_reference(value: Any, base_dir: Optional[Path], strip: bool) -> str:
     """The contents of the file a `{file: path}` value names.
 
@@ -33,9 +41,7 @@ def read_file_reference(value: Any, base_dir: Optional[Path], strip: bool) -> st
         raise ValueError("expected a string or {file: <path>}")
     if not isinstance(value["file"], str):
         raise ValueError("expected {file: <path>} with a string path")
-    path = Path(value["file"])
-    if not path.is_absolute() and base_dir is not None:
-        path = base_dir / path
+    path = resolve_path(value["file"], base_dir)
     try:
         # UTF-8 whatever the locale: the engine's image runs under C/POSIX, where the
         # default would refuse or mangle any non-ASCII byte in a key or catalog.
