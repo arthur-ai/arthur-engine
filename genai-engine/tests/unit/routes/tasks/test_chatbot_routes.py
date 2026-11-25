@@ -4,6 +4,7 @@ from unittest.mock import patch
 import litellm
 import pytest
 from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
+from arthur_common.models.response_schemas import TaskResponse
 from fastapi import HTTPException
 from litellm import CustomStreamWrapper
 
@@ -391,9 +392,10 @@ def test_chatbot_caps_an_oversized_tool_result(
     mock_api_call,
     client: GenaiEngineTestClientBase,
     anthropic_default,
+    create_agentic_task: TaskResponse,
 ):
     """A multi-megabyte API response reaches the model as a bounded preview."""
-    _, task = client.create_task("chatbot_task_big_tool_result", is_agentic=True)
+    task = create_agentic_task
     big_body = json.dumps(
         {"count": 50, "traces": [{"output_content": "a" * 120_000}] * 50},
     )
@@ -459,8 +461,9 @@ def test_chatbot_prompt_too_long_shows_a_plain_message(
     _,
     client: GenaiEngineTestClientBase,
     anthropic_default,
+    create_agentic_task: TaskResponse,
 ):
-    _, task = client.create_task("chatbot_task_prompt_too_long", is_agentic=True)
+    task = create_agentic_task
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
@@ -499,8 +502,9 @@ def test_chatbot_prompt_too_long_while_streaming_shows_a_plain_message(
     _,
     client: GenaiEngineTestClientBase,
     anthropic_default,
+    create_agentic_task: TaskResponse,
 ):
-    _, task = client.create_task("chatbot_task_stream_too_long", is_agentic=True)
+    task = create_agentic_task
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
