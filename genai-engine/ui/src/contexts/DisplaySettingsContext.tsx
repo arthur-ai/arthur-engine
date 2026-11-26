@@ -1,3 +1,4 @@
+import { type DisplayCurrency, USD } from "@arthur/shared-components";
 import React, { createContext, useContext, ReactNode } from "react";
 
 import { useApi } from "@/hooks/useApi";
@@ -11,7 +12,8 @@ export const DISPLAY_SETTINGS_QUERY_KEY = ["getDisplaySettingsApiV2DisplaySettin
 const defaultDisplaySettings: DisplaySettingsResponse = { default_currency: "USD" };
 
 interface DisplaySettingsContextValue {
-  defaultCurrency: string;
+  /** Currency the API's USD costs are shown in, with the rate to convert them. USD when the engine has no rate. */
+  currency: DisplayCurrency;
   /** True only when BOTH server and user have chatbot enabled. */
   chatbotEnabled: boolean;
   /** Whether the server allows chatbot at all. */
@@ -37,6 +39,16 @@ export const useDisplaySettings = () => {
   return ctx;
 };
 
+const getDisplayCurrency = (settings: DisplaySettingsResponse): DisplayCurrency => {
+  if (settings.usd_exchange_rate == null) return USD;
+
+  return {
+    code: settings.default_currency ?? "USD",
+    usdRate: settings.usd_exchange_rate,
+    rateDate: settings.exchange_rate_updated_at ?? null,
+  };
+};
+
 interface DisplaySettingsProviderProps {
   children: ReactNode;
 }
@@ -60,7 +72,7 @@ export const DisplaySettingsProvider: React.FC<DisplaySettingsProviderProps> = (
   const serverChatbotEnabled = (settings as DisplaySettingsResponse & { chatbot_enabled?: boolean }).chatbot_enabled ?? true;
 
   const value: DisplaySettingsContextValue = {
-    defaultCurrency: settings.default_currency ?? "USD",
+    currency: getDisplayCurrency(settings),
     chatbotEnabled: serverChatbotEnabled && enableChatbot,
     serverChatbotEnabled,
     enableChatbot,

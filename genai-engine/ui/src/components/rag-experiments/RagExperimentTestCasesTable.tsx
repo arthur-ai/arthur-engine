@@ -1,3 +1,4 @@
+import { formatCost, type DisplayCurrency } from "@arthur/shared-components";
 import {
   Box,
   Table,
@@ -13,7 +14,7 @@ import {
   LinearProgress,
   CircularProgress,
 } from "@mui/material";
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, type ColumnDef, type HeaderGroup } from "@tanstack/react-table";
+import { createColumnHelper, flexRender, tableFeatures, useTable, type ColumnDef, type HeaderGroup } from "@tanstack/react-table";
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 
 import { RagTestCaseDetailModal } from "./RagTestCaseDetailModal";
@@ -22,7 +23,6 @@ import { getRagConfigDisplayName, type RagConfig } from "./utils";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useRagExperimentTestCases } from "@/hooks/useRagExperiments";
 import type { RagTestCase, RagEvalResultSummaries } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentTestCasesTableProps {
@@ -47,10 +47,12 @@ interface EvalGroup {
   ragConfigKeys: string[];
 }
 
-const columnHelper = createColumnHelper<RagTestCase>();
+const features = tableFeatures({});
+
+const columnHelper = createColumnHelper<typeof features, RagTestCase>();
 
 // Status column definition
-const createStatusColumn = (): ColumnDef<RagTestCase> =>
+const createStatusColumn = (): ColumnDef<typeof features, RagTestCase> =>
   columnHelper.display({
     id: "status",
     header: "Status",
@@ -61,13 +63,13 @@ const createStatusColumn = (): ColumnDef<RagTestCase> =>
   });
 
 // Cost column definition
-const createCostColumn = (defaultCurrency: string): ColumnDef<RagTestCase> =>
+const createCostColumn = (currency: DisplayCurrency): ColumnDef<typeof features, RagTestCase> =>
   columnHelper.display({
     id: "cost",
     header: "Cost",
     cell: ({ row }) => {
       const cost = row.original.total_cost;
-      return cost ? formatCurrency(parseFloat(cost), defaultCurrency) : "-";
+      return cost ? formatCost(parseFloat(cost), currency) : "-";
     },
   });
 
@@ -155,9 +157,9 @@ const createTotalCell = (evalGroup: EvalGroup) => {
 const buildColumns = (
   ragEvalSummaries: RagEvalResultSummaries[],
   ragConfigs: RagConfig[],
-  defaultCurrency: string
+  currency: DisplayCurrency
 ): {
-  columns: ColumnDef<RagTestCase>[];
+  columns: ColumnDef<typeof features, RagTestCase>[];
   evalColumns: RagConfigEvalColumn[];
   ragConfigGroups: Map<string, { displayName: string; evalCount: number }>;
   evalGroups: EvalGroup[];
@@ -211,7 +213,7 @@ const buildColumns = (
 
   // Build TanStack Table column definitions
   // Create eval columns for each RAG config
-  const dynamicEvalColumns: ColumnDef<RagTestCase>[] = evalColumns.map((col, index) =>
+  const dynamicEvalColumns: ColumnDef<typeof features, RagTestCase>[] = evalColumns.map((col, index) =>
     columnHelper.display({
       id: `eval-${col.ragConfigKey}-${col.evalName}-${col.evalVersion}`,
       header: `${col.evalName} (v${col.evalVersion})`,
@@ -227,7 +229,7 @@ const buildColumns = (
   );
 
   // Create totals columns
-  const totalColumns: ColumnDef<RagTestCase>[] = evalGroups.map((evalGroup, index) =>
+  const totalColumns: ColumnDef<typeof features, RagTestCase>[] = evalGroups.map((evalGroup, index) =>
     columnHelper.display({
       id: `total-${evalGroup.evalName}-${evalGroup.evalVersion}`,
       header: `${evalGroup.evalName} (v${evalGroup.evalVersion})`,
@@ -239,7 +241,12 @@ const buildColumns = (
     })
   );
 
-  const columns: ColumnDef<RagTestCase>[] = [createStatusColumn(), ...dynamicEvalColumns, ...totalColumns, createCostColumn(defaultCurrency)];
+  const columns: ColumnDef<typeof features, RagTestCase>[] = [
+    createStatusColumn(),
+    ...dynamicEvalColumns,
+    ...totalColumns,
+    createCostColumn(currency),
+  ];
 
   return {
     columns,
@@ -251,7 +258,7 @@ const buildColumns = (
 
 // Custom table header component to render grouped headers
 interface TableHeaderProps {
-  headerGroups: HeaderGroup<RagTestCase>[];
+  headerGroups: HeaderGroup<typeof features, RagTestCase>[];
   ragConfigGroups: Map<string, { displayName: string; evalCount: number }>;
   evalGroups: EvalGroup[];
 }
@@ -361,7 +368,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
   datasetId,
   datasetVersion,
 }) => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const [page, setPage] = useState(0);
   const pageSize = 20;
 
@@ -390,15 +397,15 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
 
   // Build columns from RAG eval summaries
   const { columns, evalColumns, ragConfigGroups, evalGroups } = useMemo(
-    () => buildColumns(ragEvalSummaries, ragConfigs, defaultCurrency),
-    [ragEvalSummaries, ragConfigs, defaultCurrency]
+    () => buildColumns(ragEvalSummaries, ragConfigs, currency),
+    [ragEvalSummaries, ragConfigs, currency]
   );
 
   // TanStack Table instance
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: testCases,
     columns,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   const handleRowClick = useCallback((index: number) => {
@@ -476,7 +483,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
             ) : (
               table.getRowModel().rows.map((row, index) => (
                 <TableRow key={row.id} hover onClick={() => handleRowClick(index)} sx={{ cursor: "pointer" }}>
-                  {row.getVisibleCells().map((cell) => {
+                  {row.getAllCells().map((cell) => {
                     const meta = cell.column.columnDef.meta as
                       | {
                           isLastInGroup?: boolean;

@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -21,7 +22,6 @@ import type {
   PromptEvalResultSummaries,
   EvalResultSummary,
 } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 
 export interface ExperimentConfigDrawerProps {
   open: boolean;
@@ -50,7 +50,7 @@ export default function ExperimentConfigDrawer({
 }: ExperimentConfigDrawerProps) {
   const navigate = useNavigate();
   const { task } = useTask();
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
 
   return (
     <Drawer
@@ -378,7 +378,7 @@ export default function ExperimentConfigDrawer({
                             </Typography>
                             {run.total_cost && (
                               <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
-                                Cost: {formatCurrency(parseFloat(run.total_cost), defaultCurrency)}
+                                Cost: {formatCost(parseFloat(run.total_cost), currency)}
                               </Typography>
                             )}
                           </Box>

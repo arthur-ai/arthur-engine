@@ -15,7 +15,7 @@ import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
 const DEFAULT_DATA: AgenticExperimentSummary[] = [];
 
 export const Experiments = () => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const { id: taskId } = useParams<{ id: string }>();
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -28,7 +28,7 @@ export const Experiments = () => {
 
   const { data, isLoading, isRefetching } = useAgentExperiments({ page: pagination.pageIndex, page_size: pagination.pageSize });
 
-  const columns = useMemo(() => createColumns(defaultCurrency), [defaultCurrency]);
+  const columns = useMemo(() => createColumns(currency), [currency]);
 
   const table = useMaterialReactTable({
     data: data?.data ?? DEFAULT_DATA,

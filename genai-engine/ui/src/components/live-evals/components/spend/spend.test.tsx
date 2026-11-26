@@ -1,3 +1,4 @@
+import { USD } from "@arthur/shared-components";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -33,19 +34,19 @@ vi.mock("../../hooks/useContinuousEvalSpend", () => ({
 }));
 
 vi.mock("@/contexts/DisplaySettingsContext", () => ({
-  useDisplaySettings: () => ({ defaultCurrency: "USD" }),
+  useDisplaySettings: () => ({ currency: { code: "USD", usdRate: 1, rateDate: null } }),
 }));
 
 describe("SpendCards", () => {
   it("shows the last 24 hours and the daily estimate with its formula", () => {
-    render(<SpendCards spend={spend} currency="USD" />);
+    render(<SpendCards spend={spend} currency={USD} />);
 
     expect(screen.getByText("Last 24 hours")).toBeTruthy();
-    expect(screen.getByText("$0.060000")).toBeTruthy();
+    expect(screen.getByText("$0.06")).toBeTruthy();
     expect(screen.getByText("5 runs")).toBeTruthy();
     expect(screen.getByText("Estimated per day")).toBeTruthy();
-    expect(screen.getByText("$0.040000")).toBeTruthy();
-    expect(screen.getByText("2 traces/day × 50% sampled × $0.040000 per run (last 7 days)")).toBeTruthy();
+    expect(screen.getByText("$0.04")).toBeTruthy();
+    expect(screen.getByText("2 traces/day × 50% sampled × $0.04 per run (last 7 days)")).toBeTruthy();
   });
 
   it("shows zero spend and why there is no estimate", () => {
@@ -57,7 +58,7 @@ describe("SpendCards", () => {
           last_24h_cost: 0,
           estimate: { ...estimate, run_count: 0, average_run_cost: null, estimated_daily_cost: null, unavailable_reason: "no_runs" },
         }}
-        currency="USD"
+        currency={USD}
       />
     );
 
@@ -81,7 +82,7 @@ describe("SpendCards", () => {
             unavailable_reason: "no_runs",
           },
         }}
-        currency="USD"
+        currency={USD}
       />
     );
 
@@ -102,7 +103,7 @@ describe("SpendCards", () => {
             priced_since: "2026-11-03T10:00:00",
           },
         }}
-        currency="USD"
+        currency={USD}
       />
     );
 
@@ -112,17 +113,17 @@ describe("SpendCards", () => {
 
 describe("SpendEstimateText", () => {
   it("states the estimate and how it was computed", () => {
-    render(<SpendEstimateText estimate={{ ...estimate, sample_rate: 0.25, estimated_daily_cost: 0.02 }} currency="USD" />);
+    render(<SpendEstimateText estimate={{ ...estimate, sample_rate: 0.25, estimated_daily_cost: 0.02 }} currency={USD} />);
 
-    expect(screen.getByText("$0.020000 per day")).toBeTruthy();
-    expect(screen.getByText(/2 traces\/day × 25% sampled × \$0\.040000 per run \(last 7 days\)/)).toBeTruthy();
+    expect(screen.getByText("$0.02 per day")).toBeTruthy();
+    expect(screen.getByText(/2 traces\/day × 25% sampled × \$0\.04 per run \(last 7 days\)/)).toBeTruthy();
   });
 
   it("explains a task without traffic", () => {
     render(
       <SpendEstimateText
         estimate={{ ...estimate, trace_count: 0, traces_per_day: 0, estimated_daily_cost: null, unavailable_reason: "no_traces" }}
-        currency="USD"
+        currency={USD}
       />
     );
 
@@ -146,17 +147,17 @@ describe("malformed spend responses", () => {
 
 describe("estimate accuracy notes", () => {
   it("shows the share of traces that reach the judge when some are skipped", () => {
-    const text = describeEstimateFormula({ ...estimate, judged_share: 0.6 }, "USD");
+    const text = describeEstimateFormula({ ...estimate, judged_share: 0.6 }, USD);
     expect(text).toContain("60% reach the judge");
   });
 
   it("says the price comes from the current evaluator after a switch", () => {
-    const text = describeEstimateFormula({ ...estimate, priced_since: "2026-11-03T10:00:00" }, "USD");
+    const text = describeEstimateFormula({ ...estimate, priced_since: "2026-11-03T10:00:00" }, USD);
     expect(text).toContain("runs since the evaluator changed");
   });
 
   it("leaves both out when every trace is judged and the evaluator never changed", () => {
-    const text = describeEstimateFormula({ ...estimate, judged_share: 1, priced_since: null }, "USD");
+    const text = describeEstimateFormula({ ...estimate, judged_share: 1, priced_since: null }, USD);
     expect(text).not.toContain("reach the judge");
     expect(text).not.toContain("evaluator changed");
   });

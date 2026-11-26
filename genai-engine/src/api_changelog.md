@@ -2,6 +2,79 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/26/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/sessions  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/users  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/users/{user_id}  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **CHANGE** for **URL**: /api/v1/traces  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/sessions  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/sessions  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/spans  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/spans  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/users  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/users  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property `exchange_rate_updated_at` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property `usd_exchange_rate` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans/anyOf[subschema #1]/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'users/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users/{user_id}  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+
+# 11/19/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the chatbot always uses the default model provider (`/api/v1/default_model_provider`); a request that sets `model_provider` or `model_name` now returns `400`, and the response shows the default's model, or null when none is set
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_provider` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  response property `model_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  response property `model_provider` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_name` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_provider` became optional for the status `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  response property `model_name` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  response property `model_provider` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+- **CHANGE**  a breaking change was detected but the version is still `2.1.1122`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `anthropic` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `azure` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `bedrock` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `gemini` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `hosted_vllm` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `openai` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `vertex_ai` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `anthropic` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `azure` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `bedrock` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `gemini` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `hosted_vllm` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `openai` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/chatbot/config  removed the `vertex_ai` enum value from the `model_provider` response property for the response status `200`
+- **CHANGE** for **URL**: /api/v1/default_model_provider  endpoint added
+- **CHANGE** for **URL**: /api/v1/default_model_provider  endpoint added
+- **CHANGE** for **URL**: /api/v1/default_model_provider  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  added the optional property `uses_default_model` to the response with the `200` status
 # 11/18/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the new optional `query` request parameter `include_span_details`
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property `items/inference_count` to the response with the `200` status

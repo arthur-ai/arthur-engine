@@ -54,6 +54,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 vi.mock("../../data/results-columns", () => ({
+  resultsFeatures: {},
   createColumns: () => [
     {
       accessorKey: "eval_name",
@@ -76,7 +77,7 @@ vi.mock("@/components/traces/stores/filter.store", () => ({
 }));
 
 vi.mock("@/contexts/DisplaySettingsContext", () => ({
-  useDisplaySettings: () => ({ defaultCurrency: "USD" }),
+  useDisplaySettings: () => ({ currency: { code: "USD", usdRate: 1, rateDate: null } }),
 }));
 
 vi.mock("@/hooks/useApi", () => ({

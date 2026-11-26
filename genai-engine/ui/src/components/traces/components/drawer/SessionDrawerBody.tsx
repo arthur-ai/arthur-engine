@@ -68,7 +68,7 @@ export const SessionDrawerBody = ({ session }: SessionDrawerBodyProps) => {
           }}
         >
           <TokenCountTooltip prompt={token.prompt} completion={token.completion} total={token.total} />
-          <TokenCostTooltip prompt={cost.prompt} completion={cost.completion} total={cost.total} />
+          <TokenCostTooltip prompt={cost.prompt} completion={cost.completion} total={cost.total} unpricedSpanCount={cost.unpricedSpanCount} />
         </Stack>
         <Typography
           variant="body1"

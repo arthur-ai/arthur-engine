@@ -1,4 +1,4 @@
-import { CopyableChip } from "@arthur/shared-components";
+import { CopyableChip, formatCost, type DisplayCurrency } from "@arthur/shared-components";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Chip, IconButton, Tooltip, Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
@@ -6,19 +6,19 @@ import { Link } from "react-router";
 
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
-import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const columnHelper = createMRTColumnHelper<AgenticAnnotationResponse>();
 
 export const createColumns = ({
   taskId,
-  defaultCurrency,
+  currency,
   timezone,
   use24Hour,
 }: {
   taskId: string;
-  defaultCurrency: string;
+  currency: DisplayCurrency;
   timezone: string;
   use24Hour: boolean;
 }) => [
@@ -48,7 +48,7 @@ export const createColumns = ({
     header: "Cost",
     Cell: ({ cell }) => {
       const cost = cell.getValue();
-      return <Typography variant="body2">{cost != null ? formatCurrency(cost, defaultCurrency) : "N/A"}</Typography>;
+      return <Typography variant="body2">{cost != null ? formatCost(cost, currency) : "N/A"}</Typography>;
     },
   }),
   columnHelper.accessor("created_at", {

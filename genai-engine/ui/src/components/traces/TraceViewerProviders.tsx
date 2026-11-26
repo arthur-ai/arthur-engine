@@ -6,10 +6,10 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 
 /** Hands the shared trace viewer the user's display settings and the app's toasts. */
 export const TraceViewerProviders = ({ children }: { children: ReactNode }) => {
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const { currency, timezone, use24Hour } = useDisplaySettings();
   const { enqueueSnackbar } = useSnackbar();
 
-  const displaySettings = useMemo(() => ({ currency: defaultCurrency, timezone, use24Hour }), [defaultCurrency, timezone, use24Hour]);
+  const displaySettings = useMemo(() => ({ currency, timezone, use24Hour }), [currency, timezone, use24Hour]);
 
   const handleCopy = useCallback(
     ({ copied, message }: CopyOutcome) => {

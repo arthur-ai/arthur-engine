@@ -1,18 +1,15 @@
-"""Helpers for resolving display currency and converting USD amounts for API responses."""
+"""Helpers for resolving the display currency. Costs stay in USD in every API
+response; clients convert them for display with the rate from get_display_rate."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Optional
 
 from config.currency_config import currency_config
-from services.currency import get_currency_conversion_service
+from services.currency import UsdRate, get_currency_conversion_service
 
 if TYPE_CHECKING:
     from schemas.internal_schemas import ApplicationConfiguration
-
-_COST_FIELDS = ("prompt_token_cost", "completion_token_cost", "total_token_cost")
-
-T = TypeVar("T")
 
 
 def get_display_currency(application_config: ApplicationConfiguration) -> str:
@@ -25,34 +22,11 @@ def get_display_currency(application_config: ApplicationConfiguration) -> str:
     return raw.strip().upper()
 
 
-def convert_cost_for_display(
-    amount_usd: float, target_currency: str
-) -> tuple[float, str]:
-    """Convert a USD amount to the target currency. Returns (amount, code); on failure returns (amount_usd, 'USD')."""
-    if not target_currency or target_currency.upper() == "USD":
-        return (amount_usd, "USD")
-    svc = get_currency_conversion_service()
-    if svc is None:
-        return (amount_usd, "USD")
-    return svc.convert_usd_to(amount_usd, target_currency)
-
-
-def apply_currency_to_token_cost_item(item: T, target_currency: str) -> tuple[str, T]:
-    """Convert token cost fields to target_currency; returns (effective_currency, item)."""
-    target = (target_currency or "USD").strip().upper()
-    if target == "USD":
-        return ("USD", item)
-    update: dict[str, float] = {}
-    effective_currency = target
-    for field in _COST_FIELDS:
-        val = getattr(item, field, None)
-        if val is not None:
-            converted, actual_code = convert_cost_for_display(float(val), target)
-            update[field] = converted
-            if actual_code == "USD":
-                effective_currency = "USD"
-    if not update:
-        return (target, item)
-    if hasattr(item, "model_copy"):
-        return (effective_currency, item.model_copy(update=update))
-    return (effective_currency, item)
+def get_display_rate(currency: str) -> Optional[UsdRate]:
+    """Return the rate from USD to the display currency, or None when no rate is cached."""
+    if currency == "USD":
+        return UsdRate(rate=1.0, updated_at=None)
+    service = get_currency_conversion_service()
+    if service is None:
+        return None
+    return service.get_usd_rate(currency)

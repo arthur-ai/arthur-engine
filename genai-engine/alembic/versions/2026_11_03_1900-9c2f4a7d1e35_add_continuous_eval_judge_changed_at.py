@@ -1,7 +1,7 @@
 """add judge_changed_at to continuous_evals
 
 Revision ID: 9c2f4a7d1e35
-Revises: b1194cd9c938
+Revises: c3e8a1f5d7b2
 Create Date: 2026-11-03 19:00:00.000000
 
 continuous_evals.judge_changed_at is when the eval last switched evaluator (name
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "9c2f4a7d1e35"
-down_revision = "b1194cd9c938"
+down_revision = "c3e8a1f5d7b2"
 branch_labels = None
 depends_on = None
 

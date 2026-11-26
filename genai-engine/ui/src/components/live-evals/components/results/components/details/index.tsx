@@ -1,4 +1,4 @@
-import { CopyableChip, MustacheHighlightedTextField } from "@arthur/shared-components";
+import { CopyableChip, MustacheHighlightedTextField, formatCost } from "@arthur/shared-components";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -24,7 +24,7 @@ import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
-import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 type Props = {
   annotationId?: string;
@@ -35,7 +35,7 @@ type Props = {
 
 export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
   const { task } = useTask();
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const { currency, timezone, use24Hour } = useDisplaySettings();
 
   const { data, isLoading } = useAnnotation(annotationId!);
 
@@ -334,7 +334,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                         fontWeight: 600,
                       }}
                     >
-                      {data.cost != null ? formatCurrency(data.cost, defaultCurrency) : "N/A"}
+                      {data.cost != null ? formatCost(data.cost, currency) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>

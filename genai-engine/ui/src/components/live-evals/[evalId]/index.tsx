@@ -69,7 +69,7 @@ export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
   const { task } = useTask();
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const { currency, timezone, use24Hour } = useDisplaySettings();
   const api = useApi()!;
 
   const [activeTab, setActiveTab] = useState<DetailTab>("traces");
@@ -106,10 +106,7 @@ export const LiveEvalDetail = () => {
   const transform = useTransform(liveEval?.transform_id);
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
-  const columns = useMemo(
-    () => createColumns({ taskId: task?.id ?? "", defaultCurrency, timezone, use24Hour }),
-    [task?.id, defaultCurrency, timezone, use24Hour]
-  );
+  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "", currency, timezone, use24Hour }), [task?.id, currency, timezone, use24Hour]);
 
   const table = useMaterialReactTable({
     columns,

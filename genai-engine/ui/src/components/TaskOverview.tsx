@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import { TrendingUpOutlined, OpenInNewOutlined, BalanceOutlined, CloseOutlined, InfoOutlined } from "@mui/icons-material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
@@ -30,7 +31,7 @@ import { MetricCard } from "./task-overview/MetricCard";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { useTaskOverviewMetrics } from "@/hooks/useTaskOverviewMetrics";
-import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 import { TimeInterval } from "@/utils/timeWindows";
 
 type TimeRangeButton = "Day" | "Last 7 Days" | "MTD" | "YTD";
@@ -56,7 +57,7 @@ const getTimeRangeLabel = (button: TimeRangeButton): string => {
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
-  const { defaultCurrency, timezone, use24Hour, scopeUrl } = useDisplaySettings();
+  const { currency, timezone, use24Hour, scopeUrl } = useDisplaySettings();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
@@ -329,7 +330,7 @@ export const TaskOverview: React.FC = () => {
           <MetricCard
             icon={<TollOutlinedIcon fontSize="inherit" />}
             label="Cost"
-            value={formatCurrency(metrics?.totalCost ?? 0, defaultCurrency)}
+            value={formatCost(metrics?.totalCost ?? 0, currency)}
             subLabel="est. spend"
             color={METRIC_COLORS.cost.main}
             bgColor={METRIC_COLORS.cost.light}
@@ -444,7 +445,7 @@ export const TaskOverview: React.FC = () => {
               <LineChart
                 height={256}
                 xAxis={sharedXAxis}
-                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v, defaultCurrency) }]}
+                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v, currency) }]}
                 series={[
                   {
                     data: costValues,
@@ -452,7 +453,7 @@ export const TaskOverview: React.FC = () => {
                     area: true,
                     showMark: true,
                     label: "Cost",
-                    valueFormatter: (v: number | null) => (v != null ? formatCostAxisValue(v, defaultCurrency) : ""),
+                    valueFormatter: (v: number | null) => (v != null ? formatCost(v, currency) : ""),
                   },
                 ]}
                 grid={{ horizontal: true }}

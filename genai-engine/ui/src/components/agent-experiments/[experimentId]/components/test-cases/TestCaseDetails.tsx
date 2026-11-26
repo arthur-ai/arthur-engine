@@ -1,4 +1,4 @@
-import { CopyableChip, Highlight, tryFormatJson } from "@arthur/shared-components";
+import { CopyableChip, Highlight, tryFormatJson, formatCost, type DisplayCurrency } from "@arthur/shared-components";
 import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -11,21 +11,20 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticTestCase, EvalExecution, InputVariable } from "@/lib/api-client/api-client";
 import { isEvalPass } from "@/utils/evals";
-import { formatCurrency } from "@/utils/formatters";
 
 type Props = {
   testCase: AgenticTestCase;
 };
 
 export const TestCaseDetails = ({ testCase }: Props) => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const { task } = useTask();
   const { status, dataset_row_id, total_cost, template_input_variables, agentic_result } = testCase;
   const { request_url, request_headers, request_body, output, evals } = agentic_result;
 
   return (
     <DialogContent dividers className="space-y-6">
-      <HeaderSection status={status} totalCost={total_cost} datasetRowId={dataset_row_id} defaultCurrency={defaultCurrency} />
+      <HeaderSection status={status} totalCost={total_cost} datasetRowId={dataset_row_id} currency={currency} />
 
       {template_input_variables.length > 0 && <InputVariablesSection variables={template_input_variables} />}
 
@@ -42,12 +41,12 @@ const HeaderSection = ({
   status,
   totalCost,
   datasetRowId,
-  defaultCurrency,
+  currency,
 }: {
   status: AgenticTestCase["status"];
   totalCost: string | null | undefined;
   datasetRowId: string;
-  defaultCurrency: string;
+  currency: DisplayCurrency;
 }) => (
   <Stack
     direction="column"
@@ -102,7 +101,7 @@ const HeaderSection = ({
             fontWeight: 600,
           }}
         >
-          {totalCost ? formatCurrency(parseFloat(totalCost), defaultCurrency) : "N/A"}
+          {totalCost ? formatCost(parseFloat(totalCost), currency) : "N/A"}
         </Typography>
       </Stack>
     </Stack>
@@ -365,7 +364,7 @@ const EvaluationsSection = ({ evals }: { evals: EvalExecution[] }) => (
 );
 
 const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const { eval_name, eval_version, eval_results, eval_input_variables } = evalItem;
   const hasResults = !!eval_results;
   const isPass = hasResults && isEvalPass(eval_results.score);
@@ -398,7 +397,7 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
 
           {hasResults ? (
             <>
-              <Chip label={`Cost: ${formatCurrency(parseFloat(eval_results.cost), defaultCurrency)}`} size="small" variant="outlined" />
+              <Chip label={`Cost: ${formatCost(parseFloat(eval_results.cost), currency)}`} size="small" variant="outlined" />
               <StatusBadge status={isPass ? "completed" : "failed"} />
             </>
           ) : (
