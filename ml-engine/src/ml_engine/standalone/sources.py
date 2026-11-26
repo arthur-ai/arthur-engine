@@ -65,6 +65,7 @@ SECRET_DESTINATION_FIELDS: dict[str, frozenset[str]] = {
     "gcp_network": frozenset(),
     "gcp_vertex": frozenset(),
     "jamf_pro": frozenset({"base_url"}),
+    "kong": frozenset({"base_url", "ca_certificate", "tls_verification"}),
     "litellm": frozenset({"base_url", "ca_certificate", "tls_verification"}),
     "local": frozenset(),
     "splunk_enterprise": frozenset({"base_url", "ca_certificate", "tls_verification"}),

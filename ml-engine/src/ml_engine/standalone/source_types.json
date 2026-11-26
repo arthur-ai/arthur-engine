@@ -684,6 +684,55 @@
         }
       ]
     },
+    "kong": {
+      "vendor": "kong",
+      "display_name": "Kong Gateway",
+      "source_class": "network",
+      "availability": "preview",
+      "query_language": "none",
+      "fields": [
+        {
+          "name": "base_url",
+          "is_sensitive": false,
+          "is_optional": false,
+          "d_type": "string",
+          "description": "Address of Kong's Admin API, not its proxy port or Kong Manager. Must be https. Example: https://kong-admin.example.com:8444",
+          "allowed_values": null,
+          "priority": 10
+        },
+        {
+          "name": "admin_token",
+          "is_sensitive": true,
+          "is_optional": false,
+          "d_type": "string",
+          "description": "RBAC token of a Kong admin with the read-only role in every workspace to be scanned. Sent as the Kong-Admin-Token header.",
+          "allowed_values": null,
+          "priority": 20
+        },
+        {
+          "name": "ca_certificate",
+          "is_sensitive": false,
+          "is_optional": true,
+          "d_type": "string",
+          "description": "PEM certificate of the CA that signed the Admin API's certificate, when it is a private CA. Required when tls_verification is ca_only. Otherwise, empty trusts the engine's system CAs.",
+          "allowed_values": null,
+          "priority": 30
+        },
+        {
+          "name": "tls_verification",
+          "is_sensitive": false,
+          "is_optional": true,
+          "d_type": "enum",
+          "description": "How the Admin API's certificate is checked. full (the default): issuer and hostname. ca_only: issuer only, trusting just the CA in ca_certificate, for a certificate that does not name the host the engine connects to; needs ca_certificate. off: no check at all.",
+          "allowed_values": [
+            "full",
+            "ca_only",
+            "off"
+          ],
+          "priority": 40
+        }
+      ]
+    },
     "litellm": {
       "vendor": "litellm",
       "display_name": "LiteLLM Proxy",

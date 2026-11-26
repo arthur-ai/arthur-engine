@@ -56,6 +56,8 @@ from discovery.network.cloudwatch_logs.connector import VENDOR as CLOUDWATCH_LOG
 from discovery.network.cloudwatch_logs.connector import CloudWatchLogsConnector
 from discovery.network.gcp_logging.connector import VENDOR as GCP_NETWORK_VENDOR
 from discovery.network.gcp_logging.connector import GcpNetworkConnector
+from discovery.network.kong.connector import VENDOR as KONG_VENDOR
+from discovery.network.kong.connector import KongConnector
 from discovery.network.litellm.connector import VENDOR as LITELLM_VENDOR
 from discovery.network.litellm.connector import LiteLLMConnector
 from discovery.siem.elastic_security.connector import VENDOR as ELASTIC_SECURITY_VENDOR
@@ -95,10 +97,15 @@ def standalone_connectors() -> dict[str, DiscoveryConnectorFactory]:
     sources that only make sense without one.
 
     `local` reads one machine's endpoint collector output from a folder someone mounted
-    into the engine, which a data-plane engine never has. A new dict on every call, as
+    into the engine, which a data-plane engine never has. `kong` reports MCP servers
+    and no agents, which the Platform has nowhere to put. A new dict on every call, as
     `source_connectors()` is.
     """
-    return {**source_connectors(), LOCAL_VENDOR: LocalConnector}
+    return {
+        **source_connectors(),
+        LOCAL_VENDOR: LocalConnector,
+        KONG_VENDOR: KongConnector,
+    }
 
 
 def corroborating_vendors() -> frozenset[str]:
@@ -121,6 +128,8 @@ __all__ = [
     "corroborating_vendors",
     "LocalConnector",
     "LOCAL_VENDOR",
+    "KongConnector",
+    "KONG_VENDOR",
     "JamfConnector",
     "JAMF_VENDOR",
     "ComputeEngineConnector",
