@@ -13,7 +13,8 @@ Backfill, in order:
 1. LLM spans with tokens on one side only were left without a total, because
    zero tokens were never priced. Their total is the priced side, and it is added
    to their trace's total before the spans are fixed.
-2. Every LLM span is flagged: unpriced when it has tokens and no total.
+2. Every LLM span is flagged: unpriced when it reports tokens (split or only a total)
+   and has no total cost.
 3. Each trace gets the sum of its spans' flags.
 """
 
@@ -49,7 +50,9 @@ def upgrade() -> None:
         "trace_metadata",
         sa.Column("unpriced_span_count", sa.Integer(), nullable=True),
     )
-    op.add_column("spans", sa.Column("unpriced_span_count", sa.Integer(), nullable=True))
+    op.add_column(
+        "spans", sa.Column("unpriced_span_count", sa.Integer(), nullable=True)
+    )
 
     op.execute(f"""
         UPDATE trace_metadata tm
@@ -78,7 +81,11 @@ def upgrade() -> None:
         UPDATE spans
            SET unpriced_span_count = CASE
                    WHEN total_token_cost IS NULL
-                    AND (COALESCE(prompt_token_count, 0) > 0 OR COALESCE(completion_token_count, 0) > 0)
+                    AND (
+                        COALESCE(prompt_token_count, 0) > 0
+                        OR COALESCE(completion_token_count, 0) > 0
+                        OR COALESCE(total_token_count, 0) > 0
+                    )
                    THEN 1
                    ELSE 0
                END

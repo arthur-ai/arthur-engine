@@ -186,6 +186,34 @@ class TestExtractTokenCostFromSpan:
         assert result.total_token_cost is None
         assert result.unpriced_span_count == 0
 
+    def test_reported_total_without_split_is_unpriced(self):
+        span = {
+            "attributes": {
+                "llm": {
+                    "model_name": RECOGNIZED_MODEL,
+                    "token_count": {"total": 100},
+                },
+            },
+        }
+        result = extract_token_cost_from_span(span, "LLM")
+        assert result.total_token_count == 100
+        assert result.total_token_cost is None
+        assert result.unpriced_span_count == 1
+
+    def test_reported_cost_with_empty_completion_needs_no_model(self):
+        span = {
+            "attributes": {
+                "llm": {
+                    "token_count": {"prompt": 100, "completion": 0},
+                    "cost": {"prompt": 0.02},
+                },
+            },
+        }
+        result = extract_token_cost_from_span(span, "LLM")
+        assert result.completion_token_cost == 0.0
+        assert result.total_token_cost == pytest.approx(0.02)
+        assert result.unpriced_span_count == 0
+
     def test_non_llm_span_is_not_counted(self):
         result = extract_token_cost_from_span(
             _llm_span(RECOGNIZED_MODEL, 1000, 100),

@@ -18,14 +18,21 @@ from db_models import (
     DatabaseTask,
     DatabaseTraceMetadata,
 )
-from arthur_common.models.agent_governance_schemas import GCPAgentCreationSource, TaskMetadata
+from arthur_common.models.agent_governance_schemas import (
+    GCPAgentCreationSource,
+    TaskMetadata,
+)
 from schemas.internal_schemas import TraceMetadata
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
-from tests.routes.trace_api.conftest import _create_base_trace_request, _create_span
+from tests.routes.trace_api.conftest import (
+    _create_base_trace_request,
+    _create_span,
+    _delete_trace_metadata_from_db,
+)
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -740,9 +747,9 @@ def _cleanup_task(db_session, task_id: str):
     db_session.query(DatabaseServiceNameTaskMapping).filter(
         DatabaseServiceNameTaskMapping.task_id == task_id
     ).delete(synchronize_session=False)
-    db_session.query(DatabaseTask).filter(
-        DatabaseTask.id == task_id
-    ).delete(synchronize_session=False)
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete(
+        synchronize_session=False
+    )
     db_session.commit()
 
 
@@ -1387,7 +1394,9 @@ def test_trace_api_counts_llm_spans_that_could_not_be_priced(
     session_id = f"unpriced_session_{uuid4()}"
     trace_id = uuid4().bytes
     priced = _llm_span_with_messages(trace_id, "gpt-4-0613", session_id)
-    unpriced = _llm_span_with_messages(trace_id, "totally-made-up-model-xyz", session_id)
+    unpriced = _llm_span_with_messages(
+        trace_id, "totally-made-up-model-xyz", session_id
+    )
     tool = _create_span(
         trace_id=trace_id,
         span_id=uuid4().bytes[:8],
@@ -1395,33 +1404,42 @@ def test_trace_api_counts_llm_spans_that_could_not_be_priced(
         span_type="TOOL",
         session_id=session_id,
     )
-    _send_spans(client, task_id, [priced, unpriced, tool])
-
     db_session = override_get_db_session()
-    spans = {
-        span.span_name: span
-        for span in db_session.query(DatabaseSpan).filter(
-            DatabaseSpan.trace_id == trace_id.hex(),
+    try:
+        _send_spans(client, task_id, [priced, unpriced, tool])
+
+        spans = {
+            span.span_name: span
+            for span in db_session.query(DatabaseSpan).filter(
+                DatabaseSpan.trace_id == trace_id.hex(),
+            )
+        }
+        assert spans["llm_gpt-4-0613"].unpriced_span_count == 0
+        assert spans["llm_totally-made-up-model-xyz"].unpriced_span_count == 1
+        assert spans["llm_totally-made-up-model-xyz"].total_token_cost is None
+        assert spans["tool"].unpriced_span_count is None
+
+        _send_spans(
+            client,
+            task_id,
+            [_llm_span_with_messages(trace_id, "another-made-up-model", session_id)],
         )
-    }
-    assert spans["llm_gpt-4-0613"].unpriced_span_count == 0
-    assert spans["llm_totally-made-up-model-xyz"].unpriced_span_count == 1
-    assert spans["llm_totally-made-up-model-xyz"].total_token_cost is None
-    assert spans["tool"].unpriced_span_count is None
 
-    _send_spans(
-        client,
-        task_id,
-        [_llm_span_with_messages(trace_id, "another-made-up-model", session_id)],
-    )
+        status_code, traces = client.trace_api_list_traces_metadata(task_ids=[task_id])
+        assert status_code == 200
+        assert traces.display_currency == "USD"
+        [trace] = traces.traces
+        assert trace.unpriced_span_count == 2
+        assert trace.total_token_cost == spans["llm_gpt-4-0613"].total_token_cost
 
-    status_code, traces = client.trace_api_list_traces_metadata(task_ids=[task_id])
-    assert status_code == 200
-    assert traces.display_currency == "USD"
-    [trace] = traces.traces
-    assert trace.unpriced_span_count == 2
-    assert trace.total_token_cost == spans["llm_gpt-4-0613"].total_token_cost
-
-    status_code, sessions = client.trace_api_list_sessions_metadata(task_ids=[task_id])
-    assert status_code == 200
-    assert [session.unpriced_span_count for session in sessions.sessions] == [2]
+        status_code, sessions = client.trace_api_list_sessions_metadata(
+            task_ids=[task_id]
+        )
+        assert status_code == 200
+        assert [session.unpriced_span_count for session in sessions.sessions] == [2]
+    finally:
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.trace_id == trace_id.hex(),
+        ).delete(synchronize_session=False)
+        _delete_trace_metadata_from_db(db_session, [trace_id.hex()])
+        db_session.close()
