@@ -1,15 +1,14 @@
-import { CopyableChip } from "@arthur/shared-components";
+import { CopyableChip, formatCost, type DisplayCurrency } from "@arthur/shared-components";
 import { Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
 import { StatusBadge } from "../components/status-badge";
 
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticExperimentSummary>();
 
-export const createColumns = (defaultCurrency: string) => [
+export const createColumns = (currency: DisplayCurrency) => [
   columnHelper.accessor("name", {
     header: "Name",
   }),
@@ -31,7 +30,7 @@ export const createColumns = (defaultCurrency: string) => [
     Cell: ({ cell }) => {
       const value = cell.getValue() as string;
       if (!value) return "N/A";
-      return <Typography variant="body2">{formatCurrency(parseFloat(value), defaultCurrency)}</Typography>;
+      return <Typography variant="body2">{formatCost(parseFloat(value), currency)}</Typography>;
     },
   }),
   columnHelper.accessor("id", {

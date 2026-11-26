@@ -48,6 +48,7 @@ from utils.constants import (
     SPAN_KIND_LLM,
     UNMAPPED_TASK_ID,
 )
+from utils.token_count import TOKEN_COST_FIELDS
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -992,44 +993,46 @@ class SpanQueryService:
         user_id: str,
         task_ids: list[str],
     ) -> Optional[TraceUserMetadata]:
-        """Get user metadata for a specific user."""
+        """Get user metadata for a specific user, aggregated over their traces like the user list."""
         if not task_ids:
             return None
 
         # Use database-appropriate aggregation functions
         if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             session_ids_agg = (
-                func.array_agg(func.distinct(DatabaseSpan.session_id))
-                .filter(DatabaseSpan.session_id.is_not(None))
+                func.array_agg(func.distinct(DatabaseTraceMetadata.session_id))
+                .filter(DatabaseTraceMetadata.session_id.is_not(None))
                 .label("session_ids")
             )
-            trace_ids_agg = func.array_agg(DatabaseSpan.trace_id).label("trace_ids")
+            trace_ids_agg = func.array_agg(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
         else:  # SQLite and others
             session_ids_agg = func.group_concat(
-                func.distinct(DatabaseSpan.session_id),
+                func.distinct(DatabaseTraceMetadata.session_id),
             ).label("session_ids")
-            trace_ids_agg = func.group_concat(DatabaseSpan.trace_id).label("trace_ids")
+            trace_ids_agg = func.group_concat(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
 
-        # Build query to get user metadata
         query = (
             select(
-                DatabaseSpan.user_id,
-                DatabaseSpan.task_id,
+                DatabaseTraceMetadata.user_id,
+                DatabaseTraceMetadata.task_id,
                 session_ids_agg,
                 trace_ids_agg,
-                func.count(DatabaseSpan.id).label("span_count"),
-                func.min(DatabaseSpan.start_time).label("earliest_start_time"),
-                func.max(DatabaseSpan.end_time).label("latest_end_time"),
+                *self._build_trace_metadata_aggregations(),
+                *self._build_token_cost_aggregations(),
             )
             .where(
                 and_(
-                    DatabaseSpan.user_id == user_id,
-                    DatabaseSpan.task_id.in_(task_ids),
+                    DatabaseTraceMetadata.user_id == user_id,
+                    DatabaseTraceMetadata.task_id.in_(task_ids),
                 ),
             )
             .group_by(
-                DatabaseSpan.user_id,
-                DatabaseSpan.task_id,
+                DatabaseTraceMetadata.user_id,
+                DatabaseTraceMetadata.task_id,
             )
         )
 
@@ -1040,21 +1043,30 @@ class SpanQueryService:
         # Handle session_ids and trace_ids based on database type
         if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             session_ids = [sid for sid in result.session_ids if sid is not None]
-            trace_ids = list(set(result.trace_ids))  # Remove duplicates
+            trace_ids = list(set(result.trace_ids))
         else:  # SQLite and others
             session_ids = [
-                sid for sid in result.session_ids.split(",") if sid and sid != "None"
+                sid
+                for sid in (result.session_ids or "").split(",")
+                if sid and sid != "None"
             ]
-            trace_ids = list(set(result.trace_ids.split(",")))  # Remove duplicates
+            trace_ids = list(set((result.trace_ids or "").split(",")))
 
         return TraceUserMetadata(
             user_id=result.user_id,
             task_id=result.task_id,
             session_ids=session_ids,
             trace_ids=trace_ids,
-            span_count=result.span_count,
+            span_count=result.span_count or 0,
             earliest_start_time=result.earliest_start_time,
             latest_end_time=result.latest_end_time,
+            prompt_token_count=result.prompt_token_count,
+            completion_token_count=result.completion_token_count,
+            total_token_count=result.total_token_count,
+            prompt_token_cost=result.prompt_token_cost,
+            completion_token_cost=result.completion_token_cost,
+            total_token_cost=result.total_token_cost,
+            unpriced_span_count=result.unpriced_span_count,
         )
 
     def get_sessions_aggregated(
@@ -1192,6 +1204,7 @@ class SpanQueryService:
                     prompt_token_cost=row.prompt_token_cost,
                     completion_token_cost=row.completion_token_cost,
                     total_token_cost=row.total_token_cost,
+                    unpriced_span_count=row.unpriced_span_count,
                 ),
             )
 
@@ -1324,6 +1337,7 @@ class SpanQueryService:
                     prompt_token_cost=row.prompt_token_cost,
                     completion_token_cost=row.completion_token_cost,
                     total_token_cost=row.total_token_cost,
+                    unpriced_span_count=row.unpriced_span_count,
                 ),
             )
 
@@ -1352,24 +1366,8 @@ class SpanQueryService:
         SUM returns NULL if all values are NULL, preserving the semantic meaning.
         """
         return [
-            func.sum(DatabaseTraceMetadata.prompt_token_count).label(
-                "prompt_token_count",
-            ),
-            func.sum(DatabaseTraceMetadata.completion_token_count).label(
-                "completion_token_count",
-            ),
-            func.sum(DatabaseTraceMetadata.total_token_count).label(
-                "total_token_count",
-            ),
-            func.sum(DatabaseTraceMetadata.prompt_token_cost).label(
-                "prompt_token_cost",
-            ),
-            func.sum(DatabaseTraceMetadata.completion_token_cost).label(
-                "completion_token_cost",
-            ),
-            func.sum(DatabaseTraceMetadata.total_token_cost).label(
-                "total_token_cost",
-            ),
+            func.sum(getattr(DatabaseTraceMetadata, field)).label(field)
+            for field in TOKEN_COST_FIELDS
         ]
 
     def get_unregistered_root_spans_grouped(

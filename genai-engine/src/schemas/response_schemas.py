@@ -90,6 +90,16 @@ class DisplaySettingsResponse(BaseModel):
     """Public display settings (e.g. default currency for cost formatting)."""
 
     default_currency: str = "USD"
+    usd_exchange_rate: Optional[float] = Field(
+        default=None,
+        description="Units of default_currency one USD buys. Multiply the USD costs "
+        "in API responses by it to show them in default_currency. None when no rate "
+        "is available; show costs in USD then.",
+    )
+    exchange_rate_updated_at: Optional[datetime] = Field(
+        default=None,
+        description="When usd_exchange_rate was fetched. None for USD, which needs no rate.",
+    )
     chatbot_enabled: bool = True
     scope_url: str | None = None
 
@@ -283,8 +293,10 @@ class TraceListResponse(BaseModel):
 
     count: int = Field(description="Total number of traces matching filters")
     display_currency: Optional[str] = Field(
-        None,
-        description="Currency code for cost fields",
+        default="USD",
+        json_schema_extra={"deprecated": True},
+        description="Always USD: cost fields are in USD. To show costs in the "
+        "configured currency, convert them with the rate from /api/v2/display-settings.",
     )
     traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
 
@@ -312,8 +324,10 @@ class SpanListResponse(BaseModel):
 
     count: int = Field(description="Total number of spans matching filters")
     display_currency: Optional[str] = Field(
-        None,
-        description="Currency code for cost fields",
+        default="USD",
+        json_schema_extra={"deprecated": True},
+        description="Always USD: cost fields are in USD. To show costs in the "
+        "configured currency, convert them with the rate from /api/v2/display-settings.",
     )
     spans: list[SpanMetadataResponse] = Field(description="List of span metadata")
 
@@ -323,8 +337,10 @@ class SessionListResponse(BaseModel):
 
     count: int = Field(description="Total number of sessions matching filters")
     display_currency: Optional[str] = Field(
-        None,
-        description="Currency code for cost fields",
+        default="USD",
+        json_schema_extra={"deprecated": True},
+        description="Always USD: cost fields are in USD. To show costs in the "
+        "configured currency, convert them with the rate from /api/v2/display-settings.",
     )
     sessions: list[SessionMetadataResponse] = Field(
         description="List of session metadata",
@@ -337,8 +353,10 @@ class SessionTracesResponse(BaseModel):
     session_id: str = Field(description="Session identifier")
     count: int = Field(description="Number of traces in this session")
     display_currency: Optional[str] = Field(
-        None,
-        description="Currency code for cost fields",
+        default="USD",
+        json_schema_extra={"deprecated": True},
+        description="Always USD: cost fields are in USD. To show costs in the "
+        "configured currency, convert them with the rate from /api/v2/display-settings.",
     )
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
@@ -362,8 +380,10 @@ class TraceUserListResponse(BaseModel):
 
     count: int = Field(description="Total number of users matching filters")
     display_currency: Optional[str] = Field(
-        None,
-        description="Currency code for cost fields",
+        default="USD",
+        json_schema_extra={"deprecated": True},
+        description="Always USD: cost fields are in USD. To show costs in the "
+        "configured currency, convert them with the rate from /api/v2/display-settings.",
     )
     users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
 

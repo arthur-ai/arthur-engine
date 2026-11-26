@@ -987,6 +987,7 @@ class TraceMetadata(TokenCountCostSchema):
             prompt_token_cost=x.prompt_token_cost,
             completion_token_cost=x.completion_token_cost,
             total_token_cost=x.total_token_cost,
+            unpriced_span_count=x.unpriced_span_count,
             created_at=x.created_at,
             updated_at=x.updated_at,
             input_content=x.input_content,
@@ -1011,6 +1012,7 @@ class TraceMetadata(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
             created_at=self.created_at,
             updated_at=self.updated_at,
             input_content=self.input_content,
@@ -1049,6 +1051,7 @@ class TraceMetadata(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
             input_content=self.input_content,
             output_content=self.output_content,
             annotations=annotation_response,
@@ -2185,6 +2188,7 @@ class Span(TokenCountCostSchema):
             prompt_token_cost=db_span.prompt_token_cost,
             completion_token_cost=db_span.completion_token_cost,
             total_token_cost=db_span.total_token_cost,
+            unpriced_span_count=db_span.unpriced_span_count,
             created_at=db_span.created_at,
             updated_at=db_span.updated_at,
             metric_results=[
@@ -2215,6 +2219,7 @@ class Span(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2244,6 +2249,7 @@ class Span(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
             metric_results=[
                 result._to_response_model() for result in (self.metric_results or [])
             ],
@@ -2277,6 +2283,7 @@ class Span(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
             metric_results=[
                 result._to_response_model() for result in (self.metric_results or [])
             ],
@@ -2310,6 +2317,7 @@ class Span(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
         )
 
     @staticmethod
@@ -2335,6 +2343,7 @@ class Span(TokenCountCostSchema):
             prompt_token_cost=span_data.get("prompt_token_cost"),
             completion_token_cost=span_data.get("completion_token_cost"),
             total_token_cost=span_data.get("total_token_cost"),
+            unpriced_span_count=span_data.get("unpriced_span_count"),
             created_at=datetime.now(),
             updated_at=datetime.now(),
             metric_results=[
@@ -2382,6 +2391,7 @@ class SessionMetadata(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
         )
 
 
@@ -2414,6 +2424,7 @@ class TraceUserMetadata(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            unpriced_span_count=self.unpriced_span_count,
         )
 
 

@@ -40,7 +40,7 @@ Custom typed wrappers live in [src/components/traces/components/filtering/hooks/
 
 ## Misc gotchas
 
-- Currency display: `useDisplaySettings()` provides `defaultCurrency` (from `GET /api/v2/display-settings`; backend default set by the `CURRENCY_DEFAULT_CURRENCY` env var). Format with `formatCurrency(amount, defaultCurrency)` from `@/utils/formatters`.
+- Currency display: API costs are always USD. `useDisplaySettings()` provides `currency`, a `DisplayCurrency` (code plus the rate from USD, from `GET /api/v2/display-settings`; the code is set by the `CURRENCY_DEFAULT_CURRENCY` env var). Format costs with `formatCost(amountUsd, currency)` from `@arthur/shared-components`, which converts them; never convert on the backend.
 - The auth token lives in localStorage, managed by `AuthContext`.
 - Keep `/@arthur\//` in `test.server.deps.inline` (vitest.config.ts) — `@arthur/*` packages ship ESM with extensionless relative imports that Vitest's resolver can't handle otherwise.
 

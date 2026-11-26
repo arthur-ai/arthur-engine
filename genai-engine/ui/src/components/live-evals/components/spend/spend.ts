@@ -1,20 +1,13 @@
-import { getLocaleForCurrency } from "@arthur/shared-components";
+import { type DisplayCurrency, formatCost } from "@arthur/shared-components";
 
 import { sampleRateToPercent } from "../sample-rate";
 
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse, SpendEstimateUnavailableReason } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
-
-// formatCurrency shows anything under a millionth as "< $0.000001", which reads wrong for no spend at all.
-export const formatSpend = (amount: number, currency: string): string =>
-  amount === 0
-    ? new Intl.NumberFormat(getLocaleForCurrency(currency || "USD"), { style: "currency", currency: currency || "USD" }).format(0)
-    : formatCurrency(amount, currency);
 
 const formatTracesPerDay = (tracesPerDay: number): string => tracesPerDay.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 // traces/day × sample rate × average run cost, with the numbers the backend used.
-export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstimate, currency: string): string => {
+export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstimate, currency: DisplayCurrency): string => {
   const parts = [`${formatTracesPerDay(estimate.traces_per_day)} traces/day`, `${sampleRateToPercent(estimate.sample_rate)}% sampled`];
   const judgedShare = estimate.judged_share ?? 1;
   if (judgedShare < 1) parts.push(`${sampleRateToPercent(judgedShare)}% reach the judge`);
@@ -25,7 +18,7 @@ export const describeEstimateFormula = (estimate: ContinuousEvalDailySpendEstima
     parts.push(`${estimate.spans_per_trace.toLocaleString(undefined, { maximumFractionDigits: 1 })} judged spans per trace`);
   }
   if (estimate.average_run_cost != null) {
-    parts.push(`${formatSpend(estimate.average_run_cost, currency)} per ${estimate.spans_per_trace != null ? "span" : "run"}`);
+    parts.push(`${formatCost(estimate.average_run_cost, currency)} per ${estimate.spans_per_trace != null ? "span" : "run"}`);
   }
   const pricedFrom = estimate.priced_since ? `, runs since the evaluator changed` : "";
   return `${parts.join(" × ")} (last ${estimate.window_days} days${pricedFrom})`;

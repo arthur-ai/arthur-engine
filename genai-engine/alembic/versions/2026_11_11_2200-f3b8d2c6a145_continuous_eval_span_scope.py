@@ -1,7 +1,7 @@
 """continuous eval scope: span runs, rollups and their annotation columns
 
 Revision ID: f3b8d2c6a145
-Revises: e0a1b2c3d4f5
+Revises: e0a1b2c3d4f5, c3e8a1f5d7b2
 Create Date: 2026-11-11 22:00:00.000000
 
 One migration for judging a continuous eval per span:
@@ -34,7 +34,8 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "f3b8d2c6a145"
-down_revision = "e0a1b2c3d4f5"
+# Also follows dev's unpriced span count migration, which touches other tables.
+down_revision = ("e0a1b2c3d4f5", "c3e8a1f5d7b2")
 branch_labels = None
 depends_on = None
 

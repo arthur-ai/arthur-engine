@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -33,7 +34,7 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
-import { formatDateInTimezone, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
+import { formatDateInTimezone, formatTimestampDuration } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface PromptVersionDetails {
@@ -52,7 +53,7 @@ interface PromptVersionDetails {
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const { currency, timezone, use24Hour } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -284,7 +285,7 @@ export const ExperimentDetailView: React.FC = () => {
             </Box>
             {experiment.total_cost && (
               <Box>
-                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
+                <span className="font-medium">Total Cost:</span> {formatCost(parseFloat(experiment.total_cost), currency)}
               </Box>
             )}
           </Box>

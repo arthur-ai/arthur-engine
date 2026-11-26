@@ -18,11 +18,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
+import { flexRender, type SortingState, useTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
-import { createColumns } from "../../data/columns";
+import { createColumns, liveEvalFeatures } from "../../data/columns";
 import { continuousEvalsQueryOptions } from "../../hooks/useContinuousEvals";
 import { EditFormDialog } from "../edit-form";
 
@@ -74,7 +74,8 @@ export const Management = () => {
     })
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: liveEvalFeatures,
     data: data.evals,
     columns: useMemo(
       () =>
@@ -85,12 +86,10 @@ export const Management = () => {
         }),
       [setContinuousEvalId, timezone, use24Hour]
     ),
-    getCoreRowModel: getCoreRowModel(),
     state: {
       sorting,
     },
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
@@ -182,7 +181,7 @@ export const Management = () => {
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} hover>
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>

@@ -1,6 +1,7 @@
-import { ColumnDef, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { type ColumnDef, useTable } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+import { tracesTableFeatures } from "../../TracesTable";
 import { Column } from "../form/shared";
 
 export const usePreviewTableData = (columns: Column[]) => {
@@ -17,7 +18,7 @@ export const usePreviewTableData = (columns: Column[]) => {
     [columns]
   );
 
-  const tableColumns: ColumnDef<Record<string, string>>[] = useMemo(() => {
+  const tableColumns: ColumnDef<typeof tracesTableFeatures, Record<string, string>>[] = useMemo(() => {
     const keys = Object.keys(data?.[0] ?? {});
 
     return keys.map((key) => ({
@@ -27,10 +28,10 @@ export const usePreviewTableData = (columns: Column[]) => {
     }));
   }, [data]);
 
-  const table = useReactTable({
+  const table = useTable({
+    features: tracesTableFeatures,
     columns: tableColumns,
     data,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return {

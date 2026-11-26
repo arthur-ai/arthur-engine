@@ -24,7 +24,7 @@ vi.mock("../../hooks/useContinuousEvalSpend", () => ({
 }));
 
 vi.mock("@/contexts/DisplaySettingsContext", () => ({
-  useDisplaySettings: () => ({ defaultCurrency: "USD" }),
+  useDisplaySettings: () => ({ currency: { code: "USD", usdRate: 1, rateDate: null } }),
 }));
 
 const paid: TraceFilterRow = { spanName: "", attributePath: "attributes.metadata.plan", operator: "equals", value: "paid" };

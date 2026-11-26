@@ -18,11 +18,11 @@ import {
   TextField,
 } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { parseAsBoolean, parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 
-import { createColumns } from "../../data/results-columns";
+import { createColumns, resultsFeatures } from "../../data/results-columns";
 import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEvalsResults";
 
 import { Details } from "./components/details";
@@ -39,7 +39,7 @@ import { useTask } from "@/hooks/useTask";
 export const Results = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
 
   const [annotationId, setAnnotationId] = useQueryState("id", parseAsString.withDefault(""));
   const [action, setAction] = useQueryState("action", parseAsStringEnum(["rerun"]));
@@ -77,13 +77,10 @@ export const Results = () => {
     })
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: resultsFeatures,
     data: data.annotations,
-    columns: useMemo(
-      () => createColumns({ onView: (annotationId) => setAnnotationId(annotationId), defaultCurrency }),
-      [setAnnotationId, defaultCurrency]
-    ),
-    getCoreRowModel: getCoreRowModel(),
+    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId), currency }), [setAnnotationId, currency]),
   });
 
   useEffect(() => {
@@ -165,7 +162,7 @@ export const Results = () => {
                     data-tour-id={row.index === 0 ? TOUR_IDS.evaluateResultsFirstRow : undefined}
                     sx={{ cursor: "pointer" }}
                   >
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>

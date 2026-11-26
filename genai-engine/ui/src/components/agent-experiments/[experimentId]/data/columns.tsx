@@ -1,4 +1,4 @@
-import { CopyableChip } from "@arthur/shared-components";
+import { CopyableChip, formatCost } from "@arthur/shared-components";
 import { Chip, Stack, Tooltip, Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
@@ -6,13 +6,12 @@ import { StatusBadge } from "@/components/agent-experiments/components/status-ba
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticTestCase, EvalExecution, TestCaseStatus } from "@/lib/api-client/api-client";
 import { isEvalPass } from "@/utils/evals";
-import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticTestCase>();
 
 function CostCell({ value }: { value: string | null | undefined }) {
-  const { defaultCurrency } = useDisplaySettings();
-  return value ? formatCurrency(parseFloat(value), defaultCurrency) : "N/A";
+  const { currency } = useDisplaySettings();
+  return value ? formatCost(parseFloat(value), currency) : "N/A";
 }
 
 const isTerminalStatus = (status: TestCaseStatus): boolean => status === "completed" || status === "failed";

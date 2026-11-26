@@ -26,7 +26,7 @@ from schemas.response_schemas import (
     DisplaySettingsResponse,
 )
 from utils.constants import GENAI_ENGINE_SCOPE_URL_ENV_VAR
-from utils.currency_display import get_display_currency
+from utils.currency_display import get_display_currency, get_display_rate
 from utils.users import permission_checker
 from utils.utils import get_env_var, public_endpoint
 
@@ -90,8 +90,12 @@ def get_display_settings(
         if raw_scope_url and raw_scope_url.startswith("https://")
         else None
     )
+    currency = get_display_currency(application_config)
+    usd_rate = get_display_rate(currency)
     return DisplaySettingsResponse(
-        default_currency=get_display_currency(application_config),
+        default_currency=currency,
+        usd_exchange_rate=usd_rate.rate if usd_rate else None,
+        exchange_rate_updated_at=usd_rate.updated_at if usd_rate else None,
         chatbot_enabled=extra_feature_config.CHATBOT_ENABLED,
         scope_url=scope_url,
     )

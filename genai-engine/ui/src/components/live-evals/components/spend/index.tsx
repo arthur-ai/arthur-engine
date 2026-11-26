@@ -1,3 +1,4 @@
+import { type DisplayCurrency, formatCost } from "@arthur/shared-components";
 import PaidOutlinedIcon from "@mui/icons-material/PaidOutlined";
 import PauseCircleOutlineOutlinedIcon from "@mui/icons-material/PauseCircleOutlineOutlined";
 import TodayOutlinedIcon from "@mui/icons-material/TodayOutlined";
@@ -10,17 +11,15 @@ import { percentToSampleRate, samplePercentSchema } from "../sample-rate";
 import { spanFilterJson, spanScopeSchema, type SpanScopeValues } from "../span-scope/spanScope";
 import { completeTraceFilterRows, rowsToTraceFilter, type TraceFilterRow } from "../trace-filter";
 
-import { describeEstimateFormula, describeUnavailableEstimate, formatSpend, isSpendEstimate, isSpendResponse } from "./spend";
+import { describeEstimateFormula, describeUnavailableEstimate, isSpendEstimate, isSpendResponse } from "./spend";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { ContinuousEvalDailySpendEstimate, ContinuousEvalSpendResponse } from "@/lib/api-client/api-client";
 
-export { describeEstimateFormula, describeUnavailableEstimate, formatSpend } from "./spend";
+export { describeEstimateFormula, describeUnavailableEstimate } from "./spend";
 
-// Run costs and the daily cap are stored in USD and not converted, so they are shown in USD whatever the display currency.
-const SPEND_CURRENCY = "USD";
-
-export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResponse; currency: string }) => {
+export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResponse; currency: DisplayCurrency }) => {
   const { estimate } = spend;
   const runs = spend.last_24h_run_count;
   const cap = spend.daily_cost_cap_usd;
@@ -28,7 +27,7 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
     <Stack sx={{ gap: 2 }}>
       {spend.cap_reached && cap != null && (
         <Alert severity="warning" icon={<PauseCircleOutlineOutlinedIcon />}>
-          Paused for today: the daily spend cap of {formatSpend(cap, currency)} is reached. New traces are skipped until midnight (engine time, UTC by
+          Paused for today: the daily spend cap of {formatCost(cap, currency)} is reached. New traces are skipped until midnight (engine time, UTC by
           default).
         </Alert>
       )}
@@ -36,13 +35,13 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
         <StatCard
           icon={<PaidOutlinedIcon />}
           label="Last 24 hours"
-          value={formatSpend(spend.last_24h_cost, currency)}
+          value={formatCost(spend.last_24h_cost, currency)}
           subValue={`${runs.toLocaleString()} ${runs === 1 ? "run" : "runs"}`}
         />
         <StatCard
           icon={<TrendingUpIcon />}
           label="Estimated per day"
-          value={estimate.estimated_daily_cost != null ? formatSpend(estimate.estimated_daily_cost, currency) : "—"}
+          value={estimate.estimated_daily_cost != null ? formatCost(estimate.estimated_daily_cost, currency) : "—"}
           subValue={
             estimate.estimated_daily_cost != null
               ? describeEstimateFormula(estimate, currency)
@@ -53,8 +52,8 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
           <StatCard
             icon={<TodayOutlinedIcon />}
             label="Spent today"
-            value={formatSpend(spend.spent_today, currency)}
-            subValue={`since midnight, of ${formatSpend(cap, currency)} daily cap`}
+            value={formatCost(spend.spent_today, currency)}
+            subValue={`since midnight, of ${formatCost(cap, currency)} daily cap`}
             color={spend.cap_reached ? "warning" : "default"}
           />
         )}
@@ -64,6 +63,7 @@ export const SpendCards = ({ spend, currency }: { spend: ContinuousEvalSpendResp
 };
 
 export const ContinuousEvalSpendCards = ({ evalId }: { evalId: string }) => {
+  const { currency } = useDisplaySettings();
   const { data: spend, isLoading } = useContinuousEvalSpend(evalId);
 
   if (isLoading) {
@@ -77,10 +77,10 @@ export const ContinuousEvalSpendCards = ({ evalId }: { evalId: string }) => {
   // Spend is supplementary: if it fails to load or comes back malformed, the rest of the page still works.
   if (!isSpendResponse(spend)) return null;
 
-  return <SpendCards spend={spend} currency={SPEND_CURRENCY} />;
+  return <SpendCards spend={spend} currency={currency} />;
 };
 
-export const SpendEstimateText = ({ estimate, currency }: { estimate: ContinuousEvalDailySpendEstimate; currency: string }) => (
+export const SpendEstimateText = ({ estimate, currency }: { estimate: ContinuousEvalDailySpendEstimate; currency: DisplayCurrency }) => (
   <Stack direction="row" sx={{ alignItems: "center", gap: 1, color: "text.secondary" }}>
     <PaidOutlinedIcon fontSize="small" />
     <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -88,7 +88,7 @@ export const SpendEstimateText = ({ estimate, currency }: { estimate: Continuous
         <>
           Estimated{" "}
           <Typography component="span" variant="body2" sx={{ color: "text.primary", fontWeight: 600 }}>
-            {formatSpend(estimate.estimated_daily_cost, currency)} per day
+            {formatCost(estimate.estimated_daily_cost, currency)} per day
           </Typography>
           : {describeEstimateFormula(estimate, currency)}
         </>
@@ -112,6 +112,7 @@ type SpendEstimateLineProps = {
 
 // Estimate shown under the evaluator on the create forms; follows the evaluator, its version, the sample rate and the trace filter fields.
 export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, samplePercent, traceFilter = [], spanScope }: SpendEstimateLineProps) => {
+  const { currency } = useDisplaySettings();
   const debouncedPercent = useDebouncedValue(samplePercent);
   const debouncedFilter = useDebouncedValue(traceFilter);
   const debouncedScope = useDebouncedValue(spanScope);
@@ -137,7 +138,7 @@ export const SpendEstimateLine = ({ taskId, llmEvalName, llmEvalVersion, sampleP
   if (!isSpendEstimate(estimate)) return null;
   return (
     <Stack sx={{ gap: 0.5 }}>
-      <SpendEstimateText estimate={estimate} currency={SPEND_CURRENCY} />
+      <SpendEstimateText estimate={estimate} currency={currency} />
       {incompleteCount > 0 && (
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {incompleteCount === 1 ? "1 trace filter condition isn't" : `${incompleteCount} trace filter conditions aren't`} filled in yet, so the
