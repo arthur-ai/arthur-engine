@@ -668,22 +668,25 @@ counted as `not-ssm-managed`, and a Windows instance as `unsupported-platform`.
 #### `aws_bedrock` — AWS Bedrock
 
 Lists the account's Bedrock agents and AgentCore agent runtimes, and reads CloudTrail
-for the IAM roles that call Bedrock's models.
+for the IAM roles that call Bedrock's models. Also lists AgentCore's gateways, as MCP
+servers.
 
 | Field | Secret | Required | Notes |
 |---|---|---|---|
 | `regions` | no | yes | Comma-separated regions, such as `us-east-1,us-west-2` |
-| `list_agents` | no | no | `true` (default) or `false`: list agents and agent runtimes |
+| `list_agents` | no | no | `true` (default) or `false`: list agents, agent runtimes and gateways |
 | `read_cloudtrail` | no | no | `true` (default) or `false`: read model callers from CloudTrail |
 | `access_key_id` | yes | no | As for `aws_ec2`; without one, the engine uses its own AWS credentials only if `ARTHUR_ENGINE_AWS_BEDROCK_ALLOW_DEFAULT_CREDENTIALS=true` is set |
 | `secret_access_key` | yes | no | Set with `access_key_id`, or neither |
 | `role_arn` | no | no | A role those credentials assume, as session `arthur-ai-discovery` |
 | `external_id` | no | no | The external ID the role's trust policy requires; only with `role_arn` |
 
-The credential needs `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes` and
+The credential needs `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes`,
+`bedrock-agentcore:ListGateways`, `bedrock-agentcore:ListGatewayTargets` and
 `cloudtrail:LookupEvents`. The connector never calls `GetAgentRuntime`, which returns a
-runtime's environment variables, or `GetAgent`, which returns its prompt. Use
-`query_language: none` and leave `query` empty.
+runtime's environment variables, `GetAgent`, which returns its prompt, or `GetGateway`
+and `GetGatewayTarget`, which return how each authorizes its callers and reaches what is
+behind it. Use `query_language: none` and leave `query` empty.
 
 Agents and runtimes are an inventory: the lookback is not applied to them. CloudTrail is
 read over the lookback, or the last seven days when it is `0`, for `Converse`,
@@ -697,6 +700,15 @@ call that was allowed and then failed in the model is still counted as that role
 part AWS refuses in a region, or a region AgentCore does not run in, is a
 warning and the rest of the scan goes on; a refused credential, or every part refused,
 fails the scan.
+
+Each AgentCore gateway is reported as an [MCP server](#what-the-destination-receives),
+not an agent, with `detection: registered` and its ARN as `external_id`. So is each of a
+gateway's targets whose type is `MCP_SERVER`, a server the gateway fronts, with
+`external_id` `{gateway ARN}/target/{target id}`. Targets of other types (a Lambda, an
+OpenAPI schema) are the gateway's own tools and are counted in the job log. The lists
+do not say who calls a gateway or which tools it serves, so these events carry no
+`used_by` and no `tools`. Like agents, gateways are an inventory: the lookback is not
+applied.
 
 #### `aws_containers` — ECS and EKS workloads
 
@@ -1133,7 +1145,7 @@ A discovered agent, one per agent per scan:
 ```
 
 A discovered MCP server, one per server per scan, from a source that can see them
-(today `litellm`). It is never sent as an agent, so a search or an alert on
+(today `litellm` and `aws_bedrock`). It is never sent as an agent, so a search or an alert on
 `arthur.discovery.agent` does not count servers:
 
 ```json
@@ -1156,7 +1168,7 @@ A discovered MCP server, one per server per scan, from a source that can see the
 | Field | Meaning |
 |---|---|
 | `external_id` | The server where this source saw it. The same server behind two gateways is two events; dedupe on it with `source.id`, as for an agent |
-| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway |
+| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway. `registered`: it is in a gateway's or a registry's own list of servers, called or not |
 | `tools` | The tools the source saw on it, named as they are in an agent's `tools`. Left out when it saw none |
 | `used_by` | The `agent.external_id` of each agent in the same scan seen using the server. Left out when the source cannot name one |
 
