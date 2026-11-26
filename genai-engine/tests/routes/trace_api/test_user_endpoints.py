@@ -230,18 +230,13 @@ def test_get_user_details_functionality(
     expected_trace_ids = {"api_trace1", "api_trace2", "api_trace4"}
     assert set(data.trace_ids) == expected_trace_ids
 
-    # Token counts and costs add up over the user's spans
-    user_spans = [
-        span
-        for span in comprehensive_test_data
-        if span.user_id == "user1" and span.task_id == "api_task1"
-    ]
-    assert data.total_token_cost == pytest.approx(
-        sum(span.total_token_cost or 0 for span in user_spans),
-    )
-    assert data.total_token_count == sum(
-        span.total_token_count or 0 for span in user_spans
-    )
+    # Tokens and costs match the user list, which adds up the user's traces
+    status_code, users = client.trace_api_list_users_metadata(task_ids=["api_task1"])
+    assert status_code == 200
+    [listed] = [user for user in users.users if user.user_id == "user1"]
+    assert data.total_token_count == listed.total_token_count
+    assert data.total_token_cost == pytest.approx(listed.total_token_cost)
+    assert data.unpriced_span_count == listed.unpriced_span_count
 
     # Test with multiple task IDs
     status_code, data = client.trace_api_get_user_details(

@@ -39,7 +39,7 @@ from utils.constants import (
     USER_ID_KEY,
 )
 from utils.gcp import parse_gcp_resource_path
-from utils.token_count import safe_add
+from utils.token_count import TOKEN_COST_FIELDS, safe_add
 
 logger = logging.getLogger(__name__)
 
@@ -674,16 +674,6 @@ class TraceIngestionService:
         trace_updates: dict[str, TraceUpdateDict] = {}
         current_time = datetime.now()
 
-        TOKEN_FIELDS = [
-            "prompt_token_count",
-            "completion_token_count",
-            "total_token_count",
-            "prompt_token_cost",
-            "completion_token_cost",
-            "total_token_cost",
-            "unpriced_span_count",
-        ]
-
         for span in spans:
             trace_id = span.trace_id
             if trace_id not in trace_updates:
@@ -770,7 +760,7 @@ class TraceIngestionService:
                         trace_utils.value_to_string(output_value)
                     )
 
-            for field in [*TOKEN_FIELDS, "ingest_bytes"]:
+            for field in [*TOKEN_COST_FIELDS, "ingest_bytes"]:
                 span_value = getattr(span, field)
                 trace_updates[trace_id][field] = safe_add(  # type: ignore[literal-required]
                     trace_updates[trace_id][field],  # type: ignore[literal-required]
@@ -858,52 +848,15 @@ class TraceIngestionService:
                 stmt.excluded.user_id,
             ),
             # NULL-safe addition: if both NULL -> NULL, if one NULL -> use non-NULL, else sum
-            prompt_token_count=func.coalesce(
-                DatabaseTraceMetadata.prompt_token_count
-                + stmt.excluded.prompt_token_count,
-                DatabaseTraceMetadata.prompt_token_count,
-                stmt.excluded.prompt_token_count,
-            ),
-            completion_token_count=func.coalesce(
-                DatabaseTraceMetadata.completion_token_count
-                + stmt.excluded.completion_token_count,
-                DatabaseTraceMetadata.completion_token_count,
-                stmt.excluded.completion_token_count,
-            ),
-            total_token_count=func.coalesce(
-                DatabaseTraceMetadata.total_token_count
-                + stmt.excluded.total_token_count,
-                DatabaseTraceMetadata.total_token_count,
-                stmt.excluded.total_token_count,
-            ),
-            prompt_token_cost=func.coalesce(
-                DatabaseTraceMetadata.prompt_token_cost
-                + stmt.excluded.prompt_token_cost,
-                DatabaseTraceMetadata.prompt_token_cost,
-                stmt.excluded.prompt_token_cost,
-            ),
-            completion_token_cost=func.coalesce(
-                DatabaseTraceMetadata.completion_token_cost
-                + stmt.excluded.completion_token_cost,
-                DatabaseTraceMetadata.completion_token_cost,
-                stmt.excluded.completion_token_cost,
-            ),
-            total_token_cost=func.coalesce(
-                DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
-                DatabaseTraceMetadata.total_token_cost,
-                stmt.excluded.total_token_cost,
-            ),
-            unpriced_span_count=func.coalesce(
-                DatabaseTraceMetadata.unpriced_span_count
-                + stmt.excluded.unpriced_span_count,
-                DatabaseTraceMetadata.unpriced_span_count,
-                stmt.excluded.unpriced_span_count,
-            ),
-            ingest_bytes=func.coalesce(
-                DatabaseTraceMetadata.ingest_bytes + stmt.excluded.ingest_bytes,
-                DatabaseTraceMetadata.ingest_bytes,
-                stmt.excluded.ingest_bytes,
-            ),
+            **{
+                field: func.coalesce(
+                    getattr(DatabaseTraceMetadata, field)
+                    + getattr(stmt.excluded, field),
+                    getattr(DatabaseTraceMetadata, field),
+                    getattr(stmt.excluded, field),
+                )
+                for field in (*TOKEN_COST_FIELDS, "ingest_bytes")
+            },
             # Prefer new non-null values for input/output content
             # This allows updates if a new batch provides a better root span
             input_content=func.coalesce(

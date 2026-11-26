@@ -4,33 +4,29 @@ React Context providers for app-wide state. This document covers display setting
 
 ## DisplaySettingsContext
 
-**Purpose:** Provides the current display settings from the API, including the default currency used for formatting costs (e.g. AI usage) in the UI.
+**Purpose:** Provides the current display settings from the API, including the currency costs (e.g. AI usage) are shown in.
 
-- **API:** Fetches `GET /api/v2/display-settings`, which returns `{ default_currency: string }`.
-- **Hook:** `useDisplaySettings()` returns `{ defaultCurrency, isLoading }`. Must be used inside `DisplaySettingsProvider`.
-- **Default:** If the API is pending or fails, `defaultCurrency` falls back to `"USD"`.
-- **Caching:** Display settings are cached with a 5-minute stale time.
+- **API:** Fetches `GET /api/v2/display-settings`, which returns `default_currency`, `usd_exchange_rate` (units of that currency one USD buys) and `exchange_rate_updated_at`.
+- **Hook:** `useDisplaySettings()` returns `{ currency, isLoading, ... }`, where `currency` is a `DisplayCurrency` (`{ code, usdRate, rateDate }`) from `@arthur/shared-components`. Must be used inside `DisplaySettingsProvider`.
+- **Default:** If the API is pending or fails, or returns no rate, `currency` is USD with a rate of 1.
 
-### Default currency and the backend
+### Costs are USD; conversion happens for display
 
-- The backend’s default currency is configured via **`CURRENCY_DEFAULT_CURRENCY`** in `.env` or Docker (e.g. `CURRENCY_DEFAULT_CURRENCY=USD`). That populates `currency_config.DEFAULT_CURRENCY` (see `genai-engine/src/config/currency_config.py`).
-- The **currency conversion service** on the backend always converts **from USD** to a target currency. It does **not** read the default-currency config; it only converts to whatever target callers pass. When no target or an invalid target is given, it returns the amount in USD.
-- The **display settings API** returns the app-wide default currency (from config or per-application overrides). The UI uses this value so that cost amounts are shown in the user’s preferred currency (e.g. USD, EUR) without the frontend needing to know how that default was chosen.
+- Every cost in the engine's API responses is in USD, whatever the configured currency.
+- The display currency is configured via **`CURRENCY_DEFAULT_CURRENCY`** in `.env` or Docker (e.g. `CURRENCY_DEFAULT_CURRENCY=EUR`), or per application. The display settings API returns it together with the current rate from USD, which the backend's currency conversion service fetches and caches.
+- The UI converts USD costs with that rate only when it formats them, so data never mixes currencies.
 
-So: `.env` / Docker set the default **display** currency; the conversion service is agnostic and only converts USD → target; the UI gets the effective default from the display-settings endpoint and uses it for formatting.
+### Showing a cost in the UI
 
-### Using default currency in the UI
-
-Use `useDisplaySettings()` to get `defaultCurrency`, then pass it to the currency formatter:
+Pass the USD amount and the display currency to `formatCost` from `@arthur/shared-components`, which converts and formats it:
 
 ```tsx
+import { formatCost } from "@arthur/shared-components";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { formatCurrency } from "@/utils/formatters";
 
-// In your component:
-const { defaultCurrency } = useDisplaySettings();
+const { currency } = useDisplaySettings();
 // ...
-formatCurrency(metrics?.totalCost ?? 0, defaultCurrency);
+formatCost(metrics?.totalCost ?? 0, currency);
 ```
 
-See `src/components/TaskOverview.tsx` for an example. The `formatCurrency(amount, currencyCode)` helper in `src/utils/formatters.ts` uses `Intl.NumberFormat` with the given currency code (defaulting to `"USD"` if omitted).
+`formatCost` shows small amounts with three significant digits, larger ones with the currency's usual decimals, zero as zero, and `null`/`undefined` as "—" (unknown, not free). See `src/components/TaskOverview.tsx` for an example.

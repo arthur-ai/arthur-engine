@@ -3,12 +3,17 @@ from typing import Any, overload
 
 import tiktoken
 from arthur_common.models.llm_model_providers import ModelProvider
+from arthur_common.models.response_schemas import TokenCountCostSchema
 from litellm import cost_per_token, token_counter
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 TIKTOKEN_ENCODER = "cl100k_base"
+
+# Token counts and costs (incl. unpriced_span_count) that add up from spans to
+# traces, sessions and users.
+TOKEN_COST_FIELDS: tuple[str, ...] = tuple(TokenCountCostSchema.model_fields)
 
 
 class TokenCountCost(BaseModel):
