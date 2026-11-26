@@ -518,27 +518,30 @@ def extract_token_cost_from_span(
         else:
             completion_tokens = 0
 
-    cost_unknown = False
+    has_tokens = bool(prompt_tokens) or bool(completion_tokens)
 
-    # Calculate prompt cost if missing (requires model_name and prompt_tokens)
-    if prompt_cost is None and (model_name and prompt_tokens is not None):
-        prompt_cost = compute_cost_from_tokens(
-            model_name,
-            input_tokens=prompt_tokens,
-            cache_read_input_tokens=cache_read_tokens or 0,
-            cache_creation_input_tokens=cache_creation_tokens or 0,
-        )
-        if prompt_cost is None and prompt_tokens:
-            cost_unknown = True
+    # Calculate a missing side's cost. Zero tokens cost nothing whatever the model,
+    # so a call that produced no completion still gets a total; pricing tokens needs
+    # the model.
+    if prompt_cost is None and prompt_tokens is not None and has_tokens:
+        if not prompt_tokens:
+            prompt_cost = 0.0
+        elif model_name:
+            prompt_cost = compute_cost_from_tokens(
+                model_name,
+                input_tokens=prompt_tokens,
+                cache_read_input_tokens=cache_read_tokens or 0,
+                cache_creation_input_tokens=cache_creation_tokens or 0,
+            )
 
-    # Calculate completion cost if missing (requires model_name and completion_tokens)
-    if completion_cost is None and (model_name and completion_tokens is not None):
-        completion_cost = compute_cost_from_tokens(
-            model_name,
-            output_tokens=completion_tokens,
-        )
-        if completion_cost is None and completion_tokens:
-            cost_unknown = True
+    if completion_cost is None and completion_tokens is not None and has_tokens:
+        if not completion_tokens:
+            completion_cost = 0.0
+        elif model_name:
+            completion_cost = compute_cost_from_tokens(
+                model_name,
+                output_tokens=completion_tokens,
+            )
 
     # Calculate total tokens: always recalculate if we computed any tokens, or if total is missing
     # This ensures consistency when we estimate missing values
@@ -550,6 +553,10 @@ def extract_token_cost_from_span(
     if total_cost is None and prompt_cost is not None and completion_cost is not None:
         total_cost = prompt_cost + completion_cost
 
+    # Tokens with no price: the model is missing or unknown to litellm, so the
+    # cost is unknown rather than a real $0.
+    is_unpriced = (has_tokens or bool(total_tokens)) and total_cost is None
+
     return TokenCountCost(
         prompt_token_count=prompt_tokens,
         completion_token_count=completion_tokens,
@@ -557,7 +564,7 @@ def extract_token_cost_from_span(
         prompt_token_cost=prompt_cost,
         completion_token_cost=completion_cost,
         total_token_cost=total_cost,
-        cost_unknown=cost_unknown,
+        unpriced_span_count=int(is_unpriced),
     )
 
 

@@ -1,4 +1,4 @@
-import { useSnackbar } from "@arthur/shared-components";
+import { useSnackbar, formatCost } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
@@ -12,7 +12,6 @@ import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -57,7 +56,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   datasetVersion,
   datasetRowId,
 }) => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
@@ -259,7 +258,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                               sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                             />
                             <Chip
-                              label={`Cost: ${formatCurrency(parseFloat(String(evalItem.eval_results.cost)), defaultCurrency)}`}
+                              label={`Cost: ${formatCost(parseFloat(String(evalItem.eval_results.cost)), currency)}`}
                               size="small"
                               variant="outlined"
                             />

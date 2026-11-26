@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import { Accordion } from "@base-ui/react/accordion";
 import HistoryIcon from "@mui/icons-material/History";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -15,7 +16,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { useTrackOnMount } from "@/hooks/useTrackOnMount";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 
 const DRAWER_WIDTH = 400;
 
@@ -132,7 +132,7 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
 
 const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; onOpenChange: (open: boolean) => void }) => {
   const { task } = useTask();
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const { currency, timezone, use24Hour } = useDisplaySettings();
   const isRunning = item.status === "running" || item.status === "queued";
   const progress = item.total_rows > 0 ? Math.round((item.completed_rows / item.total_rows) * 100) : 0;
 
@@ -245,7 +245,7 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
                 Total Cost
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {formatCurrency(parseFloat(item.total_cost), defaultCurrency)}
+                {formatCost(parseFloat(item.total_cost), currency)}
               </Typography>
             </Box>
           )}

@@ -40,7 +40,6 @@ type UserDrawerBodyProps = {
 export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onRowClick }: UserDrawerBodyProps) => {
   // prompt, completion, total
   const tokens = [user.prompt_token_count, user.completion_token_count, user.total_token_count] as const;
-  const costs = [user.prompt_token_cost, user.completion_token_cost, user.total_token_cost] as const;
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -92,7 +91,12 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
         }}
       >
         <TokenCountTooltip prompt={tokens[0] ?? 0} completion={tokens[1] ?? 0} total={tokens[2] ?? 0} />
-        <TokenCostTooltip prompt={costs[0] ?? 0} completion={costs[1] ?? 0} total={costs[2] ?? 0} />
+        <TokenCostTooltip
+          prompt={user.prompt_token_cost}
+          completion={user.completion_token_cost}
+          total={user.total_token_cost}
+          unpricedSpanCount={user.unpriced_span_count}
+        />
       </Stack>
 
       <Box sx={{ px: 4, py: 2 }}>

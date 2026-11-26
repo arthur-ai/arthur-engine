@@ -17,7 +17,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { type ColumnDef, flexRender, tableFeatures, useTable } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
@@ -35,6 +35,8 @@ interface RagProvidersModalProps {
   onClose: () => void;
   taskId: string;
 }
+
+const features = tableFeatures({});
 
 export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onClose, taskId }) => {
   const { providers, isLoading, error, refetch } = useRagProviders(taskId);
@@ -91,7 +93,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
     refetch();
   }, [refetch]);
 
-  const columns = useMemo<ColumnDef<RagProviderConfigurationResponse>[]>(() => {
+  const columns = useMemo<ColumnDef<typeof features, RagProviderConfigurationResponse>[]>(() => {
     return [
       {
         header: "Name",
@@ -176,10 +178,10 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
 
   const providerRows = providers ?? [];
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: providerRows,
     columns,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   const tableAlign = (id: string) => {
@@ -239,7 +241,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
                 <TableBody>
                   {table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
+                      {row.getAllCells().map((cell) => (
                         <TableCell key={cell.id} align={tableAlign(cell.column.id)}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>

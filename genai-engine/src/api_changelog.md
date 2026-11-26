@@ -3,6 +3,26 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/26/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/sessions  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/users  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/users/{user_id}  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
+- **CHANGE** for **URL**: /api/v1/traces  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/sessions  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/sessions  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/spans  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/spans  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v1/traces/users  the `display_currency` response's property default value `USD` was added for the status `200`
+- **CHANGE** for **URL**: /api/v1/traces/users  response property `display_currency` deprecated
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property `exchange_rate_updated_at` to the response with the `200` status
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property `usd_exchange_rate` to the response with the `200` status
 - **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans/anyOf[subschema #1]/items/unpriced_span_count' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/unpriced_span_count' to the response with the '200' status

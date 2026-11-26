@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
@@ -30,7 +31,6 @@ import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments } from "@/hooks/usePromptExperiments";
-import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface PromptExperimentsViewProps {
@@ -41,7 +41,7 @@ interface PromptExperimentsViewProps {
 export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ onRegisterCreate, onRegisterCreateFromExisting }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [experimentStep, setExperimentStep] = useQueryState("experimentStep", parseAsStringEnum(["info", "prompts", "evals"]));
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
@@ -381,7 +381,7 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
                                         color: "text.secondary",
                                       }}
                                     >
-                                      <strong>Cost:</strong> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
+                                      <strong>Cost:</strong> {formatCost(parseFloat(experiment.total_cost), currency)}
                                     </Typography>
                                   )}
                                 </Box>

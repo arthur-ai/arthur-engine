@@ -1,3 +1,4 @@
+import { formatCost, type DisplayCurrency } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HistoryIcon from "@mui/icons-material/History";
@@ -24,7 +25,6 @@ import { useNavigate, useParams } from "react-router";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useRagNotebookHistoryWithPolling } from "@/hooks/useRagNotebooks";
 import type { RagExperimentSummary } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentHistorySidebarProps {
@@ -56,11 +56,11 @@ interface ExperimentItemProps {
   isExpanded: boolean;
   onToggle: () => void;
   onNavigate: () => void;
-  defaultCurrency: string;
+  currency: DisplayCurrency;
   timezone: string;
 }
 
-const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded, onToggle, onNavigate, defaultCurrency, timezone }) => {
+const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded, onToggle, onNavigate, currency, timezone }) => {
   const isRunning = experiment.status === "running" || experiment.status === "queued";
   const progress = experiment.total_rows > 0 ? Math.round((experiment.completed_rows / experiment.total_rows) * 100) : 0;
 
@@ -187,7 +187,7 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
                   Total Cost
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
+                  {formatCost(parseFloat(experiment.total_cost), currency)}
                 </Typography>
               </Box>
             )}
@@ -234,7 +234,7 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
 export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarProps> = ({ open, onClose, notebookId, onExperimentSelect }) => {
   const navigate = useNavigate();
   const { id: taskId } = useParams<{ id: string }>();
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { currency, timezone } = useDisplaySettings();
   const { experiments, hasRunningExperiments, isLoading, refetch } = useRagNotebookHistoryWithPolling(notebookId ?? undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -331,7 +331,7 @@ export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarPr
               isExpanded={expandedId === experiment.id}
               onToggle={() => handleToggleExpand(experiment.id)}
               onNavigate={() => handleNavigateToExperiment(experiment.id)}
-              defaultCurrency={defaultCurrency}
+              currency={currency}
               timezone={timezone}
             />
           ))}

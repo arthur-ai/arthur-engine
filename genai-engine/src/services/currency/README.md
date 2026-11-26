@@ -1,10 +1,10 @@
 # Currency conversion service
 
-This package provides the in-app currency conversion layer: it keeps an in-memory cache of USD exchange rates, refreshes them on a schedule, and exposes a single method to convert USD amounts to a target currency. It is intended for displaying costs (e.g. AI API usage) in the user’s preferred currency.
+This package keeps an in-memory cache of USD exchange rates and refreshes it on a schedule. Costs stay in USD in every API response; `GET /api/v2/display-settings` returns the rate to the display currency, and clients convert costs for display with it.
 
 ## Overview
 
-- **`CurrencyConversionService`** – Holds a thread-safe cache of rates (USD → other currencies). When using the Frankfurter provider, a background thread refreshes on a schedule; when using the static provider, rates are loaded once and no thread runs. Exposes `convert_usd_to(amount_usd, target_currency)`.
+- **`CurrencyConversionService`** – Holds a thread-safe cache of rates (USD → other currencies). When using the Frankfurter provider, a background thread refreshes on a schedule; when using the static provider, rates are loaded once and no thread runs. Exposes `get_usd_rate(currency)`.
 - **Lifecycle** – The service is a singleton (global `CURRENCY_CONVERSION_SERVICE`). The app starts or loads it in FastAPI lifespan via `initialize_currency_conversion_service()` and stops it via `shutdown_currency_conversion_service()` (which calls `stop(timeout=30)` and sets the singleton to `None`). The service subclasses `BaseQueueService` (same as the continuous-eval and agent-polling services); for the static provider no background thread or executor is started, so `stop()` is a no-op.
 
 ## Behavior
@@ -15,20 +15,18 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 - **Static** – When `CURRENCY_PROVIDER=static`, rates are loaded once via `load_rates_from_provider()` and **no thread is started**. For air-gapped environments; redeploy to update the rate.
 - **Provider** – Chosen by `currency_config.CURRENCY_PROVIDER` (`frankfurter` or `static`). See `src/clients/currency/README.md` for the provider contract.
 
-### Conversion
+### Rates
 
-- **`convert_usd_to(amount_usd: float, target_currency: str) -> tuple[float, str]`**
-  Returns `(converted_amount, currency_code)`.
-- **Fallback to USD** – If the target is `"USD"`, the rate is missing, or any exception occurs, the method returns `(amount_usd, "USD")` (unconverted). Callers can treat this as “show in USD.”
-- **Precision** – Converted amounts are rounded to 6 decimal places.
+- **`get_usd_rate(currency: str) -> Optional[UsdRate]`**
+  Returns the units of `currency` one USD buys and when the cache was refreshed, or `None` when the currency has no cached rate. Clients then show costs in USD.
 
 ### Readiness
 
-- **`has_rates() -> bool`** – Returns whether the cache has at least one rate (e.g. after the first successful refresh). Useful for scripts or tests that wait until the service is ready before calling `convert_usd_to`.
+- **`has_rates() -> bool`** – Returns whether the cache has at least one rate (e.g. after the first successful refresh). Useful for tests that wait until the service is ready.
 
 ### Thread safety
 
-- The cache is protected by an `RLock`. `convert_usd_to` and `has_rates` are safe to call from any thread while the background thread updates the cache.
+- The cache is protected by an `RLock`. `get_usd_rate` and `has_rates` are safe to call from any thread while the background thread updates the cache.
 
 ## Usage in the app
 
@@ -39,19 +37,8 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 
 See `config.currency_config`. Env prefix: `CURRENCY_`. Environment variable `CURRENCY_DEFAULT_CURRENCY` (e.g. in `.env` or `docker-compose.yml`) populates `DEFAULT_CURRENCY`; both default to `USD`.
 
-- **`DEFAULT_CURRENCY`** – App-wide display currency (e.g. `EUR`). Used by API/display layer when no per-application override is set. The conversion service does not read it; callers pass the target when converting: `convert_usd_to(amount_usd, currency_config.DEFAULT_CURRENCY)`.
+- **`DEFAULT_CURRENCY`** – App-wide display currency (e.g. `EUR`). Used by API/display layer when no per-application override is set. The service does not read it; display settings look up its rate with `get_usd_rate`.
 - **`CURRENCY_PROVIDER`** – `frankfurter` (default) or `static`. When `static`, no external calls and no background thread.
 - **`CURRENCY_EXCHANGE_RATE`** – Required when provider is `static`: rate from USD to `DEFAULT_CURRENCY` (e.g. `0.92` for EUR).
 - **`CURRENCY_PROVIDER_API_KEY`** – Optional; Frankfurter does not use it; other providers can.
 - **`CURRENCY_PROVIDER_BASE_URL`**, **`SUPPORTED_CURRENCIES`** – For Frankfurter (see clients/currency README).
-
-## Standalone test script
-
-To run the service once (start, wait for rates, convert, print, shutdown) from the command line:
-
-```bash
-cd genai-engine
-PYTHONPATH=src uv run python scripts/test_currency_conversion_standalone.py [amount] [currency]
-```
-
-Example: `... 25 EUR` converts 25 USD to EUR and prints the result. The script polls `has_rates()` until the first fetch completes or a timeout is reached.

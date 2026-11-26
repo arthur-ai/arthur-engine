@@ -1,16 +1,10 @@
 import { buildThresholdsFromSample } from "@arthur/shared-components";
-import {
-  BucketProvider,
-  createTraceLevelColumns,
-  TraceDisplaySettingsProvider,
-  TracesTable,
-  useTraceColumnDependencies,
-  useTraceDisplaySettings,
-} from "@arthur/shared-components/traces";
+import { BucketProvider, createTraceLevelColumns, TracesTable, useTraceColumnDependencies } from "@arthur/shared-components/traces";
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
+import { type OnChangeFn, type PaginationState, SortingState } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { type MRT_RowSelectionState } from "material-react-table";
 import type { MRT_ColumnDef } from "material-react-table";
 import { useSnackbar } from "notistack";
 import { type ComponentProps, memo, useCallback, useMemo, useState } from "react";
@@ -74,7 +68,6 @@ const TraceLevelTable = (props: TraceLevelTableProps) => {
 
 export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
-  const displaySettings = useTraceDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
@@ -91,7 +84,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { enqueueSnackbar } = useSnackbar();
 
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [rowSelection, setRowSelection] = useState<MRT_RowSelectionState>({});
   const [evalPickerOpen, setEvalPickerOpen] = useState(false);
   const [addToDatasetPickerOpen, setAddToDatasetPickerOpen] = useState(false);
   const [testRunConfig, setTestRunConfig] = useState<{ evalId: string; evalName: string; testRunId: string } | null>(null);
@@ -230,12 +223,6 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
-  // Costs come in the currency the server reports for this page.
-  const tableDisplaySettings = useMemo(
-    () => ({ ...displaySettings, currency: data?.display_currency ?? displaySettings.currency }),
-    [displaySettings, data?.display_currency]
-  );
-
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces?.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
   // Check if any filters are active
@@ -277,23 +264,21 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         {hasData && (
           <BucketProvider thresholds={thresholds}>
             <Box sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <TraceDisplaySettingsProvider value={tableDisplaySettings}>
-                <TraceLevelTable
-                  data={data?.traces ?? DEFAULT_DATA}
-                  rowCount={data?.count ?? 0}
-                  pagination={pagination}
-                  onPaginationChange={handlePaginationChange}
-                  isLoading={isLoading}
-                  onRowClick={handleRowClick}
-                  sorting={sorting}
-                  onSortingChange={handleSortingChange}
-                  enableRowSelection
-                  rowSelection={rowSelection}
-                  onRowSelectionChange={setRowSelection}
-                  getRowId={(row) => row.trace_id}
-                  getRowProps={({ rowIndex }) => (rowIndex === 0 ? { "data-tour-id": TOUR_IDS.tracesFirstRow } : {})}
-                />
-              </TraceDisplaySettingsProvider>
+              <TraceLevelTable
+                data={data?.traces ?? DEFAULT_DATA}
+                rowCount={data?.count ?? 0}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                isLoading={isLoading}
+                onRowClick={handleRowClick}
+                sorting={sorting}
+                onSortingChange={handleSortingChange}
+                enableRowSelection
+                rowSelection={rowSelection}
+                onRowSelectionChange={setRowSelection}
+                getRowId={(row) => row.trace_id}
+                getRowProps={({ rowIndex }) => (rowIndex === 0 ? { "data-tour-id": TOUR_IDS.tracesFirstRow } : {})}
+              />
             </Box>
           </BucketProvider>
         )}

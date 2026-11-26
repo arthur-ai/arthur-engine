@@ -85,7 +85,6 @@ export default defineConfig(({ mode }) => {
         "@emotion/react",
         "@emotion/styled",
         "material-react-table",
-        "@tanstack/react-table",
         "@tanstack/react-query",
       ],
       alias: {

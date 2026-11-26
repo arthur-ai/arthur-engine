@@ -3,6 +3,9 @@ import { flattenSpans } from "@arthur/shared-components/traces";
 
 import { SessionTracesResponse } from "@/lib/api-client/api-client";
 
+// Sums that stay null when nothing was reported, so an unknown cost isn't shown as free.
+const addReported = (sum: number | null, value: number | null | undefined) => (value == null ? sum : (sum ?? 0) + value);
+
 export function getSessionTotals(session: SessionTracesResponse) {
   const traces = session.traces;
   const spans = flattenSpans(traces.flatMap((trace) => trace.root_spans ?? []));
@@ -14,9 +17,10 @@ export function getSessionTotals(session: SessionTracesResponse) {
       completion: 0,
     },
     cost: {
-      total: 0,
-      prompt: 0,
-      completion: 0,
+      total: null as number | null,
+      prompt: null as number | null,
+      completion: null as number | null,
+      unpricedSpanCount: null as number | null,
     },
   };
 
@@ -28,9 +32,10 @@ export function getSessionTotals(session: SessionTracesResponse) {
     totals.token.prompt += tokens.input ?? 0;
     totals.token.completion += tokens.output ?? 0;
 
-    totals.cost.total += cost.total ?? 0;
-    totals.cost.prompt += cost.prompt ?? 0;
-    totals.cost.completion += cost.completion ?? 0;
+    totals.cost.total = addReported(totals.cost.total, cost.total);
+    totals.cost.prompt = addReported(totals.cost.prompt, cost.prompt);
+    totals.cost.completion = addReported(totals.cost.completion, cost.completion);
+    totals.cost.unpricedSpanCount = addReported(totals.cost.unpricedSpanCount, span.unpriced_span_count);
   }
 
   return totals;
