@@ -2,6 +2,30 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans/anyOf[subschema #1]/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'users/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users/{user_id}  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/unpriced_span_count' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/unpriced_span_count' to the response with the '200' status
+
 # 11/19/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the chatbot always uses the default model provider (`/api/v1/default_model_provider`); a request that sets `model_provider` or `model_name` now returns `400`, and the response shows the default's model, or null when none is set
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/config  the response property `model_name` became optional for the status `200`
