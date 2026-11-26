@@ -55,8 +55,12 @@ def onboarding_insight_user_message(kind: str) -> str:
     )
 
 
-def onboarding_insight_response_format(kind: str) -> LLMResponseFormat:
-    """The verdict's JSON schema, which the model's reply must follow."""
+def onboarding_insight_response_format() -> LLMResponseFormat:
+    """The verdict's JSON schema, which the model's reply must follow.
+
+    Every kind gets the same schema: providers cache it as part of the prompt prefix,
+    so a schema that differed per kind would stop the prompts of a batch from reading
+    each other's cached traces."""
     return LLMResponseFormat(
         type=LLMResponseFormatEnum.JSON_SCHEMA,
         json_schema=LLMResponseSchema.model_validate(
@@ -68,7 +72,7 @@ def onboarding_insight_response_format(kind: str) -> LLMResponseFormat:
                         "kind": JsonPropertySchema(
                             type="string",
                             description="The insight kind you were asked about.",
-                            enum=[kind],
+                            enum=list(ONBOARDING_INSIGHT_QUESTIONS),
                         ),
                         "fired": JsonPropertySchema(
                             type="string",

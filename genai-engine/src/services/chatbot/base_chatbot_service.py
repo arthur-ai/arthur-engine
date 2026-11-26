@@ -20,7 +20,14 @@ from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import SSEEventType
 from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
-from services.prompt.chat_completion_service import ChatCompletionService
+from services.prompt.chat_completion_service import (
+    ChatCompletionService,
+    CompletionParamsHook,
+)
+from services.prompt.prompt_caching import (
+    apply_conversation_caching,
+    system_prompt_cache_key,
+)
 from services.trace.internal_trace_service import InternalTraceService, TraceSpanBuilder
 from utils import constants
 from utils.sse_events import format_sse, format_sse_error, format_sse_json
@@ -224,6 +231,7 @@ class BaseChatbotService(ABC):
                 self.tracing.set_prompt_rendered(prompt_span, current_prompt.messages)
                 self.tracing.end_span(prompt_span)
 
+            cache_conversation = self._conversation_caching(current_prompt)
             for _ in range(MAX_ITERATIONS):
                 final_response: AgenticPromptRunResponse | None = None
 
@@ -240,11 +248,12 @@ class BaseChatbotService(ABC):
                     llm_client,
                     PromptCompletionRequest(stream=True, strict=False),
                     org_id=self.org_id,
+                    prepare_params=cache_conversation,
                 ):
                     if event.startswith(f"event: {SSEEventType.FINAL_RESPONSE.value}"):
                         data = event.split("data: ", 1)[1].strip()
                         final_response = AgenticPromptRunResponse.model_validate_json(
-                            data
+                            data,
                         )
                     elif event.startswith(f"event: {SSEEventType.ERROR.value}"):
                         self.tracing.end_span_with_error(llm_span, event)
@@ -290,7 +299,8 @@ class BaseChatbotService(ABC):
                 if not tool_calls:
                     current_prompt.messages.append(
                         OpenAIMessage(
-                            role=MessageRole.AI, content=final_response.content
+                            role=MessageRole.AI,
+                            content=final_response.content,
                         ),
                     )
                     self.tracing.set_output_json(
@@ -363,6 +373,20 @@ class BaseChatbotService(ABC):
             self.tracing.end_span_with_error(agent_span, str(e))
             self.tracing.flush()
             raise
+
+    @staticmethod
+    def _conversation_caching(prompt: AgenticPrompt) -> CompletionParamsHook:
+        """Each iteration of the tool loop re-sends the system prompt, the tools and
+        the history so far: a breakpoint on its last message lets the next iteration
+        read all of that from the cache."""
+        provider = prompt.require_configured_provider()
+        cache_key = system_prompt_cache_key(prompt.name)
+        return lambda completion_params: apply_conversation_caching(
+            completion_params,
+            provider=provider,
+            model_name=prompt.model_name,
+            cache_key=cache_key,
+        )
 
     async def safe_stream(
         self,

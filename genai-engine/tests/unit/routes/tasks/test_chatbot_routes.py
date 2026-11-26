@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallResult
+from services.prompt.chat_completion_service import ChatCompletionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -207,7 +208,9 @@ def test_chatbot_no_provider_configured(
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
 )
 def test_chatbot_simple_response(
-    mock_stream, client: GenaiEngineTestClientBase, anthropic_default
+    mock_stream,
+    client: GenaiEngineTestClientBase,
+    anthropic_default,
 ):
     task_name = "chatbot_task_simple_response"
     _, task = client.create_task(task_name, is_agentic=True)
@@ -261,6 +264,64 @@ def test_chatbot_search_tool_emits_search_complete(
     assert response.status_code == 200
     assert "search_complete" in response.text
     assert "Found your evals." in response.text
+
+
+@pytest.mark.unit_tests
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_chatbot_tool_loop_reads_the_previous_iterations_cache(
+    mock_stream,
+    client: GenaiEngineTestClientBase,
+    anthropic_default: None,
+):
+    _, task = client.create_task("chatbot_task_prompt_caching", is_agentic=True)
+
+    search_response = AgenticPromptRunResponse(
+        content=None,
+        tool_calls=[make_tool_call("tc1", "search_arthur_api", '{"query": "evals"}')],
+        cost="0.0",
+    ).model_dump_json()
+    responses = [
+        make_stream([f"event: final_response\ndata: {search_response}\n\n"]),
+        make_stream(final_response_events("Found your evals.")),
+    ]
+    sent: list[list[dict]] = []
+
+    def stream(prompt, llm_client, completion_request, **kwargs):
+        # what stream_chat_completion would send the provider
+        _, params = ChatCompletionService()._get_completion_params(
+            prompt,
+            completion_request,
+        )
+        kwargs["prepare_params"](params)
+        sent.append(params["messages"])
+        return responses.pop(0)
+
+    mock_stream.side_effect = stream
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"history": [{"role": "user", "content": "find my evals"}]},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert response.status_code == 200
+    first, second = sent
+
+    def marked(messages: list[dict]) -> list[int]:
+        return [
+            i
+            for i, message in enumerate(messages)
+            if "cache_control" in str(message.get("content"))
+        ]
+
+    # the system prompt, and the last message of each iteration
+    assert marked(first) == [0, len(first) - 1]
+    assert marked(second) == [0, len(second) - 1]
+    assert second[-1]["role"] == "tool"
+    # the second request re-sends the first one's messages, which it reads cached
+    assert len(second) > len(first)
 
 
 @pytest.mark.unit_tests

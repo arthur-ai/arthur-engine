@@ -2,7 +2,17 @@ import logging
 import uuid
 import warnings
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Dict,
+    List,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 from arthur_common.models.llm_model_providers import (
     LLMResponseFormat,
@@ -42,6 +52,9 @@ warnings.filterwarnings(
 )
 
 logger = logging.getLogger(__name__)
+
+# Edits the rendered completion params in place before the request is sent
+CompletionParamsHook = Callable[[Dict[str, Any]], None]
 
 
 class ChatCompletionService:
@@ -334,11 +347,14 @@ class ChatCompletionService:
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
         *,
         org_id: uuid.UUID,
+        prepare_params: CompletionParamsHook | None = None,
     ) -> LLMModelResponse:
         model, completion_params = self._get_completion_params(
             prompt,
             completion_request,
         )
+        if prepare_params is not None:
+            prepare_params(completion_params)
         return llm_client.completion(model=model, org_id=org_id, **completion_params)
 
     def run_chat_completion(
@@ -348,6 +364,7 @@ class ChatCompletionService:
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
         *,
         org_id: uuid.UUID,
+        prepare_params: CompletionParamsHook | None = None,
     ) -> AgenticPromptRunResponse:
         if prompt.has_been_deleted():
             raise ValueError(
@@ -359,6 +376,7 @@ class ChatCompletionService:
             llm_client,
             completion_request,
             org_id=org_id,
+            prepare_params=prepare_params,
         )
         if not isinstance(llm_model_response.response, ModelResponse):
             raise ValueError("Response is not a ModelResponse")
@@ -390,6 +408,7 @@ class ChatCompletionService:
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
         *,
         org_id: uuid.UUID,
+        prepare_params: CompletionParamsHook | None = None,
     ) -> AsyncGenerator[str, None]:
         try:
             if prompt.has_been_deleted():
@@ -401,6 +420,8 @@ class ChatCompletionService:
                 prompt,
                 completion_request,
             )
+            if prepare_params is not None:
+                prepare_params(completion_params)
             response = await llm_client.acompletion(
                 model=model,
                 org_id=org_id,
@@ -467,6 +488,7 @@ class ChatCompletionService:
         completion_request: PromptCompletionRequest,
         *,
         org_id: uuid.UUID,
+        prepare_params: CompletionParamsHook | None = None,
     ) -> Union[AgenticPromptRunResponse, StreamingResponse]:
         """Helper to execute prompt completion with or without streaming"""
         if completion_request.stream is None or completion_request.stream == False:
@@ -475,6 +497,7 @@ class ChatCompletionService:
                 llm_client,
                 completion_request,
                 org_id=org_id,
+                prepare_params=prepare_params,
             )
 
         return StreamingResponse(
@@ -483,6 +506,7 @@ class ChatCompletionService:
                 llm_client,
                 completion_request,
                 org_id=org_id,
+                prepare_params=prepare_params,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
