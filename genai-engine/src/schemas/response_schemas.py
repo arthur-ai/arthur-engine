@@ -287,7 +287,7 @@ class TraceListResponse(BaseModel):
 
     count: int = Field(description="Total number of traces matching filters")
     display_currency: Optional[str] = Field(
-        "USD",
+        default="USD",
         json_schema_extra={"deprecated": True},
         description="Always USD: cost fields are in USD. To show costs in the "
         "configured currency, convert them with the rate from /api/v2/display-settings.",
@@ -318,7 +318,7 @@ class SpanListResponse(BaseModel):
 
     count: int = Field(description="Total number of spans matching filters")
     display_currency: Optional[str] = Field(
-        "USD",
+        default="USD",
         json_schema_extra={"deprecated": True},
         description="Always USD: cost fields are in USD. To show costs in the "
         "configured currency, convert them with the rate from /api/v2/display-settings.",
@@ -331,7 +331,7 @@ class SessionListResponse(BaseModel):
 
     count: int = Field(description="Total number of sessions matching filters")
     display_currency: Optional[str] = Field(
-        "USD",
+        default="USD",
         json_schema_extra={"deprecated": True},
         description="Always USD: cost fields are in USD. To show costs in the "
         "configured currency, convert them with the rate from /api/v2/display-settings.",
@@ -347,7 +347,7 @@ class SessionTracesResponse(BaseModel):
     session_id: str = Field(description="Session identifier")
     count: int = Field(description="Number of traces in this session")
     display_currency: Optional[str] = Field(
-        "USD",
+        default="USD",
         json_schema_extra={"deprecated": True},
         description="Always USD: cost fields are in USD. To show costs in the "
         "configured currency, convert them with the rate from /api/v2/display-settings.",
@@ -374,7 +374,7 @@ class TraceUserListResponse(BaseModel):
 
     count: int = Field(description="Total number of users matching filters")
     display_currency: Optional[str] = Field(
-        "USD",
+        default="USD",
         json_schema_extra={"deprecated": True},
         description="Always USD: cost fields are in USD. To show costs in the "
         "configured currency, convert them with the rate from /api/v2/display-settings.",

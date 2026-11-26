@@ -147,7 +147,10 @@ def list_traces_metadata(
             sort_by=sort_by.value,
         )
 
-        traces = [trace_metadata._to_metadata_response_model() for trace_metadata in trace_metadata_list]
+        traces = [
+            trace_metadata._to_metadata_response_model()
+            for trace_metadata in trace_metadata_list
+        ]
         return TraceListResponse(
             count=count,
             traces=traces,
@@ -533,7 +536,10 @@ def list_sessions_metadata(
             include_experiment_sessions=include_experiment_sessions,
         )
 
-        sessions = [session_metadata._to_metadata_response_model() for session_metadata in session_metadata_list]
+        sessions = [
+            session_metadata._to_metadata_response_model()
+            for session_metadata in session_metadata_list
+        ]
         return SessionListResponse(
             count=count,
             sessions=sessions,
@@ -691,7 +697,10 @@ def list_users_metadata(
             pagination_parameters=pagination_parameters,
         )
 
-        users = [user_metadata._to_metadata_response_model() for user_metadata in user_metadata_list]
+        users = [
+            user_metadata._to_metadata_response_model()
+            for user_metadata in user_metadata_list
+        ]
         return TraceUserListResponse(
             count=count,
             users=users,
