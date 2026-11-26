@@ -984,6 +984,41 @@ key without the role 403, then `GET /key/list` for the keys' agent bindings. It 
 write route and reads no request or response bodies. The proxy writes its request log
 20-60 s after each request, so a scan right after traffic may not see it yet.
 
+#### `kong` — Kong Gateway MCP servers
+
+Lists the MCP servers a self-hosted Kong Gateway serves or fronts, from its Admin API.
+It reports [MCP servers](#what-the-destination-receives) and no agents, so it exists
+only in standalone mode. Konnect is not read.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `base_url` | no | yes | Kong's Admin API, `https://host:port`; not its proxy port or Kong Manager |
+| `admin_token` | yes | yes | The RBAC token of a Kong admin with the `read-only` role in every workspace to scan. Sent as the `Kong-Admin-Token` header |
+| `ca_certificate` | no | no | As for `litellm` |
+| `tls_verification` | no | no | As for `litellm` |
+
+Use `query: ""` and `query_language: none`.
+
+The scan lists the workspaces, then every plugin in each, and reads the `ai-mcp-proxy`
+plugins. One whose mode is `passthrough-listener`, `conversion-listener` or `listener`
+is an MCP server and one event, with `detection: registered`. One whose mode is
+`conversion-only` only defines tools for a `listener` to serve, and is counted in the
+job log. So is a disabled plugin.
+
+`external_id` is `kong:{host}:{workspace}:mcp_server:{plugin id}`. The server is named
+by the plugin's instance name, else by its route's name, else by the plugin id.
+`last_seen` is when the plugin was last updated. `tools` lists the tools a
+`conversion-listener` defines; a `passthrough-listener`'s tools are upstream and a
+`listener`'s belong to other plugins, so neither has any in its event. Kong's Admin API
+does not record who called a server, so there is no `used_by`.
+
+A plugin's `config` also holds session-store passwords and the headers its tools send
+upstream. The scan reads the mode and the tools' names from it and nothing else.
+
+The lookback window is not applied: the list is an inventory. A workspace the token
+cannot read is a warning and the rest of the scan goes on; a rejected token, or every
+workspace refused, fails the scan.
+
 ### Destination
 
 Exactly one. Every HTTP destination (`splunk_hec`, `elasticsearch`, `webhook`) has:
@@ -1133,7 +1168,7 @@ A discovered agent, one per agent per scan:
 ```
 
 A discovered MCP server, one per server per scan, from a source that can see them
-(today `litellm`). It is never sent as an agent, so a search or an alert on
+(today `litellm` and `kong`). It is never sent as an agent, so a search or an alert on
 `arthur.discovery.agent` does not count servers:
 
 ```json
@@ -1156,7 +1191,7 @@ A discovered MCP server, one per server per scan, from a source that can see the
 | Field | Meaning |
 |---|---|
 | `external_id` | The server where this source saw it. The same server behind two gateways is two events; dedupe on it with `source.id`, as for an agent |
-| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway |
+| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway. `registered`: it is in a gateway's or a registry's own list of servers, called or not |
 | `tools` | The tools the source saw on it, named as they are in an agent's `tools`. Left out when it saw none |
 | `used_by` | The `agent.external_id` of each agent in the same scan seen using the server. Left out when the source cannot name one |
 
