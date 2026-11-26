@@ -127,6 +127,41 @@ The lookback window is not applied: Google's list API is an inventory, so every 
 reports every engine in the region whatever `lookback_window_seconds` says, and a short
 window misses nothing.
 
+#### `gcp_agent_registry` — Google Cloud Agent Registry MCP servers
+
+Lists the MCP servers registered in one Google Cloud project's Agent Registry. It
+reports [MCP servers](#what-the-destination-receives) and no agents, so it exists only
+in standalone mode.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `project_id` | no | yes | The project whose registry is read |
+| `locations` | no | no | Comma-separated registry locations, such as `us,europe-west1`. Empty reads every location the project lists. `global` is always read |
+| `service_account_key` | yes | no | The service account's JSON key. Without one, the engine uses its Application Default Credentials only if `ARTHUR_ENGINE_GCP_AGENT_REGISTRY_ALLOW_ADC=true` is set |
+
+The account needs `roles/agentregistry.viewer` on the project, and the project needs
+the Agent Registry API (`agentregistry.googleapis.com`) enabled; a scan of a project
+without it fails as `permission_denied` naming `SERVICE_DISABLED`. Use `query: ""` and
+`query_language: none`.
+
+The registry keeps servers per location, so the scan reads each one in turn. `global`
+holds the MCP servers Google runs for its own products, which appear there once a
+product's API is enabled on the project. Each registered server is one event with
+`detection: registered`. `external_id` is the server's resource name,
+`projects/{project}/locations/{location}/mcpServers/{id}`, `last_seen` is when its
+registration last changed, and `tools` lists the tools the registry holds for it. A
+server's addresses are in the same listing and are never read. The registry does not
+say who calls a server, so there is no `used_by`.
+
+The registry holds what was registered: Google's own servers, workloads on runtimes
+that register themselves, and servers someone added. An MCP server running on Cloud Run
+or GKE that nobody registered is not in it. Nor does it say whether IAM allows anyone to
+call a server it lists.
+
+The lookback window is not applied: the list is an inventory. A location the account
+cannot read is a warning and the rest of the scan goes on; a refused credential, or
+every location refused, fails the scan.
+
 #### `gcp_containers` — Cloud Run and GKE workloads
 
 Lists every Cloud Run service, Cloud Run job and GKE workload in the projects, and
@@ -1133,7 +1168,7 @@ A discovered agent, one per agent per scan:
 ```
 
 A discovered MCP server, one per server per scan, from a source that can see them
-(today `litellm`). It is never sent as an agent, so a search or an alert on
+(today `litellm` and `gcp_agent_registry`). It is never sent as an agent, so a search or an alert on
 `arthur.discovery.agent` does not count servers:
 
 ```json
@@ -1156,7 +1191,7 @@ A discovered MCP server, one per server per scan, from a source that can see the
 | Field | Meaning |
 |---|---|
 | `external_id` | The server where this source saw it. The same server behind two gateways is two events; dedupe on it with `source.id`, as for an agent |
-| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway |
+| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway. `registered`: it is in a gateway's or a registry's own list of servers, called or not |
 | `tools` | The tools the source saw on it, named as they are in an agent's `tools`. Left out when it saw none |
 | `used_by` | The `agent.external_id` of each agent in the same scan seen using the server. Left out when the source cannot name one |
 

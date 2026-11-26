@@ -40,6 +40,10 @@ from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
 from discovery.cloud.gce.connector import ComputeEngineConnector
+from discovery.cloud.gcp_agent_registry.connector import (
+    VENDOR as GCP_AGENT_REGISTRY_VENDOR,
+)
+from discovery.cloud.gcp_agent_registry.connector import GcpAgentRegistryConnector
 from discovery.cloud.gcp_containers.connector import VENDOR as GCP_CONTAINERS_VENDOR
 from discovery.cloud.gcp_containers.connector import GcpContainersConnector
 from discovery.cloud.gcp_vertex.connector import VENDOR as GCP_VERTEX_VENDOR
@@ -95,10 +99,15 @@ def standalone_connectors() -> dict[str, DiscoveryConnectorFactory]:
     sources that only make sense without one.
 
     `local` reads one machine's endpoint collector output from a folder someone mounted
-    into the engine, which a data-plane engine never has. A new dict on every call, as
-    `source_connectors()` is.
+    into the engine, which a data-plane engine never has. `gcp_agent_registry` reports
+    MCP servers and no agents, which the Platform has nowhere to put. A new dict on
+    every call, as `source_connectors()` is.
     """
-    return {**source_connectors(), LOCAL_VENDOR: LocalConnector}
+    return {
+        **source_connectors(),
+        LOCAL_VENDOR: LocalConnector,
+        GCP_AGENT_REGISTRY_VENDOR: GcpAgentRegistryConnector,
+    }
 
 
 def corroborating_vendors() -> frozenset[str]:
@@ -121,6 +130,8 @@ __all__ = [
     "corroborating_vendors",
     "LocalConnector",
     "LOCAL_VENDOR",
+    "GcpAgentRegistryConnector",
+    "GCP_AGENT_REGISTRY_VENDOR",
     "JamfConnector",
     "JAMF_VENDOR",
     "ComputeEngineConnector",

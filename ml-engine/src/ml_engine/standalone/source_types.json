@@ -435,6 +435,42 @@
         }
       ]
     },
+    "gcp_agent_registry": {
+      "vendor": "gcp_agent_registry",
+      "display_name": "Google Cloud Agent Registry",
+      "source_class": "cloud",
+      "availability": "preview",
+      "query_language": "none",
+      "fields": [
+        {
+          "name": "project_id",
+          "is_sensitive": false,
+          "is_optional": false,
+          "d_type": "string",
+          "description": "ID of the GCP project whose Agent Registry is read for MCP servers. Example: my-project-123456",
+          "allowed_values": null,
+          "priority": 10
+        },
+        {
+          "name": "locations",
+          "is_sensitive": false,
+          "is_optional": true,
+          "d_type": "string",
+          "description": "Registry locations to read, comma-separated. Empty reads every location the project lists. global is always read. Example: us,europe-west1",
+          "allowed_values": null,
+          "priority": 20
+        },
+        {
+          "name": "service_account_key",
+          "is_sensitive": true,
+          "is_optional": true,
+          "d_type": "string",
+          "description": "JSON key of the service account the engine reads with. roles/agentregistry.viewer lists the registry's MCP servers. Paste the whole key file. Leave empty only when the engine is configured to use its own workload credentials, which then need the same role.",
+          "allowed_values": null,
+          "priority": 30
+        }
+      ]
+    },
     "gcp_compute_engine": {
       "vendor": "gcp_compute_engine",
       "display_name": "Compute Engine",
