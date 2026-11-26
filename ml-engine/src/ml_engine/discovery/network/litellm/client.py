@@ -1,6 +1,6 @@
 """The LiteLLM proxy's admin API, as far as a discovery scan needs it.
 
-Three read-only routes, all `GET`, all answered to a `proxy_admin_viewer` key:
+Four read-only routes, all `GET`, all answered to a `proxy_admin_viewer` key:
 
 * `/user/list?page_size=1`, the PROBE. A non-admin key gets a clean 403 here, while
   the spend-log route answers it 401, which would read as a bad credential. Asked
@@ -13,6 +13,10 @@ Three read-only routes, all `GET`, all answered to a `proxy_admin_viewer` key:
   `start_date` / `end_date` are UTC `YYYY-MM-DD HH:MM:SS`; ISO 8601 is refused with a
   400. Sorted oldest first, so a row written late (the proxy writes them in batches,
   20-60 s after the request) shifts later pages forward rather than out of reach.
+* `/v1/mcp/server`, the MCP servers registered on the proxy. One unpaged list. The
+  proxy strips credentials, headers and environment from it for any key that is not a
+  full admin's, and whatever it leaves is not kept either: only each server's name and
+  when it last changed are read, never its `url`, `command` or `args`.
 
 Request and response bodies are never asked for: the list route leaves them out.
 Never a write route, even though a mis-scoped key could call one.
@@ -48,6 +52,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 PROBE_PATH = "/user/list"
 KEYS_PATH = "/key/list"
 SPEND_LOGS_PATH = "/spend/logs/v2"
+MCP_SERVERS_PATH = "/v1/mcp/server"
 
 
 class LiteLLMError(Exception):
@@ -84,8 +89,21 @@ class VirtualKey:
     agent_id: Optional[str] = None
 
 
+@dataclass(frozen=True)
+class RegisteredServer:
+    """One MCP server registered on the proxy, as `/v1/mcp/server` lists it.
+
+    `name` is its `server_name`, which is what a tool call's row names it by, then its
+    `alias`, then its `server_id`. `changed` is `updated_at`, or `created_at` for a
+    server never edited, as the proxy wrote it.
+    """
+
+    name: str
+    changed: Optional[str] = None
+
+
 class LiteLLMClient:
-    """One proxy, one key. Reads its keys and its request log."""
+    """One proxy, one key. Reads its keys, its request log and its MCP servers."""
 
     def __init__(
         self,
@@ -157,7 +175,21 @@ class LiteLLMClient:
                 return
             page += 1
 
+    def mcp_servers(self) -> list[RegisteredServer]:
+        """Every MCP server the proxy lists to this key."""
+        body = self._get_json(MCP_SERVERS_PATH, {})
+        if not isinstance(body, list):
+            raise _not_the_proxy(MCP_SERVERS_PATH)
+        return [s for s in (_server_of(item) for item in body) if s is not None]
+
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
+        """The JSON object a route answers with."""
+        body = self._get_json(path, params)
+        if not isinstance(body, dict):
+            raise _not_the_proxy(path)
+        return body
+
+    def _get_json(self, path: str, params: dict[str, Any]) -> Any:
         """One GET, retried when the failure passes: every route read is idempotent."""
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
@@ -168,7 +200,7 @@ class LiteLLMClient:
                 self._sleep(backoff_seconds(attempt, None))
                 continue
             if resp.status_code == 200:
-                return _object_body(resp, path)
+                return _json_body(resp, path)
             if resp.status_code in RETRY_STATUSES and attempt < MAX_ATTEMPTS:
                 self._sleep(backoff_seconds(attempt, resp.headers.get("Retry-After")))
                 continue
@@ -209,16 +241,13 @@ class LiteLLMClient:
             ) from exc
 
 
-def _object_body(resp: requests.Response, path: str) -> dict[str, Any]:
-    """The JSON object of a 200, which is not always the proxy's: a load balancer or
-    an SSO front door can answer 200 with a login page."""
+def _json_body(resp: requests.Response, path: str) -> Any:
+    """The JSON of a 200, which is not always the proxy's: a load balancer or an SSO
+    front door can answer 200 with a login page."""
     try:
-        body = resp.json()
+        return resp.json()
     except ValueError:
-        body = None
-    if not isinstance(body, dict):
-        raise _not_the_proxy(path)
-    return body
+        raise _not_the_proxy(path) from None
 
 
 def _not_the_proxy(path: str) -> LiteLLMError:
@@ -241,6 +270,22 @@ def _key_of(item: Any) -> Optional[VirtualKey]:
         alias=_text(item.get("key_alias")),
         team_alias=_text(item.get("team_alias")),
         agent_id=_text(item.get("agent_id")),
+    )
+
+
+def _server_of(item: Any) -> Optional[RegisteredServer]:
+    if not isinstance(item, dict):
+        return None
+    name = (
+        _text(item.get("server_name"))
+        or _text(item.get("alias"))
+        or _text(item.get("server_id"))
+    )
+    if name is None:
+        return None
+    return RegisteredServer(
+        name=name,
+        changed=_text(item.get("updated_at")) or _text(item.get("created_at")),
     )
 
 

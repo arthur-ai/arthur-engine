@@ -9,7 +9,9 @@ and `agent_id`; `/spend/logs/v2` returns `data` / `total` / `page` / `page_size`
 (`request_id`, `call_type`, `api_key`, `startTime` as naive UTC, `model`,
 `custom_llm_provider`, `status`, `agent_id`, `mcp_namespaced_tool_name`, and
 `metadata` with `user_api_key_alias`, `user_api_key_team_alias` and
-`error_information`). Ids, aliases, addresses and key fragments are fakes of the same
+`error_information`); `/v1/mcp/server` (read from 1.109.1) returns a bare list of
+servers, each with `server_id`, `server_name`, `alias`, `url`, `updated_at` and
+`created_at` among its fields. Ids, aliases, addresses and key fragments are fakes of the same
 shape.
 """
 
@@ -268,11 +270,13 @@ class FakeSession:
         spend: Optional[list[Any]] = None,
         keys: Optional[list[Any]] = None,
         probe: Optional[list[Any]] = None,
+        servers: Optional[list[Any]] = None,
     ) -> None:
         self.routes: dict[str, list[Any]] = {
             "/user/list": probe or [FakeResponse(200, {"users": [], "total": 1})],
             "/key/list": keys or [keys_page(KEYS)],
             "/spend/logs/v2": spend or [spend_page([])],
+            "/v1/mcp/server": servers or [FakeResponse(200, [])],
         }
         self.calls: list[dict[str, Any]] = []
 
@@ -319,6 +323,11 @@ def scan(
     return [record for batch in batches for record in batch]
 
 
+def spend_call(session: FakeSession) -> dict[str, Any]:
+    [call] = [c for c in session.calls if c["path"] == "/spend/logs/v2"]
+    return call
+
+
 def by_name(records: list[Any]) -> dict[str, Any]:
     return {r.name: r for r in records}
 
@@ -345,7 +354,12 @@ def test_the_settings_never_print_the_key() -> None:
 def test_the_admin_probe_comes_first_then_the_keys_then_the_log() -> None:
     session = FakeSession()
     scan(session)
-    assert session.paths() == ["/user/list", "/key/list", "/spend/logs/v2"]
+    assert session.paths() == [
+        "/user/list",
+        "/key/list",
+        "/spend/logs/v2",
+        "/v1/mcp/server",
+    ]
     assert session.calls[0]["params"] == {"page": 1, "page_size": 1}
 
 
@@ -363,7 +377,7 @@ def test_every_call_sends_the_key_as_a_bearer_with_no_redirects_and_bounded_time
 def test_the_request_log_is_read_for_the_lookback_in_utc_oldest_first() -> None:
     session = FakeSession()
     scan(session, lookback_hours=48)
-    params = session.calls[-1]["params"]
+    params = spend_call(session)["params"]
     assert params["start_date"] == "2026-10-26 12:00:00"
     assert params["end_date"] == "2026-10-28 12:00:00"
     assert params["page_size"] == SPEND_PAGE_SIZE == 1000
@@ -374,7 +388,7 @@ def test_the_request_log_is_read_for_the_lookback_in_utc_oldest_first() -> None:
 def test_a_lookback_of_zero_reads_everything_retained() -> None:
     session = FakeSession()
     scan(session, lookback_hours=0)
-    assert session.calls[-1]["params"]["start_date"] == "1970-01-01 00:00:00"
+    assert spend_call(session)["params"]["start_date"] == "1970-01-01 00:00:00"
 
 
 def test_the_key_list_asks_for_full_objects() -> None:
@@ -1020,3 +1034,129 @@ def test_server_records_pass_the_output_contract_check() -> None:
     rows = [mcp_call("r1", CI_TOKEN, "2026-10-28T10:00:00", "github", "get_issue")]
 
     check_batch(scan(FakeSession(spend=[spend_page(rows)])), "LiteLLM")
+
+
+# -- registered MCP servers --------------------------------------------------------------
+
+URL_SECRET = "https://mcp.example.com/sse?token=url-secret-value"
+
+
+def registered(
+    name: Optional[str],
+    updated: Optional[str] = "2026-10-20T09:00:00",
+    **over: Any,
+) -> dict[str, Any]:
+    """A server as `/v1/mcp/server` lists it to a key that is not a full admin's."""
+    body: dict[str, Any] = {
+        "server_id": f"id-{name}",
+        "server_name": name,
+        "alias": None,
+        "url": URL_SECRET,
+        "transport": "sse",
+        "created_at": "2026-10-01T09:00:00",
+        "updated_at": updated,
+        "status": "unknown",
+    }
+    body.update(over)
+    return body
+
+
+def test_a_registered_server_nothing_called_is_a_registered_record() -> None:
+    session = FakeSession(servers=[FakeResponse(200, [registered("jira")])])
+
+    [server] = scan(session)
+
+    assert isinstance(server, McpServerRecord)
+    assert server.external_id == f"litellm:{INSTANCE}:mcp_server:jira"
+    assert server.name == "jira"
+    assert server.detection is McpServerDetection.REGISTERED
+    assert server.last_seen == datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)
+    assert server.used_by is None and server.tools is None
+    assert session.calls[-1]["params"] == {}
+    check_batch([server], "Source config 'LiteLLM prod' (litellm)")
+
+
+def test_a_server_both_registered_and_called_is_one_called_record() -> None:
+    rows = [
+        row("r1", CI_TOKEN, "2026-10-28T10:00:00", alias="shared-ci"),
+        mcp_call("r2", CI_TOKEN, "2026-10-28T10:01:00", "github", "get_issue"),
+    ]
+    session = FakeSession(
+        spend=[spend_page(rows)],
+        servers=[FakeResponse(200, [registered("github"), registered("jira")])],
+    )
+
+    servers = [r for r in scan(session) if isinstance(r, McpServerRecord)]
+
+    assert [(s.name, s.detection) for s in servers] == [
+        ("github", McpServerDetection.CALLED),
+        ("jira", McpServerDetection.REGISTERED),
+    ]
+    assert len({s.external_id for s in servers}) == 2
+
+
+def test_a_registered_server_is_named_by_its_alias_then_its_id_and_listed_once() -> (
+    None
+):
+    listed = [
+        registered(None, alias="aliased"),
+        registered(None, server_id="srv-123"),
+        registered("twice"),
+        registered("twice"),
+        "not a server",
+    ]
+    session = FakeSession(servers=[FakeResponse(200, listed)])
+
+    assert sorted(r.name for r in scan(session)) == ["aliased", "srv-123", "twice"]
+
+
+def test_a_server_never_edited_is_dated_by_its_creation() -> None:
+    session = FakeSession(servers=[FakeResponse(200, [registered("jira", None)])])
+    [server] = scan(session)
+    assert server.last_seen == datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+
+
+def test_a_registered_server_without_a_date_is_counted_and_not_reported(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    listed = [registered("from-config", None, created_at=None), registered("jira")]
+    session = FakeSession(servers=[FakeResponse(200, listed)])
+    with caplog.at_level(logging.INFO, logger=LOG.name):
+        [server] = scan(session)
+    assert server.name == "jira"
+    assert "1 registered MCP server(s) not reported" in caplog.text
+    assert "1 more registered" in caplog.text
+
+
+@pytest.mark.parametrize("status", [401, 403, 404])
+def test_a_server_list_the_proxy_does_not_answer_warns_and_keeps_called_servers(
+    status: int,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    rows = [mcp_call("r1", CI_TOKEN, "2026-10-28T10:01:00", "github", "get_issue")]
+    session = FakeSession(
+        spend=[spend_page(rows)],
+        servers=[FakeResponse(status, {"error": {"message": f"Received={MASKED}"}})],
+    )
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        [server] = scan(session)
+    assert server.detection is McpServerDetection.CALLED
+    assert f"did not answer the MCP server list (HTTP {status})" in caplog.text
+    assert MASKED not in caplog.text
+
+
+def test_a_server_list_that_is_not_a_list_is_the_vendors_error() -> None:
+    session = FakeSession(servers=[FakeResponse(200, {"servers": []})])
+    with pytest.raises(LiteLLMError) as raised:
+        scan(session)
+    assert failure_code(raised.value) is DiscoveryErrorCode.PROVIDER_ERROR
+
+
+def test_a_registered_servers_url_is_never_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = FakeSession(servers=[FakeResponse(200, [registered("jira")])])
+    with caplog.at_level(logging.DEBUG):
+        [server] = scan(session)
+    assert "url-secret-value" not in server.model_dump_json()
+    assert "url-secret-value" not in caplog.text
