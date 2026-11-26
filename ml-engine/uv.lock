@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-11-23T13:15:59.621505Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1564,7 +1564,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.1133"
+version = "2.1.1134"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
