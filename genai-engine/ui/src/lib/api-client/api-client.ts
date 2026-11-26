@@ -106,7 +106,7 @@ export interface AgenticAnnotationResponse {
   continuous_eval_name?: string | null;
   /**
    * Cost
-   * Cost of the continuous eval run
+   * Estimated cost of the continuous eval run, in USD
    */
   cost?: number | null;
   /**
@@ -2733,8 +2733,18 @@ export interface DisplaySettingsResponse {
    * @default "USD"
    */
   default_currency?: string;
+  /**
+   * Exchange Rate Updated At
+   * When usd_exchange_rate was fetched. None for USD, which needs no rate.
+   */
+  exchange_rate_updated_at?: string | null;
   /** Scope Url */
   scope_url?: string | null;
+  /**
+   * Usd Exchange Rate
+   * Units of default_currency one USD buys. Multiply the USD costs in API responses by it to show them in default_currency. None when no rate is available; show costs in USD then.
+   */
+  usd_exchange_rate?: number | null;
 }
 
 /** DocumentStorageConfigurationResponse */
@@ -7130,7 +7140,7 @@ export interface NestedSpanWithMetricsResponse {
   children?: NestedSpanWithMetricsResponse[];
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -7170,7 +7180,7 @@ export interface NestedSpanWithMetricsResponse {
   parent_span_id?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -7202,7 +7212,7 @@ export interface NestedSpanWithMetricsResponse {
   task_id?: string | null;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -7212,6 +7222,11 @@ export interface NestedSpanWithMetricsResponse {
   total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * @format date-time
@@ -10872,7 +10887,9 @@ export interface SessionListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -10889,7 +10906,7 @@ export interface SessionListResponse {
 export interface SessionMetadataResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -10916,7 +10933,7 @@ export interface SessionMetadataResponse {
   latest_end_time: string;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -10941,7 +10958,7 @@ export interface SessionMetadataResponse {
   task_id: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -10959,6 +10976,11 @@ export interface SessionMetadataResponse {
    * List of trace IDs in this session
    */
   trace_ids: string[];
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * User Id
    * User ID if available
@@ -10978,7 +11000,9 @@ export interface SessionTracesResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -11060,7 +11084,9 @@ export interface SpanListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -11077,7 +11103,7 @@ export interface SpanListResponse {
 export interface SpanMetadataResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -11124,7 +11150,7 @@ export interface SpanMetadataResponse {
   parent_span_id?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -11170,7 +11196,7 @@ export interface SpanMetadataResponse {
   task_id?: string | null;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -11183,6 +11209,11 @@ export interface SpanMetadataResponse {
    * ID of the parent trace
    */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * When the span was updated
@@ -11200,7 +11231,7 @@ export interface SpanMetadataResponse {
 export interface SpanWithMetricsResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -11240,7 +11271,7 @@ export interface SpanWithMetricsResponse {
   parent_span_id?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -11272,7 +11303,7 @@ export interface SpanWithMetricsResponse {
   task_id?: string | null;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -11282,6 +11313,11 @@ export interface SpanWithMetricsResponse {
   total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * @format date-time
@@ -11944,7 +11980,9 @@ export interface TraceListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -11966,7 +12004,7 @@ export interface TraceMetadataResponse {
   annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -12003,7 +12041,7 @@ export interface TraceMetadataResponse {
   output_content?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -12039,7 +12077,7 @@ export interface TraceMetadataResponse {
   task_id: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -12052,6 +12090,11 @@ export interface TraceMetadataResponse {
    * ID of the trace
    */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * When the trace was last updated
@@ -12160,7 +12203,7 @@ export interface TraceResponse {
   annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -12186,7 +12229,7 @@ export interface TraceResponse {
   output_content?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -12208,7 +12251,7 @@ export interface TraceResponse {
   start_time: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -12221,6 +12264,11 @@ export interface TraceResponse {
    * ID of the trace
    */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
 }
 
 /** TraceSortBy */
@@ -12435,7 +12483,9 @@ export interface TraceUserListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -12452,7 +12502,7 @@ export interface TraceUserListResponse {
 export interface TraceUserMetadataResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -12474,7 +12524,7 @@ export interface TraceUserMetadataResponse {
   latest_end_time: string;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -12504,7 +12554,7 @@ export interface TraceUserMetadataResponse {
   task_id: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -12522,6 +12572,11 @@ export interface TraceUserMetadataResponse {
    * List of trace IDs for this user
    */
   trace_ids: string[];
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * User Id
    * User identifier

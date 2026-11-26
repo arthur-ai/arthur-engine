@@ -168,3 +168,17 @@ def test_display_settings_scope_url_non_https_rejected(
         response = client.base_client.get("/api/v2/display-settings")
     assert response.status_code == 200
     assert response.json()["scope_url"] is None
+
+
+@pytest.mark.unit_tests
+def test_display_settings_usd_needs_no_rate(client: GenaiEngineTestClientBase):
+    """USD costs are shown as they are, so the rate is 1 with no fetch time."""
+    with patch(
+        "routers.v2.system_management_routes.get_display_currency",
+        return_value="USD",
+    ):
+        response = client.base_client.get("/api/v2/display-settings")
+    assert response.status_code == 200
+    assert response.json()["default_currency"] == "USD"
+    assert response.json()["usd_exchange_rate"] == 1.0
+    assert response.json()["exchange_rate_updated_at"] is None

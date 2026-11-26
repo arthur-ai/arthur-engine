@@ -64,6 +64,7 @@ class TraceUpdateDBBase(TypedDict):
     prompt_token_cost: float | None
     completion_token_cost: float | None
     total_token_cost: float | None
+    unpriced_span_count: int | None
     ingest_bytes: int | None
     input_content: str | None
     output_content: str | None
@@ -548,6 +549,7 @@ class TraceIngestionService:
             prompt_token_cost=token_data.prompt_token_cost,
             completion_token_cost=token_data.completion_token_cost,
             total_token_cost=token_data.total_token_cost,
+            unpriced_span_count=token_data.unpriced_span_count,
             ingest_bytes=ingest_bytes,
         )
 
@@ -679,6 +681,7 @@ class TraceIngestionService:
             "prompt_token_cost",
             "completion_token_cost",
             "total_token_cost",
+            "unpriced_span_count",
         ]
 
         for span in spans:
@@ -705,6 +708,7 @@ class TraceIngestionService:
                     prompt_token_cost=None,
                     completion_token_cost=None,
                     total_token_cost=None,
+                    unpriced_span_count=None,
                     ingest_bytes=None,
                 )
 
@@ -888,6 +892,12 @@ class TraceIngestionService:
                 DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
                 DatabaseTraceMetadata.total_token_cost,
                 stmt.excluded.total_token_cost,
+            ),
+            unpriced_span_count=func.coalesce(
+                DatabaseTraceMetadata.unpriced_span_count
+                + stmt.excluded.unpriced_span_count,
+                DatabaseTraceMetadata.unpriced_span_count,
+                stmt.excluded.unpriced_span_count,
             ),
             ingest_bytes=func.coalesce(
                 DatabaseTraceMetadata.ingest_bytes + stmt.excluded.ingest_bytes,

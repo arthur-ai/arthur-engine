@@ -1,4 +1,4 @@
-import { getLocaleForCurrency } from "@arthur/shared-components";
+import { convertUsd, type DisplayCurrency, getLocaleForCurrency } from "@arthur/shared-components";
 
 export const METRIC_COLORS = {
   traces: { main: "#3B82F6", light: "#EFF6FF", dark: "rgba(59,130,246,0.12)", border: "#BFDBFE", darkBorder: "rgba(59,130,246,0.3)" },
@@ -27,8 +27,9 @@ function getCurrencySymbol(currencyCode: string): string {
   return parts.find((p) => p.type === "currency")?.value ?? "$";
 }
 
-export const formatCostAxisValue = (value: number, currencyCode: string = "USD"): string => {
-  const symbol = getCurrencySymbol(currencyCode);
+export const formatCostAxisValue = (valueUsd: number, currency: DisplayCurrency): string => {
+  const value = convertUsd(valueUsd, currency);
+  const symbol = getCurrencySymbol(currency.code);
   if (value >= 1000) {
     return `${symbol}${(value / 1000).toFixed(1)}K`;
   }

@@ -69,6 +69,17 @@ SPAN_SORT_COLUMN_MAP: dict[str, InstrumentedAttribute[Any]] = {
 
 NULLABLE_SORT_COLUMNS = {"total_token_count", "total_token_cost"}
 
+# Token and cost fields summed from spans; SUM stays NULL when no span reported one.
+SPAN_TOKEN_COST_FIELDS = (
+    "prompt_token_count",
+    "completion_token_count",
+    "total_token_count",
+    "prompt_token_cost",
+    "completion_token_cost",
+    "total_token_cost",
+    "unpriced_span_count",
+)
+
 
 class SpanQueryService:
     """
@@ -1014,6 +1025,10 @@ class SpanQueryService:
                 func.count(DatabaseSpan.id).label("span_count"),
                 func.min(DatabaseSpan.start_time).label("earliest_start_time"),
                 func.max(DatabaseSpan.end_time).label("latest_end_time"),
+                *(
+                    func.sum(getattr(DatabaseSpan, field)).label(field)
+                    for field in SPAN_TOKEN_COST_FIELDS
+                ),
             )
             .where(
                 and_(
@@ -1049,6 +1064,7 @@ class SpanQueryService:
             span_count=result.span_count,
             earliest_start_time=result.earliest_start_time,
             latest_end_time=result.latest_end_time,
+            **{field: getattr(result, field) for field in SPAN_TOKEN_COST_FIELDS},
         )
 
     def get_sessions_aggregated(
@@ -1186,6 +1202,7 @@ class SpanQueryService:
                     prompt_token_cost=row.prompt_token_cost,
                     completion_token_cost=row.completion_token_cost,
                     total_token_cost=row.total_token_cost,
+                    unpriced_span_count=row.unpriced_span_count,
                 ),
             )
 
@@ -1318,6 +1335,7 @@ class SpanQueryService:
                     prompt_token_cost=row.prompt_token_cost,
                     completion_token_cost=row.completion_token_cost,
                     total_token_cost=row.total_token_cost,
+                    unpriced_span_count=row.unpriced_span_count,
                 ),
             )
 
@@ -1363,6 +1381,9 @@ class SpanQueryService:
             ),
             func.sum(DatabaseTraceMetadata.total_token_cost).label(
                 "total_token_cost",
+            ),
+            func.sum(DatabaseTraceMetadata.unpriced_span_count).label(
+                "unpriced_span_count",
             ),
         ]
 

@@ -1,6 +1,6 @@
 import { CopyableChip } from "@arthur/shared-components";
 import { Chip, Link as MuiLink, Tooltip, Typography } from "@mui/material";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createColumnHelper, createSortedRowModel, rowSortingFeature, sortFn_datetime, tableFeatures } from "@tanstack/react-table";
 import { Link } from "react-router";
 
 import { LiveEvalActions } from "../components/actions";
@@ -8,10 +8,16 @@ import { LiveEvalActions } from "../components/actions";
 import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
-const columnHelper = createColumnHelper<ContinuousEvalResponse>();
+export const liveEvalFeatures = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+  sortFns: { datetime: sortFn_datetime },
+});
+
+const columnHelper = createColumnHelper<typeof liveEvalFeatures, ContinuousEvalResponse>();
 
 export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: string) => void; timezone: string; use24Hour: boolean }) => {
-  const columns = [
+  return columnHelper.columns([
     columnHelper.accessor("name", {
       header: "Name",
       cell: ({ getValue, row }) => {
@@ -76,12 +82,12 @@ export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: st
     ),
     columnHelper.accessor("created_at", {
       header: "Created At",
-      sortingFn: "datetime",
+      sortFn: "datetime",
       cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone, { hour12: !use24Hour }),
     }),
     columnHelper.accessor("updated_at", {
       header: "Updated At",
-      sortingFn: "datetime",
+      sortFn: "datetime",
       cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone, { hour12: !use24Hour }),
     }),
     columnHelper.accessor("id", {
@@ -97,7 +103,5 @@ export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: st
         return <LiveEvalActions config={row.original} onEdit={onEdit} />;
       },
     }),
-  ];
-
-  return columns;
+  ]);
 };

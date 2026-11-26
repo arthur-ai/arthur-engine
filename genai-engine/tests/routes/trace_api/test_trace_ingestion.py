@@ -1328,3 +1328,100 @@ def test_span_ingest_bytes_shares_sum_to_the_body_size():
     assert (
         TraceIngestionService._span_ingest_bytes(ExportTraceServiceRequest(), 10) == []
     )
+
+
+# ============================================================================
+# UNPRICED SPAN COUNT TESTS
+# ============================================================================
+
+
+def _llm_span_with_messages(trace_id, model_name, session_id):
+    span = _create_span(
+        trace_id=trace_id,
+        span_id=uuid4().bytes[:8],
+        name=f"llm_{model_name}",
+        model_name=model_name,
+        session_id=session_id,
+    )
+    span.attributes.extend(
+        [
+            KeyValue(
+                key="llm.input_messages.0.message.role",
+                value=AnyValue(string_value="user"),
+            ),
+            KeyValue(
+                key="llm.input_messages.0.message.content",
+                value=AnyValue(string_value="Hello, how are you?"),
+            ),
+            KeyValue(
+                key="llm.output_messages.0.message.role",
+                value=AnyValue(string_value="assistant"),
+            ),
+            KeyValue(
+                key="llm.output_messages.0.message.content",
+                value=AnyValue(string_value="I'm doing well, thank you!"),
+            ),
+        ],
+    )
+    return span
+
+
+def _send_spans(client, task_id, spans):
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+    scope_span.spans.extend(spans)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+    status_code, _ = client.trace_api_receive_traces(trace_request.SerializeToString())
+    assert status_code == 200
+
+
+@pytest.mark.unit_tests
+def test_trace_api_counts_llm_spans_that_could_not_be_priced(
+    client: GenaiEngineTestClientBase,
+):
+    """An LLM span whose model has no known price is counted instead of adding $0,
+    and the count adds up per trace, session and user across requests."""
+    task_id = f"unpriced_task_{uuid4()}"
+    session_id = f"unpriced_session_{uuid4()}"
+    trace_id = uuid4().bytes
+    priced = _llm_span_with_messages(trace_id, "gpt-4-0613", session_id)
+    unpriced = _llm_span_with_messages(trace_id, "totally-made-up-model-xyz", session_id)
+    tool = _create_span(
+        trace_id=trace_id,
+        span_id=uuid4().bytes[:8],
+        name="tool",
+        span_type="TOOL",
+        session_id=session_id,
+    )
+    _send_spans(client, task_id, [priced, unpriced, tool])
+
+    db_session = override_get_db_session()
+    spans = {
+        span.span_name: span
+        for span in db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.trace_id == trace_id.hex(),
+        )
+    }
+    assert spans["llm_gpt-4-0613"].unpriced_span_count == 0
+    assert spans["llm_totally-made-up-model-xyz"].unpriced_span_count == 1
+    assert spans["llm_totally-made-up-model-xyz"].total_token_cost is None
+    assert spans["tool"].unpriced_span_count is None
+
+    _send_spans(
+        client,
+        task_id,
+        [_llm_span_with_messages(trace_id, "another-made-up-model", session_id)],
+    )
+
+    status_code, traces = client.trace_api_list_traces_metadata(task_ids=[task_id])
+    assert status_code == 200
+    assert traces.display_currency == "USD"
+    [trace] = traces.traces
+    assert trace.unpriced_span_count == 2
+    assert trace.total_token_cost == spans["llm_gpt-4-0613"].total_token_cost
+
+    status_code, sessions = client.trace_api_list_sessions_metadata(task_ids=[task_id])
+    assert status_code == 200
+    assert [session.unpriced_span_count for session in sessions.sessions] == [2]

@@ -68,6 +68,9 @@ class DatabaseTraceMetadata(Base):
     prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # LLM spans in this trace whose model couldn't be priced, so the costs above
+    # leave them out. NULL when the trace has no LLM spans.
+    unpriced_span_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     # OTLP payload bytes received for this trace's spans on the trace ingestion
     # endpoints. NULL for traces ingested before it was recorded, and for traces
     # that didn't arrive through those endpoints (internal, demo, GCP pull).
@@ -256,6 +259,9 @@ class DatabaseSpan(Base):
     prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # 1 for an LLM span whose model couldn't be priced, 0 for a priced one, NULL
+    # for other span kinds. Summed into the trace's count.
+    unpriced_span_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     # This span's share of the OTLP request body it arrived in.
     ingest_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 

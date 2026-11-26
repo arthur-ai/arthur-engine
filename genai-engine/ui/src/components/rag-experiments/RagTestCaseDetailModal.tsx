@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
@@ -27,7 +28,6 @@ import { ResultsDisplay } from "@/components/retrievals/ResultsDisplay";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { RagTestCase, EvalExecution } from "@/lib/api-client/api-client";
-import { formatCurrency } from "@/utils/formatters";
 
 interface RagTestCaseDetailModalProps {
   testCase: RagTestCase | null;
@@ -238,7 +238,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
   datasetId,
   datasetVersion,
 }) => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
@@ -306,7 +306,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                 color={testCase.status === "completed" ? "success" : testCase.status === "failed" ? "error" : "default"}
               />
               {testCase.total_cost && (
-                <Chip label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost), defaultCurrency)}`} size="small" variant="outlined" />
+                <Chip label={`Cost: ${formatCost(parseFloat(testCase.total_cost), currency)}`} size="small" variant="outlined" />
               )}
             </Box>
             <IconButton onClick={onClose} size="small">
@@ -507,7 +507,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                                             sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                                           />
                                           <Chip
-                                            label={`Cost: ${formatCurrency(parseFloat(evalItem.eval_results.cost), defaultCurrency)}`}
+                                            label={`Cost: ${formatCost(parseFloat(evalItem.eval_results.cost), currency)}`}
                                             size="small"
                                             variant="outlined"
                                           />

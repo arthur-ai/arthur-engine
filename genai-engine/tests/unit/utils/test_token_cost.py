@@ -5,7 +5,6 @@ import pytest
 from litellm import cost_per_token
 
 from utils.token_count import (
-    TokenCountCost,
     _model_name_candidates,
     compute_cost_from_tokens,
 )
@@ -123,7 +122,7 @@ class TestExtractTokenCostFromSpan:
         assert result.total_token_cost == pytest.approx(
             float(expected_prompt) + float(expected_completion),
         )
-        assert result.cost_unknown is False
+        assert result.unpriced_span_count == 0
 
     def test_cache_read_lowers_cost(self):
         without_cache = extract_token_cost_from_span(
@@ -149,7 +148,7 @@ class TestExtractTokenCostFromSpan:
         assert prompt_call.kwargs["cache_read_input_tokens"] == 800
         assert prompt_call.kwargs["cache_creation_input_tokens"] == 50
 
-    def test_unknown_model_flags_cost_unknown(self, caplog):
+    def test_unknown_model_is_unpriced(self, caplog):
         with caplog.at_level(logging.WARNING, logger="utils.token_count"):
             result = extract_token_cost_from_span(
                 _llm_span(UNKNOWN_MODEL, 1000, 100),
@@ -157,8 +156,39 @@ class TestExtractTokenCostFromSpan:
             )
         assert result.prompt_token_cost is None
         assert result.total_token_cost is None
-        assert result.cost_unknown is True
+        assert result.unpriced_span_count == 1
         assert any("unrecognized model" in record.message for record in caplog.records)
 
-    def test_default_cost_unknown_is_false(self):
-        assert TokenCountCost().cost_unknown is False
+    def test_call_without_completion_tokens_is_priced(self):
+        result = extract_token_cost_from_span(
+            _llm_span(RECOGNIZED_MODEL, 1000, 0),
+            "LLM",
+        )
+        expected_prompt, _ = cost_per_token(
+            model=RECOGNIZED_MODEL,
+            prompt_tokens=1000,
+            completion_tokens=0,
+        )
+        assert result.completion_token_cost == 0.0
+        assert result.total_token_cost == pytest.approx(float(expected_prompt))
+        assert result.unpriced_span_count == 0
+
+    def test_tokens_without_model_are_unpriced(self):
+        result = extract_token_cost_from_span(_llm_span(None, 1000, 100), "LLM")
+        assert result.total_token_cost is None
+        assert result.unpriced_span_count == 1
+
+    def test_span_without_tokens_has_no_cost_and_is_not_unpriced(self):
+        result = extract_token_cost_from_span(
+            _llm_span(RECOGNIZED_MODEL, 0, 0),
+            "LLM",
+        )
+        assert result.total_token_cost is None
+        assert result.unpriced_span_count == 0
+
+    def test_non_llm_span_is_not_counted(self):
+        result = extract_token_cost_from_span(
+            _llm_span(RECOGNIZED_MODEL, 1000, 100),
+            "TOOL",
+        )
+        assert result.unpriced_span_count is None
