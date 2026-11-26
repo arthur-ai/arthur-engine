@@ -791,6 +791,38 @@ The lookback window is not applied: the list is an inventory, so every scan repo
 every agent in the project. If Foundry's paging repeats an agent or a page token, the scan fails
 rather than report a partial inventory.
 
+#### `azure_api_management` — Azure API Management MCP servers
+
+Lists the MCP servers that the API Management services in one Azure subscription expose.
+It reports [MCP servers](#what-the-destination-receives) and no agents, so it exists
+only in standalone mode. Only public Azure is supported.
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `subscription_id` | no | yes | The subscription whose API Management services are read |
+| `tenant_id` | no | no | The service principal's Microsoft Entra tenant |
+| `client_id` | no | no | The service principal's application (client) ID |
+| `client_secret` | yes | no | The service principal's secret. Set all three of `tenant_id`, `client_id` and `client_secret`, or none; with none, the engine uses its `DefaultAzureCredential` only if `ARTHUR_ENGINE_AZURE_API_MANAGEMENT_ALLOW_DEFAULT_CREDENTIAL=true` is set |
+
+The principal needs the `API Management Service Reader Role` on the subscription. Use
+`query: ""` and `query_language: none`.
+
+The scan lists the subscription's API Management services, then each service's APIs,
+through Azure Resource Manager at API version `2025-09-01-preview`, the first that says
+which APIs are MCP servers. Each API of type `mcp` is one event with
+`detection: registered`. `external_id` is the API's Resource Manager id in lower case,
+and `last_seen` is when the API was last modified. `tools` lists the tools of a server
+that API Management built from a REST API; a server it passes through to keeps its
+tools upstream and has none in the event. The address of what is behind a server and its
+policies are never read. Nothing in API Management says who calls a server, so there is
+no `used_by`. An API's non-current revisions are skipped, and an MCP server Azure gives
+no modification time for is skipped with a job-log warning.
+
+The lookback window is not applied: the list is an inventory. A service the principal
+cannot read is a warning and the rest of the scan goes on; a refused credential, or
+every service refused, fails the scan. Azure API Center, which can also register MCP
+servers, is not read.
+
 #### `splunk_enterprise` — Splunk Enterprise
 
 Runs the config's SPL as a search job over the lookback window.
@@ -1133,7 +1165,7 @@ A discovered agent, one per agent per scan:
 ```
 
 A discovered MCP server, one per server per scan, from a source that can see them
-(today `litellm`). It is never sent as an agent, so a search or an alert on
+(today `litellm` and `azure_api_management`). It is never sent as an agent, so a search or an alert on
 `arthur.discovery.agent` does not count servers:
 
 ```json
@@ -1156,7 +1188,7 @@ A discovered MCP server, one per server per scan, from a source that can see the
 | Field | Meaning |
 |---|---|
 | `external_id` | The server where this source saw it. The same server behind two gateways is two events; dedupe on it with `source.id`, as for an agent |
-| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway |
+| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway. `registered`: it is in a gateway's or a registry's own list of servers, called or not |
 | `tools` | The tools the source saw on it, named as they are in an agent's `tools`. Left out when it saw none |
 | `used_by` | The `agent.external_id` of each agent in the same scan seen using the server. Left out when the source cannot name one |
 
