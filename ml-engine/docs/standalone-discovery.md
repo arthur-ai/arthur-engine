@@ -973,11 +973,19 @@ caller's record.
 
 Each MCP server a tool call names is reported as an
 [MCP server event](#what-the-destination-receives), with the tools called on it and the
-callers that called it. Only servers called in the window are seen: one registered on
-the proxy that nothing called is not reported. A server is reported even when its only
+callers that called it, as `detection: called`. A server is reported even when its only
 caller made no model request and so is no agent. The scan reads the server's name from
 the request log and never the call's arguments or result; a tool call that names no
 server is counted in a job-log warning.
+
+A server registered on the proxy that nothing called in the window is reported too, as
+`detection: registered`, from `GET /v1/mcp/server`. It has the `external_id` it would
+have if called, so a server keeps one identity either way, and its `last_seen` is when
+it was last changed on the proxy. The scan reads only each server's name and that time,
+never its address or command. The list holds the servers the proxy shows the scan's
+key, which may be fewer than it has. When the proxy refuses the list or does not serve
+it, only called servers are reported and the job log says so; a server the proxy gives
+no time for is counted there and not reported.
 
 The key needs `proxy_admin_viewer`: the scan first calls `GET /user/list`, which answers a
 key without the role 403, then `GET /key/list` for the keys' agent bindings. It calls no
@@ -1156,7 +1164,7 @@ A discovered MCP server, one per server per scan, from a source that can see the
 | Field | Meaning |
 |---|---|
 | `external_id` | The server where this source saw it. The same server behind two gateways is two events; dedupe on it with `source.id`, as for an agent |
-| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway |
+| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway. `registered`: it is in a gateway's or a registry's own list of servers, called or not |
 | `tools` | The tools the source saw on it, named as they are in an agent's `tools`. Left out when it saw none |
 | `used_by` | The `agent.external_id` of each agent in the same scan seen using the server. Left out when the source cannot name one |
 

@@ -34,9 +34,15 @@ MCP SERVERS ARE RECORDS OF THEIR OWN KIND. Each server a tool call names
 (`metadata.mcp_tool_call_metadata.mcp_server_name`) is one `McpServerRecord`, with the
 tools called on it and the caller records that called it. The server's name is read
 from that field and never split out of the namespaced tool name, whose separator a
-server's own name may contain. Only called servers are seen: one registered on the
-proxy that nothing called in the window is not a record. The call's arguments and
-result sit beside the name in the row and are never read.
+server's own name may contain. The call's arguments and result sit beside the name in
+the row and are never read.
+
+A server registered on the proxy (`/v1/mcp/server`) that nothing called in the window
+is a record too, `registered`, under the id it would have if called, so a server keeps
+one identity as it goes from registered to called and back. A server that was called
+is reported once, as `called`. The list is enrichment, as the key list is: when the
+proxy refuses it or does not serve it, only called servers are reported, which the job
+log says. A registered server the proxy gives no date for is counted and not reported.
 
 A key with no requests in the window is not a record. When `/key/list` is refused
 (enrichment is optional), bindings are unknown: a bound key's rows read as claimed
@@ -71,6 +77,7 @@ from discovery.network.litellm.client import (
     LiteLLMClient,
     LiteLLMError,
     LiteLLMSettings,
+    RegisteredServer,
     VirtualKey,
 )
 from discovery.siem.tls import parse_tls_verification
@@ -142,6 +149,8 @@ class _Counts:
     refused_without_caller: int = 0
     tool_calls_without_caller: int = 0
     tool_calls_without_server: int = 0
+    registered_servers: int = 0
+    registered_undated: int = 0
 
 
 class LiteLLMConnector:
@@ -265,6 +274,7 @@ class LiteLLMConnector:
         records: list[DiscoveryOutputRecord] = [
             *callers.records(VENDOR, instance),
             *(_server_record(servers[name], instance) for name in sorted(servers)),
+            *self._registered(client, logger, instance, set(servers), counts),
         ]
         # Reported before the first batch is handed over, so a publish that fails part
         # way cannot leave a capped answer unannounced.
@@ -293,6 +303,42 @@ class LiteLLMConnector:
             )
         return keys
 
+    def _registered(
+        self,
+        client: LiteLLMClient,
+        logger: logging.Logger,
+        instance: str,
+        called: set[str],
+        counts: _Counts,
+    ) -> list[McpServerRecord]:
+        """A record for each server the proxy lists that no tool call named.
+        Enrichment: a refusal, or a proxy without the route, is a warning."""
+        if self._should_stop():
+            return []
+        try:
+            listed = client.mcp_servers()
+        except LiteLLMError as exc:
+            if exc.status_code not in (401, 403, 404):
+                raise
+            logger.warning(
+                "LiteLLM did not answer the MCP server list (HTTP %s), so only "
+                "servers a tool call named are reported: one registered and not "
+                "called in the window is missing.",
+                exc.status_code,
+            )
+            return []
+        records: dict[str, McpServerRecord] = {}
+        for server in listed:
+            if server.name in called or server.name in records:
+                continue
+            record = _registered_record(server, instance)
+            if record is None:
+                counts.registered_undated += 1
+                continue
+            records[server.name] = record
+        counts.registered_servers = len(records)
+        return [records[name] for name in sorted(records)]
+
     def _report(
         self,
         logger: logging.Logger,
@@ -313,8 +359,19 @@ class LiteLLMConnector:
             by_basis.get(IdentityBasis.CLAIMED_AGENT, 0),
             by_basis.get(IdentityBasis.CREDENTIAL, 0),
         )
-        if servers:
-            logger.info("LiteLLM: %s MCP server(s) named by tool calls", servers)
+        if servers or counts.registered_servers:
+            logger.info(
+                "LiteLLM: %s MCP server(s) named by tool calls, and %s more registered "
+                "on the proxy that none named",
+                servers,
+                counts.registered_servers,
+            )
+        if counts.registered_undated:
+            logger.warning(
+                "LiteLLM: %s registered MCP server(s) not reported, because the proxy "
+                "gave no time for them and last_seen is required.",
+                counts.registered_undated,
+            )
         if counts.tool_calls_without_server:
             # Loud, because a proxy that stopped naming the server would otherwise
             # read as a proxy nobody calls a server through.
@@ -429,6 +486,23 @@ def _server_record(server: _Server, instance: str) -> McpServerRecord:
         detection=McpServerDetection.CALLED,
         used_by=sorted(caller_external_id(VENDOR, instance, c) for c in server.callers)
         or None,
+    )
+
+
+def _registered_record(
+    server: RegisteredServer,
+    instance: str,
+) -> Optional[McpServerRecord]:
+    """A registered server's record, or None when the proxy gave no time for it:
+    `last_seen` is required, and inventing one would date the record to the scan."""
+    changed = _time(server.changed)
+    if changed is None:
+        return None
+    return McpServerRecord(
+        external_id=f"{VENDOR}:{instance}:mcp_server:{server.name}",
+        name=server.name,
+        last_seen=changed,
+        detection=McpServerDetection.REGISTERED,
     )
 
 
