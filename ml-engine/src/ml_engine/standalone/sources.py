@@ -60,6 +60,7 @@ SECRET_DESTINATION_FIELDS: dict[str, frozenset[str]] = {
     "elastic_security": frozenset(
         {"elasticsearch_url", "ca_certificate", "tls_verification"}
     ),
+    "gcp_agent_registry": frozenset(),
     "gcp_compute_engine": frozenset(),
     "gcp_containers": frozenset(),
     "gcp_network": frozenset(),

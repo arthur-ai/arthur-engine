@@ -387,6 +387,8 @@ class McpServerDetection(str, Enum):
 
     # Tool calls to it were seen passing through a gateway.
     CALLED = "called"
+    # It is in a gateway's or a registry's own list of servers, called or not.
+    REGISTERED = "registered"
 
 
 class McpServerRecord(DiscoveryOutputRecord):
