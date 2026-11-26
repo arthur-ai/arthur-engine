@@ -26,7 +26,7 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 
 const { currency } = useDisplaySettings();
 // ...
-formatCost(metrics?.totalCost ?? 0, currency);
+formatCost(trace.total_token_cost, currency);
 ```
 
-`formatCost` shows small amounts with three significant digits, larger ones with the currency's usual decimals, zero as zero, and `null`/`undefined` as "—" (unknown, not free). See `src/components/TaskOverview.tsx` for an example.
+`formatCost` shows small amounts with three significant digits, larger ones with the currency's usual decimals, zero as zero, and `null`/`undefined` as "—" (unknown, not free). Pass the cost as the API returns it; replacing a missing cost with `0` would show it as free.
