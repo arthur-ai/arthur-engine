@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import List, Optional, Type, cast
 
 from arthur_common.models.common_schemas import VariableTemplateValue
@@ -15,6 +16,7 @@ from arthur_common.models.llm_model_providers import (
 from fastapi import HTTPException
 from litellm import supports_response_schema
 from openinference.semconv.trace import SpanAttributes
+from opentelemetry.proto.trace.v1.trace_pb2 import Status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -34,6 +36,7 @@ from schemas.request_schemas import (
     CompletionRequest,
     CreateAgenticPromptRequest,
     PromptCompletionRequest,
+    SystemTaskSessionSummary,
     VariableRenderingRequest,
 )
 from schemas.response_schemas import (
@@ -102,6 +105,17 @@ def recorded_input_messages(
         )
         for m in messages
     ]
+
+
+def session_step_span_id(session_id: str, index: int, name: str) -> bytes:
+    """The span of one step a session's caller reports in its summary."""
+    return uuid.uuid5(
+        _SESSION_TRACE_NAMESPACE, f"step:{session_id}:{index}:{name}"
+    ).bytes[:8]
+
+
+def _utc(ns: int) -> datetime:
+    return datetime.fromtimestamp(ns / 1e9, tz=timezone.utc)
 
 
 def session_root_span_id(session_id: str) -> bytes:
@@ -394,6 +408,70 @@ class AgenticPromptRepository(
         except Exception:
             logger.exception("Failed to extend the session's root span")
             self.db_session.rollback()
+
+    def record_session_summary(
+        self,
+        session_id: str,
+        summary: SystemTaskSessionSummary,
+    ) -> None:
+        """Record what a session's caller did, as the chatbot's trace records a turn: the
+        root span covers the whole job (start to end, its input, output and status) and
+        each reported step becomes a CHAIN span under it, beside the model calls.
+
+        The root is written again with the summary, since a stored span is not updated in
+        place; a step already recorded (a retried summary) is not written twice.
+        """
+        tracer = InternalTraceService(
+            self.db_session,
+            task_id=ARTHUR_SYSTEM_TASK_ID,
+            service_name="system task prompt",
+            trace_id=session_trace_id(session_id),
+        )
+        root_span_id = session_root_span_id(session_id)
+        start_ns = int(summary.started_at.timestamp() * 1e9)
+        end_ns = int(summary.ended_at.timestamp() * 1e9)
+        existing = self._session_root(tracer, root_span_id)
+        if existing is not None:
+            # Stored times are naive local times (`timestamp_ns_to_datetime`).
+            start_ns = min(start_ns, int(existing.start_time.timestamp() * 1e9))
+            end_ns = max(end_ns, int(existing.end_time.timestamp() * 1e9))
+            self.db_session.delete(existing)
+
+        caller = session_id.split(":", 1)[0] or "system task prompts"
+        root = tracer.start_agent_span(
+            name=caller,
+            agent_name=caller,
+            session_id=session_id,
+        )
+        root.span_id = root_span_id
+        root.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(summary.input))
+        root.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+        root.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(summary.output))
+        root.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+        root.start_time, root.end_time = _utc(start_ns), _utc(end_ns)
+        root.status = (
+            Status(code=Status.STATUS_CODE_OK)
+            if summary.status == "ok"
+            else Status(
+                code=Status.STATUS_CODE_ERROR,
+                message=summary.status_message or "",
+            )
+        )
+
+        for index, step in enumerate(summary.steps):
+            step_span_id = session_step_span_id(session_id, index, step.name)
+            if self._session_root(tracer, step_span_id) is not None:
+                continue
+            span = TraceSpanBuilder(tracer.trace_id, root_span_id, step_span_id)
+            span.name = step.name
+            span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "CHAIN")
+            span.set_attribute(SpanAttributes.SESSION_ID, session_id)
+            span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(step.attributes))
+            span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+            span.start_time, span.end_time = step.started_at, step.ended_at
+            span.status = Status(code=Status.STATUS_CODE_OK)
+            tracer.spans.append(span)
+        tracer.flush()
 
     def _with_resolved_model(self, prompt: AgenticPrompt) -> AgenticPrompt:
         """The prompt with the model it runs on. A prompt saved with the 'empty'

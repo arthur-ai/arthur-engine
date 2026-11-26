@@ -2,6 +2,7 @@
 
 import json
 import random
+from datetime import datetime, timedelta, timezone
 import threading
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -25,7 +26,11 @@ from repositories.agentic_prompts_repository import (
     session_trace_id,
 )
 from repositories.system_task_repository import SystemTaskRepository
-from schemas.request_schemas import CreateAgenticPromptRequest, PromptCompletionRequest
+from schemas.request_schemas import (
+    CreateAgenticPromptRequest,
+    PromptCompletionRequest,
+    SystemTaskSessionSummary,
+)
 from schemas.response_schemas import AgenticPromptRunResponse
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
@@ -335,3 +340,55 @@ def test_the_route_passes_the_session_header_on(
 
     assert response.status_code == 200
     assert run.call_args.kwargs["session_id"] == "onboarding_analysis:job-1"
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+async def test_a_session_summary_makes_the_root_cover_the_whole_job(
+    db_session: Session,
+    prompt_name: str,
+) -> None:
+    session_id = f"onboarding_analysis:{uuid4()}"
+    await _run(db_session, prompt_name, session_id=session_id)
+    [run] = _spans(db_session, prompt_name)
+    job_start = datetime.now(timezone.utc) - timedelta(seconds=30)
+    job_end = datetime.now(timezone.utc) + timedelta(seconds=1)
+    summary = SystemTaskSessionSummary(
+        started_at=job_start,
+        ended_at=job_end,
+        status="error",
+        status_message="stopped at the cost cap",
+        input={"agent_task_id": "task-1", "window_days": 30},
+        output={"outcome": "completed", "traces_read": 134},
+        steps=[
+            {
+                "name": "read_traces",
+                "started_at": job_start,
+                "ended_at": job_start + timedelta(seconds=10),
+                "attributes": {"traces": 134},
+            },
+        ],
+    )
+    repo = AgenticPromptRepository(db_session)
+    repo.record_session_summary(session_id, summary)
+    repo.record_session_summary(session_id, summary)  # a retry adds nothing
+
+    in_trace = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.trace_id == session_trace_id(session_id).hex())
+        .all()
+    )
+    [root] = [s for s in in_trace if s.parent_span_id is None]
+    [step] = [s for s in in_trace if s.span_name == "read_traces"]
+    assert root.span_id == session_root_span_id(session_id).hex()
+    assert (root.span_name, root.span_kind, root.status_code) == (
+        "onboarding_analysis",
+        "AGENT",
+        "Error",
+    )
+    assert root.start_time <= step.start_time < run.start_time
+    assert root.end_time >= run.end_time
+    assert root.raw_data["attributes"]["input"]["value"] == summary.input
+    assert root.raw_data["attributes"]["output"]["value"] == summary.output
+    assert (step.span_kind, step.parent_span_id) == ("CHAIN", root.span_id)
+    assert run.parent_span_id == root.span_id

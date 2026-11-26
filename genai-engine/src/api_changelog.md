@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/24/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_sessions/{session_id}/summary  endpoint added
+
 # 11/23/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional `header` request parameter `x-arthur-session-id`
 # 11/26/2026

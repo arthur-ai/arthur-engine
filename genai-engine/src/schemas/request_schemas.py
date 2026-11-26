@@ -1747,3 +1747,37 @@ class TraceTimeSeriesRequest(BaseModel):
     bucket_size: TaskAnalyticsBucketSize = Field(
         description="Size of each time bucket",
     )
+
+
+class SystemTaskSessionStep(BaseModel):
+    """One step of the work a session's system task prompt runs belong to."""
+
+    name: str = Field(description="The step's name, e.g. read_traces.", max_length=100)
+    started_at: datetime
+    ended_at: datetime
+    attributes: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Counts and settings for the step; never content it read.",
+    )
+
+
+class SystemTaskSessionSummary(BaseModel):
+    """What the caller of a session's system task prompt runs did, from start to end.
+
+    The engine records it as the session's root span and a span per step, so the
+    session's trace covers the whole job, not only its model calls.
+    """
+
+    started_at: datetime
+    ended_at: datetime
+    status: Literal["ok", "error"] = "ok"
+    status_message: Optional[str] = Field(default=None, max_length=500)
+    input: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="What the job was asked to do. Counts and ids only, never content.",
+    )
+    output: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="How the job ended. Counts and verdicts only, never content.",
+    )
+    steps: List[SystemTaskSessionStep] = Field(default_factory=list, max_length=50)
