@@ -36,6 +36,10 @@ from discovery.cloud.aws_containers.connector import VENDOR as AWS_CONTAINERS_VE
 from discovery.cloud.aws_containers.connector import AwsContainersConnector
 from discovery.cloud.azure_ai_foundry.connector import VENDOR as AZURE_AI_FOUNDRY_VENDOR
 from discovery.cloud.azure_ai_foundry.connector import AzureAIFoundryConnector
+from discovery.cloud.azure_api_management.connector import (
+    VENDOR as AZURE_API_MANAGEMENT_VENDOR,
+)
+from discovery.cloud.azure_api_management.connector import AzureApiManagementConnector
 from discovery.cloud.ec2.connector import VENDOR as AWS_EC2_VENDOR
 from discovery.cloud.ec2.connector import Ec2Connector
 from discovery.cloud.gce.connector import VENDOR as GCP_COMPUTE_ENGINE_VENDOR
@@ -95,10 +99,15 @@ def standalone_connectors() -> dict[str, DiscoveryConnectorFactory]:
     sources that only make sense without one.
 
     `local` reads one machine's endpoint collector output from a folder someone mounted
-    into the engine, which a data-plane engine never has. A new dict on every call, as
-    `source_connectors()` is.
+    into the engine, which a data-plane engine never has. `azure_api_management`
+    reports MCP servers and no agents, which the Platform has nowhere to put. A new
+    dict on every call, as `source_connectors()` is.
     """
-    return {**source_connectors(), LOCAL_VENDOR: LocalConnector}
+    return {
+        **source_connectors(),
+        LOCAL_VENDOR: LocalConnector,
+        AZURE_API_MANAGEMENT_VENDOR: AzureApiManagementConnector,
+    }
 
 
 def corroborating_vendors() -> frozenset[str]:
@@ -121,6 +130,8 @@ __all__ = [
     "corroborating_vendors",
     "LocalConnector",
     "LOCAL_VENDOR",
+    "AzureApiManagementConnector",
+    "AZURE_API_MANAGEMENT_VENDOR",
     "JamfConnector",
     "JAMF_VENDOR",
     "ComputeEngineConnector",

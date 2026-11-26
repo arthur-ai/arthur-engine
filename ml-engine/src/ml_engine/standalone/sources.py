@@ -57,6 +57,8 @@ SECRET_DESTINATION_FIELDS: dict[str, frozenset[str]] = {
     "aws_network": frozenset(),
     # The token is acquired from the tenant's authority and sent to the project.
     "azure_ai_foundry": frozenset({"project_endpoint", "tenant_id"}),
+    # The token is acquired from the tenant's authority; Resource Manager is fixed.
+    "azure_api_management": frozenset({"tenant_id"}),
     "elastic_security": frozenset(
         {"elasticsearch_url", "ca_certificate", "tls_verification"}
     ),

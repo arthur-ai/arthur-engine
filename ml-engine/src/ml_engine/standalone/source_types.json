@@ -386,6 +386,51 @@
         }
       ]
     },
+    "azure_api_management": {
+      "vendor": "azure_api_management",
+      "display_name": "Azure API Management",
+      "source_class": "cloud",
+      "availability": "preview",
+      "query_language": "none",
+      "fields": [
+        {
+          "name": "subscription_id",
+          "is_sensitive": false,
+          "is_optional": false,
+          "d_type": "string",
+          "description": "ID of the Azure subscription whose API Management services are read for MCP servers. Example: 00000000-0000-0000-0000-000000000000",
+          "allowed_values": null,
+          "priority": 10
+        },
+        {
+          "name": "tenant_id",
+          "is_sensitive": false,
+          "is_optional": true,
+          "d_type": "string",
+          "description": "Microsoft Entra tenant ID of the service principal the engine reads with. Leave empty when the engine uses its own Azure identity. Example: 00000000-0000-0000-0000-000000000000",
+          "allowed_values": null,
+          "priority": 20
+        },
+        {
+          "name": "client_id",
+          "is_sensitive": false,
+          "is_optional": true,
+          "d_type": "string",
+          "description": "Application (client) ID of the service principal the engine reads with. Leave empty when the engine uses its own Azure identity.",
+          "allowed_values": null,
+          "priority": 30
+        },
+        {
+          "name": "client_secret",
+          "is_sensitive": true,
+          "is_optional": true,
+          "d_type": "string",
+          "description": "Client secret of the service principal. The principal needs the API Management Service Reader Role on the subscription. Leave empty only when the engine runs with its own Azure identity, which then needs the same role.",
+          "allowed_values": null,
+          "priority": 40
+        }
+      ]
+    },
     "elastic_security": {
       "vendor": "elastic_security",
       "display_name": "Elastic Security",
