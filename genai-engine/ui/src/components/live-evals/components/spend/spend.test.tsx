@@ -21,6 +21,9 @@ const spend: ContinuousEvalSpendResponse = {
   last_24h_run_count: 5,
   last_24h_cost: 0.06,
   estimate,
+  spent_today: 0.03,
+  daily_cost_cap_usd: null,
+  cap_reached: false,
 };
 
 // Hoisted so the mock factory, which vitest lifts above the imports, can close over it.
@@ -99,5 +102,25 @@ describe("malformed spend responses", () => {
     const { container } = render(<SpendEstimateLine taskId="task" llmEvalName="evaluator" samplePercent="50" />);
 
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("daily cap", () => {
+  it("shows no cap card or pause note without a cap", () => {
+    render(<SpendCards spend={spend} currency="USD" />);
+    expect(screen.queryByText("Spent today")).toBeNull();
+    expect(screen.queryByText(/Paused for today/)).toBeNull();
+  });
+
+  it("shows today's spend against the cap", () => {
+    render(<SpendCards spend={{ ...spend, daily_cost_cap_usd: 1, spent_today: 0.25 }} currency="USD" />);
+    expect(screen.getByText("Spent today")).toBeTruthy();
+    expect(screen.getByText(/daily cap$/)).toBeTruthy();
+    expect(screen.queryByText(/Paused for today/)).toBeNull();
+  });
+
+  it("shows the pause note once the cap is reached", () => {
+    render(<SpendCards spend={{ ...spend, daily_cost_cap_usd: 1, spent_today: 1.2, cap_reached: true }} currency="USD" />);
+    expect(screen.getByText(/Paused for today/)).toBeTruthy();
   });
 });

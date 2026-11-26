@@ -185,6 +185,12 @@ class DatabaseContinuousEval(Base):
         default=None,
         nullable=True,
     )
+    # Most this eval may spend on judge calls per day. NULL means no cap.
+    daily_cost_cap_usd: Mapped[Optional[float]] = mapped_column(
+        Float,
+        default=None,
+        nullable=True,
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(

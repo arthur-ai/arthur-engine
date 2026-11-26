@@ -21,6 +21,7 @@ import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
+import { DailyCapField, dailyCapSchema, dailyCapToUsd, usdToDailyCap } from "../daily-cap";
 import { percentToSampleRate, SampleRateField, samplePercentSchema, sampleRateToPercent } from "../sample-rate";
 import { VariableMappingSection } from "../variable-mapping";
 
@@ -65,6 +66,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       description: data.description ?? "",
       enabled: data.enabled,
       samplePercent: sampleRateToPercent(data.sample_rate),
+      dailyCap: usdToDailyCap(data.daily_cost_cap_usd),
       transform: {
         transformId: data.transform_id,
         transformVersionId: data.transform_version_id ?? null,
@@ -87,6 +89,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         enabled: value.enabled,
         // null resets the rate to every trace.
         sample_rate: percentToSampleRate(value.samplePercent),
+        // null removes the cap.
+        daily_cost_cap_usd: dailyCapToUsd(value.dailyCap),
         transform_id: value.transform.transformId,
         transform_version_id: value.transform.transformVersionId ?? undefined,
         ...(isML
@@ -210,6 +214,11 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
             <form.Field name="samplePercent" validators={{ onChange: samplePercentSchema }}>
               {(field) => (
                 <SampleRateField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
+              )}
+            </form.Field>
+            <form.Field name="dailyCap" validators={{ onChange: dailyCapSchema }}>
+              {(field) => (
+                <DailyCapField value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} errors={field.state.meta.errors} />
               )}
             </form.Field>
           </Stack>

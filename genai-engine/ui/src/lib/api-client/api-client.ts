@@ -1586,6 +1586,11 @@ export interface ConnectionCheckResult {
  */
 export interface ContinuousEvalCreateRequest {
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval
    */
@@ -1725,6 +1730,11 @@ export interface ContinuousEvalResponse {
    */
   created_at: string;
   /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Once reached, new runs are skipped until midnight. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
+  /**
    * Description
    * Description of the continuous eval.
    */
@@ -1814,13 +1824,28 @@ export interface ContinuousEvalSpendResponse {
    */
   last_24h_run_count: number;
   /**
+   * Cap Reached
+   * Whether today's spend has reached the cap, so new runs are skipped until midnight.
+   */
+  cap_reached: boolean;
+  /**
    * Continuous Eval Id
    * ID of the continuous eval.
    * @format uuid
    */
   continuous_eval_id: string;
+  /**
+   * Daily Cost Cap Usd
+   * The eval's daily spend cap. Null means no cap.
+   */
+  daily_cost_cap_usd?: number | null;
   /** Projected daily cost at the current sample rate. */
   estimate: ContinuousEvalDailySpendEstimate;
+  /**
+   * Spent Today
+   * Total cost of the live runs judged since midnight, counted against the daily cap.
+   */
+  spent_today: number;
 }
 
 /** ContinuousEvalTestRunResponse */
@@ -12820,6 +12845,11 @@ export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValid
  * Request schema for creating a continuous eval
  */
 export interface UpdateContinuousEvalRequest {
+  /**
+   * Daily Cost Cap Usd
+   * Most the eval may spend on judge calls per day. Omit to leave it unchanged; send null to remove the cap.
+   */
+  daily_cost_cap_usd?: number | null;
   /**
    * Description
    * Description of the continuous eval

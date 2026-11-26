@@ -45,5 +45,12 @@ export const isSpendEstimate = (value: unknown): value is ContinuousEvalDailySpe
 export const isSpendResponse = (value: unknown): value is ContinuousEvalSpendResponse => {
   if (typeof value !== "object" || value === null) return false;
   const spend = value as Record<string, unknown>;
-  return typeof spend.last_24h_run_count === "number" && typeof spend.last_24h_cost === "number" && isSpendEstimate(spend.estimate);
+  return (
+    typeof spend.last_24h_run_count === "number" &&
+    typeof spend.last_24h_cost === "number" &&
+    typeof spend.spent_today === "number" &&
+    typeof spend.cap_reached === "boolean" &&
+    isNumberOrNull(spend.daily_cost_cap_usd) &&
+    isSpendEstimate(spend.estimate)
+  );
 };

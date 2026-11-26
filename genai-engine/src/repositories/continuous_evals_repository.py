@@ -174,6 +174,7 @@ class ContinuousEvalsRepository:
             transform_variable_mapping=transform_variable_mapping_dicts,
             enabled=continuous_eval_request.enabled,
             sample_rate=continuous_eval_request.sample_rate,
+            daily_cost_cap_usd=continuous_eval_request.daily_cost_cap_usd,
         )
 
         try:
@@ -246,6 +247,11 @@ class ContinuousEvalsRepository:
             has_changes = True
         if "sample_rate" in update_continuous_eval.model_fields_set:
             db_continuous_eval.sample_rate = update_continuous_eval.sample_rate
+            has_changes = True
+        if "daily_cost_cap_usd" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.daily_cost_cap_usd = (
+                update_continuous_eval.daily_cost_cap_usd
+            )
             has_changes = True
 
         if not has_changes:
