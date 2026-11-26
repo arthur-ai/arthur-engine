@@ -40,7 +40,7 @@
     "@monaco-editor/react": "4.7.0",
     "@mui/icons-material": "9.5.0",
     "@mui/material": "9.5.0",
-    "@mui/system": "9.5.0",
+    "@mui/system": "9.6.0",
     "@mui/x-charts": "9.15.0",
     "@mui/x-date-pickers": "9.15.0",
     "@tanstack/react-form": "1.33.5",
