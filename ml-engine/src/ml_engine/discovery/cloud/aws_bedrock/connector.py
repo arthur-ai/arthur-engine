@@ -610,6 +610,7 @@ def gateway_record(
         external_id=arn,
         name=str(summary.get("name") or "") or gateway_id,
         updated=summary.get("updatedAt"),
+        runs_on=RunsOn.AWS,
         logger=logger,
     )
 
@@ -622,7 +623,9 @@ def target_record(
 ) -> Optional[McpServerRecord]:
     """An MCP server target's record, or None when it cannot be identified or dated.
 
-    Identified under its gateway, because a target id is only unique there.
+    Identified under its gateway, because a target id is only unique there. It has
+    no `runs_on`: the gateway is in AWS, and the server behind it is wherever its
+    owner runs it.
     """
     target_id = str(summary.get("targetId") or "").strip()
     if not target_id:
@@ -636,6 +639,7 @@ def target_record(
         external_id=f"{gateway.external_id}/target/{target_id}",
         name=str(summary.get("name") or "") or target_id,
         updated=summary.get("updatedAt"),
+        runs_on=None,
         logger=logger,
     )
 
@@ -645,6 +649,7 @@ def _server_record(
     external_id: str,
     name: str,
     updated: object,
+    runs_on: Optional[RunsOn],
     logger: logging.Logger,
 ) -> Optional[McpServerRecord]:
     if not isinstance(updated, datetime):
@@ -658,7 +663,7 @@ def _server_record(
         external_id=external_id,
         name=name,
         last_seen=updated if updated.tzinfo else updated.replace(tzinfo=timezone.utc),
-        runs_on=RunsOn.AWS,
+        runs_on=runs_on,
         detection=McpServerDetection.REGISTERED,
     )
 

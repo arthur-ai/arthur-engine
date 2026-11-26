@@ -589,6 +589,7 @@ def test_an_mcp_server_target_is_a_record_under_its_gateway() -> None:
     assert isinstance(served, McpServerRecord)
     assert served.external_id == f"{GATEWAY_ARN}/target/T000000001"
     assert served.name == "github"
+    assert served.runs_on is None
     assert served.detection is McpServerDetection.REGISTERED
     [(_, _, _, params)] = [c for c in aws.calls if c[2] == "ListGatewayTargets"]
     assert params == {"gatewayIdentifier": GATEWAY_ID, "maxResults": 100}
