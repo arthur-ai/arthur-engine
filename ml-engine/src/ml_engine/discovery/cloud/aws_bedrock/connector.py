@@ -3,8 +3,9 @@
 TWO READINGS OF ONE ACCOUNT, per region, each switched by its own field:
 
 - `list_agents`: the inventory. Bedrock's agents (`ListAgents`) and AgentCore's agent
-  runtimes (`ListAgentRuntimes`), one record each. An inventory, not a log, so the
-  lookback is not applied: an agent built a year ago and never edited is still there.
+  runtimes (`ListAgentRuntimes`), one record each, and AgentCore's gateways (below). An
+  inventory, not a log, so the lookback is not applied: an agent built a year ago and
+  never edited is still there.
 - `read_cloudtrail`: the callers. CloudTrail's management events for Bedrock's model
   calls (Converse, ConverseStream, InvokeModel, InvokeModelWithResponseStream) within
   the lookback, or the last seven days when the lookback is 0. One record per (IAM role,
@@ -26,6 +27,15 @@ iam_user        user ARN          ``{account}/{region}/iam_user/{user ARN}``
 A caller is per region because a role calling models in two regions is two deployments
 of the workload, as two agents in two regions are; the account is in its ARN already,
 and in the external id so the id reads alone.
+
+A GATEWAY IS AN MCP SERVER, NOT AN AGENT. An AgentCore gateway is an MCP endpoint the
+account hosts for its agents, so each one (`ListGateways`) is an `McpServerRecord`,
+`registered`, identified by its ARN, composed as an agent's is. So is each of its targets
+(`ListGatewayTargets`) whose type is `MCP_SERVER`: a server someone else runs that the
+gateway fronts, identified by `{gateway ARN}/target/{target id}`. A target of any other
+type -- a Lambda, an OpenAPI schema -- is the gateway's own tools and is counted, never
+a record. Neither list says who calls a gateway or which tools it serves, so a record
+has no `used_by` and no `tools`.
 
 A REFUSED CALL IS NOT A CALLER. CloudTrail logs a model call IAM refused, with an
 `AccessDenied` `errorCode` and no model, under the identity that tried. An identity whose every call
@@ -65,7 +75,10 @@ from typing import (
 
 import boto3
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
-from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
+from arthur_common.models.agent_discovery_schemas import (
+    DiscoveredAgentRecord,
+    DiscoveryOutputRecord,
+)
 from arthur_common.models.agent_governance_schemas import (
     CloudAgentCreationSource,
     LLMModel,
@@ -88,7 +101,11 @@ from discovery.cloud.aws_bedrock.client import (
     default_client_factory,
 )
 from discovery.endpoint.scope import parse_group_names
-from job_executors.discovery_scan import DiscoveryConfigurationError
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    McpServerDetection,
+    McpServerRecord,
+)
 
 VENDOR = "aws_bedrock"
 
@@ -109,6 +126,11 @@ BEDROCK_AGENT = "bedrock_agent"
 AGENT_RUNTIME = "agent_runtime"
 IAM_ROLE = "iam_role"
 IAM_USER = "iam_user"
+GATEWAY = "gateway"
+GATEWAY_TARGET = "gateway_target"
+
+# The gateway target type that is an MCP server the gateway fronts.
+MCP_SERVER_TARGET = "MCP_SERVER"
 
 # The window CloudTrail is read over when the scan's lookback is 0.
 DEFAULT_CLOUDTRAIL_LOOKBACK = timedelta(days=7)
@@ -206,7 +228,7 @@ class BedrockConnector:
         credentials: Mapping[str, Optional[str]],
         source_fields: Mapping[str, str],
         logger: logging.Logger,
-    ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
+    ) -> Iterator[Sequence[DiscoveryOutputRecord]]:
         """`logger` is the JOB's, so what this reports reaches the Platform job log."""
         settings = settings_from(source_fields)
         session = self._session_for(credentials, source_fields)
@@ -228,8 +250,8 @@ class BedrockConnector:
         # Asked first: it needs no permission, so a refusal here is the credential.
         identity = client.identity(settings.regions[0])
         logger.info(
-            "Bedrock scan starting in account %s, region(s) %s, using %s. Agents and "
-            "runtimes: %s. CloudTrail model callers: %s.",
+            "Bedrock scan starting in account %s, region(s) %s, using %s. Agents, "
+            "runtimes and gateways: %s. CloudTrail model callers: %s.",
             identity.account,
             ", ".join(settings.regions),
             describe_credentials(credentials, source_fields),
@@ -242,12 +264,13 @@ class BedrockConnector:
         )
 
         scan = _Scan(client, identity, settings.regions[0], logger)
-        batch: list[DiscoveredAgentRecord] = []
+        batch: list[DiscoveryOutputRecord] = []
         for region in settings.regions:
-            parts: list[Iterator[DiscoveredAgentRecord]] = []
+            parts: list[Iterator[DiscoveryOutputRecord]] = []
             if settings.list_agents:
                 parts.append(scan.agents(region))
                 parts.append(scan.runtimes(region))
+                parts.append(scan.gateways(region))
             if settings.read_cloudtrail:
                 parts.append(scan.callers(region, start, end))
             for part in parts:
@@ -308,6 +331,31 @@ class _Scan:
                 continue
             self.counts[AGENT_RUNTIME] += 1
             yield record
+
+    def gateways(self, region: str) -> Iterator[McpServerRecord]:
+        """Each gateway, then each MCP server among its targets.
+
+        A gateway whose targets are refused is still a record: the gateway was listed.
+        """
+        listing = self._client.gateways(region)
+        for summary in self._part("ListGateways", region, listing):
+            record = gateway_record(summary, self._identity, region, self._log)
+            if record is None:
+                self.skipped += 1
+                continue
+            self.counts[GATEWAY] += 1
+            yield record
+            targets = self._client.gateway_targets(region, str(summary["gatewayId"]))
+            for target in self._part("ListGatewayTargets", region, targets):
+                if target.get("targetType") != MCP_SERVER_TARGET:
+                    self.counts["other_targets"] += 1
+                    continue
+                served = target_record(target, record, region, self._log)
+                if served is None:
+                    self.skipped += 1
+                    continue
+                self.counts[GATEWAY_TARGET] += 1
+                yield served
 
     def callers(
         self,
@@ -380,12 +428,17 @@ class _Scan:
     def log_summary(self, settings: BedrockSettings) -> None:
         self._log.info(
             "Bedrock scan found %s agent(s), %s runtime(s) and %s model-calling "
-            "role(s) and user(s) from %s model call event(s); %s call(s) by people and "
-            "%s refused call(s) not reported; %s resource(s) skipped; %s part(s) refused",
+            "role(s) and user(s) from %s model call event(s); %s gateway(s) and %s MCP "
+            "server(s) behind them, with %s target(s) of other types not reported; %s "
+            "call(s) by people and %s refused call(s) not reported; %s resource(s) "
+            "skipped; %s part(s) refused",
             self.counts[BEDROCK_AGENT],
             self.counts[AGENT_RUNTIME],
             self.counts[IAM_ROLE] + self.counts[IAM_USER],
             self.counts["model_call_events"],
+            self.counts[GATEWAY],
+            self.counts[GATEWAY_TARGET],
+            self.counts["other_targets"],
             sum(self.people.values()),
             self.counts["denied_calls"],
             self.skipped,
@@ -528,6 +581,85 @@ def runtime_record(
         identity=identity,
         region=region,
         logger=logger,
+    )
+
+
+def gateway_record(
+    summary: Mapping[str, object],
+    identity: Identity,
+    region: str,
+    logger: logging.Logger,
+) -> Optional[McpServerRecord]:
+    """A ListGateways summary's record, or None when it cannot be identified or dated.
+
+    The summary carries no ARN, so it is composed in the format AWS documents for a
+    gateway: `arn:<partition>:bedrock-agentcore:<region>:<account>:gateway/<gateway id>`.
+    """
+    gateway_id = str(summary.get("gatewayId") or "").strip()
+    if not gateway_id:
+        logger.warning(
+            "Bedrock ListGateways in %s returned a gateway with no id",
+            region,
+        )
+        return None
+    arn = (
+        f"arn:{identity.partition}:bedrock-agentcore:{region}:{identity.account}:"
+        f"gateway/{gateway_id}"
+    )
+    return _server_record(
+        external_id=arn,
+        name=str(summary.get("name") or "") or gateway_id,
+        updated=summary.get("updatedAt"),
+        logger=logger,
+    )
+
+
+def target_record(
+    summary: Mapping[str, object],
+    gateway: McpServerRecord,
+    region: str,
+    logger: logging.Logger,
+) -> Optional[McpServerRecord]:
+    """An MCP server target's record, or None when it cannot be identified or dated.
+
+    Identified under its gateway, because a target id is only unique there.
+    """
+    target_id = str(summary.get("targetId") or "").strip()
+    if not target_id:
+        logger.warning(
+            "Bedrock ListGatewayTargets in %s returned a target of %s with no id",
+            region,
+            gateway.external_id,
+        )
+        return None
+    return _server_record(
+        external_id=f"{gateway.external_id}/target/{target_id}",
+        name=str(summary.get("name") or "") or target_id,
+        updated=summary.get("updatedAt"),
+        logger=logger,
+    )
+
+
+def _server_record(
+    *,
+    external_id: str,
+    name: str,
+    updated: object,
+    logger: logging.Logger,
+) -> Optional[McpServerRecord]:
+    if not isinstance(updated, datetime):
+        logger.warning(
+            "%s: Bedrock reported no update time; skipped, because last_seen is "
+            "required and inventing one would date the record to the scan",
+            external_id,
+        )
+        return None
+    return McpServerRecord(
+        external_id=external_id,
+        name=name,
+        last_seen=updated if updated.tzinfo else updated.replace(tzinfo=timezone.utc),
+        runs_on=RunsOn.AWS,
+        detection=McpServerDetection.REGISTERED,
     )
 
 

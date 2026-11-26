@@ -45,6 +45,8 @@ from job_executors.discovery_scan import (
     AcceptsStopCheck,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
+    McpServerDetection,
+    McpServerRecord,
     failure_code,
 )
 
@@ -59,6 +61,8 @@ MODELS = {svc: BotocoreSession().get_service_model(svc) for svc in SERVICES}
 ALLOWED_OPERATIONS = {
     "ListAgents",
     "ListAgentRuntimes",
+    "ListGateways",
+    "ListGatewayTargets",
     "LookupEvents",
     "GetCallerIdentity",
 }
@@ -71,6 +75,9 @@ SSO_ROLE = (
 )
 CLAUDE = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 TITAN = "amazon.titan-text-express-v1"
+GATEWAY_ID = "support-tools-a1b2c3d4e5"
+GATEWAY_ARN = f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT}:gateway/{GATEWAY_ID}"
+INVENTORY = {**FIELDS, "read_cloudtrail": "false"}
 
 
 def validate(service: str, operation: str, params: dict[str, Any]) -> None:
@@ -110,6 +117,37 @@ def runtime(ident: str, region: str = REGION, **over: Any) -> dict[str, Any]:
         "lastUpdatedAt": UPDATED,
         "status": "READY",
     }
+    body.update(over)
+    return body
+
+
+def gateway(ident: str, **over: Any) -> dict[str, Any]:
+    """A gateway summary as ListGateways returns it: no ARN."""
+    body: dict[str, Any] = {
+        "gatewayId": ident,
+        "name": ident.rsplit("-", 1)[0],
+        "status": "READY",
+        "createdAt": UPDATED,
+        "updatedAt": UPDATED,
+        "authorizerType": "CUSTOM_JWT",
+        "protocolType": "MCP",
+    }
+    body.update(over)
+    return body
+
+
+def target(
+    ident: str, kind: Optional[str] = "MCP_SERVER", **over: Any
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "targetId": ident,
+        "name": f"target-{ident}",
+        "status": "READY",
+        "createdAt": UPDATED,
+        "updatedAt": UPDATED,
+    }
+    if kind is not None:
+        body["targetType"] = kind
     body.update(over)
     return body
 
@@ -159,7 +197,8 @@ def event(
 class FakeAws:
     """The four services' calls, and a log of what was asked.
 
-    `agents[region]`, `runtimes[region]` and `events[region]` are each a list of pages.
+    `agents[region]`, `runtimes[region]`, `gateways[region]` and `events[region]` are
+    each a list of pages, and so is `targets[gateway id]`.
     `errors[(service, operation)]` is a list of exceptions raised, one per call, before
     any answer is given; None lets that call through.
     """
@@ -170,9 +209,13 @@ class FakeAws:
         runtimes: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
         events: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
         errors: Optional[dict[tuple[str, str], list[Optional[Exception]]]] = None,
+        gateways: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
+        targets: Optional[dict[str, list[list[dict[str, Any]]]]] = None,
     ) -> None:
         self.agents = agents or {}
         self.runtimes = runtimes or {}
+        self.gateways = gateways or {}
+        self.targets = targets or {}
         self.events = events or {}
         self.errors = errors or {}
         self.calls: list[tuple[str, str, str, dict[str, Any]]] = []
@@ -229,6 +272,16 @@ class FakeClient:
         self._record("ListAgentRuntimes", params)
         pages = self._aws.runtimes.get(self._region, [])
         return self._page(pages, params.get("nextToken"), "agentRuntimes", "nextToken")
+
+    def list_gateways(self, **params: Any) -> dict[str, Any]:
+        self._record("ListGateways", params)
+        pages = self._aws.gateways.get(self._region, [])
+        return self._page(pages, params.get("nextToken"), "items", "nextToken")
+
+    def list_gateway_targets(self, **params: Any) -> dict[str, Any]:
+        self._record("ListGatewayTargets", params)
+        pages = self._aws.targets.get(params["gatewayIdentifier"], [])
+        return self._page(pages, params.get("nextToken"), "items", "nextToken")
 
     def lookup_events(self, **params: Any) -> dict[str, Any]:
         self._record("LookupEvents", params)
@@ -507,19 +560,133 @@ def test_a_streaming_calls_service_event_copy_and_other_events_are_skipped() -> 
     assert record.last_seen == datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc)
 
 
+# --- gateways -----------------------------------------------------------------------
+
+
+def test_a_gateway_is_a_registered_mcp_server_identified_by_its_composed_arn() -> None:
+    aws = FakeAws(gateways={REGION: [[gateway(GATEWAY_ID, name="support-tools")]]})
+
+    [record] = scan(aws, fields=INVENTORY)
+
+    assert isinstance(record, McpServerRecord)
+    assert record.external_id == GATEWAY_ARN
+    assert record.name == "support-tools"
+    assert record.last_seen == UPDATED
+    assert record.detection is McpServerDetection.REGISTERED
+    assert record.runs_on is RunsOn.AWS
+    assert record.used_by is None and record.tools is None
+    check_batch([record], "Source config 'acme bedrock' (aws_bedrock)")
+
+
+def test_an_mcp_server_target_is_a_record_under_its_gateway() -> None:
+    aws = FakeAws(
+        gateways={REGION: [[gateway(GATEWAY_ID)]]},
+        targets={GATEWAY_ID: [[target("T000000001", name="github")]]},
+    )
+
+    _, served = scan(aws, fields=INVENTORY)
+
+    assert isinstance(served, McpServerRecord)
+    assert served.external_id == f"{GATEWAY_ARN}/target/T000000001"
+    assert served.name == "github"
+    assert served.detection is McpServerDetection.REGISTERED
+    [(_, _, _, params)] = [c for c in aws.calls if c[2] == "ListGatewayTargets"]
+    assert params == {"gatewayIdentifier": GATEWAY_ID, "maxResults": 100}
+
+
+def test_a_target_of_another_type_or_none_is_counted_and_not_a_record(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    aws = FakeAws(
+        gateways={REGION: [[gateway(GATEWAY_ID)]]},
+        targets={
+            GATEWAY_ID: [
+                [target("T000000001", kind="LAMBDA")],
+                [target("T000000002", kind=None), target("T000000003")],
+            ],
+        },
+    )
+    with caplog.at_level(logging.INFO):
+        records = scan(aws, fields=INVENTORY)
+
+    assert [r.external_id for r in records] == [
+        GATEWAY_ARN,
+        f"{GATEWAY_ARN}/target/T000000003",
+    ]
+    assert "1 gateway(s) and 1 MCP server(s) behind them, with 2 target(s)" in (
+        caplog.text
+    )
+
+
+def test_a_gateway_whose_targets_are_refused_is_still_a_record(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    aws = FakeAws(
+        gateways={REGION: [[gateway(GATEWAY_ID), gateway("other-0000000000")]]},
+        targets={"other-0000000000": [[target("T000000009")]]},
+        errors={
+            ("bedrock-agentcore-control", "ListGatewayTargets"): [
+                client_error("AccessDeniedException", "ListGatewayTargets"),
+            ],
+        },
+    )
+    with caplog.at_level(logging.WARNING):
+        records = scan(aws, fields=INVENTORY)
+
+    assert len(records) == 3
+    assert "Bedrock ListGatewayTargets in us-east-1 not read" in caplog.text
+
+
+def test_refused_gateways_are_a_warning_and_the_agents_are_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    aws = FakeAws(
+        agents={REGION: [[agent("A1")]]},
+        errors={
+            ("bedrock-agentcore-control", "ListGateways"): [
+                client_error("AccessDeniedException", "ListGateways"),
+            ],
+        },
+    )
+    with caplog.at_level(logging.WARNING):
+        [record] = scan(aws, fields=INVENTORY)
+
+    assert record.creation_source.address.resource_kind == "bedrock_agent"
+    assert "Bedrock ListGateways in us-east-1 not read" in caplog.text
+
+
+def test_a_gateway_without_an_update_time_is_skipped_and_named(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    aws = FakeAws(gateways={REGION: [[gateway(GATEWAY_ID, updatedAt=None)]]})
+    with caplog.at_level(logging.WARNING):
+        assert scan(aws, fields=INVENTORY) == []
+    assert GATEWAY_ARN in caplog.text
+    assert "ListGatewayTargets" not in aws.operations()
+
+
+def test_gateways_are_not_listed_when_the_inventory_is_off() -> None:
+    aws = FakeAws(gateways={REGION: [[gateway(GATEWAY_ID)]]})
+    assert scan(aws, fields={**FIELDS, "list_agents": "false"}) == []
+    assert "ListGateways" not in aws.operations()
+
+
 # --- what is asked ------------------------------------------------------------------
 
 
 def test_only_list_calls_are_made_and_never_get_agent_runtime() -> None:
-    """GetAgentRuntime returns a runtime's environment variables; GetAgent its prompt."""
+    """GetAgentRuntime returns a runtime's environment variables; GetAgent its prompt;
+    GetGateway and GetGatewayTarget how each authorizes and reaches what it fronts."""
     aws = FakeAws(
         agents={REGION: [[agent("A1")]]},
         runtimes={REGION: [[runtime("r1")]]},
+        gateways={REGION: [[gateway(GATEWAY_ID)]]},
         events={REGION: [[event()]]},
     )
     scan(aws)
     assert aws.operations() == ALLOWED_OPERATIONS
-    assert not hasattr(FakeClient, "get_agent_runtime")
+    for call in ("get_agent_runtime", "get_agent", "get_gateway", "get_gateway_target"):
+        assert not hasattr(FakeClient, call)
 
 
 def test_the_lookback_sets_cloudtrails_window_and_zero_means_seven_days() -> None:
@@ -665,6 +832,9 @@ def test_every_part_refused_fails_the_scan_as_permission_denied() -> None:
         ("bedrock-agent", "ListAgents"): [client_error("AccessDenied", "ListAgents")],
         ("bedrock-agentcore-control", "ListAgentRuntimes"): [
             client_error("AccessDeniedException", "ListAgentRuntimes"),
+        ],
+        ("bedrock-agentcore-control", "ListGateways"): [
+            client_error("AccessDeniedException", "ListGateways"),
         ],
         ("cloudtrail", "LookupEvents"): [client_error("AccessDenied", "LookupEvents")],
     }

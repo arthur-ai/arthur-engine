@@ -1,13 +1,17 @@
-"""Reading an account's Bedrock agents, AgentCore runtimes and CloudTrail model calls.
+"""Reading an account's Bedrock agents, AgentCore runtimes and gateways, and CloudTrail
+model calls.
 
-Read-only. The actions are `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes`
-and `cloudtrail:LookupEvents`, plus `sts:GetCallerIdentity`, which needs no permission
-and names the account.
+Read-only. The actions are `bedrock:ListAgents`, `bedrock-agentcore:ListAgentRuntimes`,
+`bedrock-agentcore:ListGateways`, `bedrock-agentcore:ListGatewayTargets` and
+`cloudtrail:LookupEvents`, plus `sts:GetCallerIdentity`, which needs no permission and
+names the account.
 
 LIST, NEVER DESCRIBE. `GetAgentRuntime` returns a runtime's environment variables,
 which hold whatever its builder put there, secrets included, and `GetAgent` returns the
-agent's instruction prompt. Neither is called. A list summary has no agent ARN, so the
-ARN is composed from the account, region and agent id in the format AWS documents.
+agent's instruction prompt. `GetGateway` and `GetGatewayTarget` return how each
+authorizes its callers and reaches what is behind it. None is called. A list summary
+has no agent or gateway ARN, so the ARN is composed from the account, region and id in
+the format AWS documents.
 
 LOOKUPEVENTS IS THROTTLED TO TWO REQUESTS A SECOND PER REGION AND ACCOUNT. Calls are
 spaced to that rate, and a `ThrottlingException` is retried here with backoff rather
@@ -157,7 +161,8 @@ def default_client_factory(session: boto3.Session) -> ClientFactory:
 
 
 class BedrockClient:
-    """Lists a region's agents and runtimes, and reads its model calls from CloudTrail.
+    """Lists a region's agents, runtimes and gateways, and reads its model calls from
+    CloudTrail.
 
     `should_stop` is asked before every request and before every backoff sleep; when it
     answers True the listing ends as if AWS had no more pages.
@@ -213,6 +218,30 @@ class BedrockClient:
             "ListAgentRuntimes",
             "agentRuntimes",
             lambda c, kw: c.list_agent_runtimes(**kw),
+        )
+
+    def gateways(self, region: str) -> Iterator[Mapping[str, Any]]:
+        """Every AgentCore gateway's summary in the region (ListGateways)."""
+        yield from self._listing(
+            "bedrock-agentcore-control",
+            region,
+            "ListGateways",
+            "items",
+            lambda c, kw: c.list_gateways(**kw),
+        )
+
+    def gateway_targets(
+        self,
+        region: str,
+        gateway_id: str,
+    ) -> Iterator[Mapping[str, Any]]:
+        """Every target's summary on one gateway (ListGatewayTargets)."""
+        yield from self._listing(
+            "bedrock-agentcore-control",
+            region,
+            "ListGatewayTargets",
+            "items",
+            lambda c, kw: c.list_gateway_targets(gatewayIdentifier=gateway_id, **kw),
         )
 
     def model_calls(
