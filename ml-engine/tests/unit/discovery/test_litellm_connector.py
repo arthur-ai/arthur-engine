@@ -46,6 +46,8 @@ from job_executors.discovery_scan import (
     AcceptsStopCheck,
     DiscoveryConfigurationError,
     DiscoveryErrorCode,
+    McpServerDetection,
+    McpServerRecord,
     failure_code,
 )
 
@@ -65,6 +67,8 @@ CI_TOKEN = "c" * 64
 SUPPORT_TOKEN = "d" * 64
 INVOICE_TOKEN = "e" * 64
 WRONG_KEY_TOKEN = "f" * 64
+ARGUMENT_SECRET = "ghp_argument-secret-value"
+RESULT_SECRET = "result-body-secret-value"
 
 
 def key(
@@ -104,6 +108,7 @@ def row(
     provider: str = "openai",
     call_type: str = "acompletion",
     tool: Optional[str] = None,
+    server: Optional[str] = None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "status": status,
@@ -111,6 +116,15 @@ def row(
         "user_api_key_team_alias": "platform",
         "requester_ip_address": "10.0.0.7",
     }
+    if server is not None:
+        # `StandardLoggingMCPToolCall`, as LiteLLM 1.109.1's source defines it.
+        metadata["mcp_tool_call_metadata"] = {
+            "name": (tool or "").removeprefix(f"{server}-"),
+            "namespaced_tool_name": tool,
+            "mcp_server_name": server,
+            "arguments": {"token": ARGUMENT_SECRET},
+            "result": {"content": RESULT_SECRET},
+        }
     if error_code is not None:
         metadata["error_information"] = {
             "error_code": error_code,
@@ -872,3 +886,137 @@ def test_the_scan_never_logs_the_key_aliases_or_error_text(
         scan(FakeSession(spend=[spend_page(HANDOFF_ROWS)]))
     for secret in (API_KEY, MASKED, CI_TOKEN, "shared-ci", "10.0.0.7", CLAIMED_AGENT):
         assert secret not in caplog.text
+
+
+# -- MCP servers -----------------------------------------------------------------------
+
+
+def mcp_call(
+    request_id: str,
+    token: str,
+    at: str,
+    server: str,
+    tool: str,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    return row(
+        request_id,
+        token,
+        at,
+        call_type="call_mcp_tool",
+        tool=f"{server}-{tool}",
+        server=server,
+        model="",
+        **kwargs,
+    )
+
+
+def test_a_called_mcp_server_is_a_server_record_with_its_tools_and_callers() -> None:
+    rows = [
+        row("r1", CI_TOKEN, "2026-10-28T10:00:00", alias="shared-ci"),
+        row("r2", SUPPORT_TOKEN, "2026-10-28T10:05:00", alias="support-bot"),
+        mcp_call("r3", CI_TOKEN, "2026-10-28T10:30:00", "github", "get_issue"),
+        mcp_call("r4", SUPPORT_TOKEN, "2026-10-28T10:40:00", "github", "search"),
+        mcp_call("r5", SUPPORT_TOKEN, "2026-10-28T10:20:00", "jira", "search"),
+    ]
+
+    records = scan(FakeSession(spend=[spend_page(rows)]))
+
+    servers = [r for r in records if isinstance(r, McpServerRecord)]
+    assert len(records) - len(servers) == 2, "the two keys, and no server among them"
+    github, jira = servers
+    assert github.external_id == f"litellm:{INSTANCE}:mcp_server:github"
+    assert github.name == "github"
+    assert github.detection is McpServerDetection.CALLED
+    assert github.last_seen == datetime(2026, 10, 28, 10, 40, tzinfo=timezone.utc)
+    assert [t.name for t in github.tools] == ["github-get_issue", "github-search"]
+    assert github.used_by == [
+        f"litellm:{INSTANCE}:virtual_key:{CI_TOKEN}",
+        f"litellm:{INSTANCE}:virtual_key:{SUPPORT_TOKEN}",
+    ]
+    assert jira.used_by == [f"litellm:{INSTANCE}:virtual_key:{SUPPORT_TOKEN}"]
+    callers = {r.external_id for r in records if not isinstance(r, McpServerRecord)}
+    assert set(github.used_by) <= callers, "every caller named is a record of this scan"
+
+
+def test_a_server_called_only_by_a_key_with_no_record_is_still_reported() -> None:
+    """The key made no model request, so it is no agent record; the server it called
+    exists all the same."""
+    rows = [mcp_call("r1", SUPPORT_TOKEN, "2026-10-28T10:40:00", "jira", "search")]
+
+    [jira] = scan(FakeSession(spend=[spend_page(rows)]))
+
+    assert isinstance(jira, McpServerRecord)
+    assert jira.name == "jira"
+    assert jira.used_by is None
+
+
+def test_a_server_name_is_never_split_out_of_the_tool_name() -> None:
+    """`my-internal-tools-run-job` does not say where the server's name ends."""
+    rows = [
+        mcp_call("r1", CI_TOKEN, "2026-10-28T10:00:00", "my-internal-tools", "run-job"),
+    ]
+
+    [server] = scan(FakeSession(spend=[spend_page(rows)]))
+
+    assert server.name == "my-internal-tools"
+    assert [t.name for t in server.tools] == ["my-internal-tools-run-job"]
+
+
+def test_a_failed_tool_call_shows_the_server_but_adds_no_tool() -> None:
+    rows = [
+        mcp_call(
+            "r1",
+            CI_TOKEN,
+            "2026-10-28T10:00:00",
+            "github",
+            "delete_repo",
+            status="failure",
+        ),
+    ]
+
+    [server] = scan(FakeSession(spend=[spend_page(rows)]))
+
+    assert server.name == "github"
+    assert server.tools is None
+
+
+def test_a_tool_call_naming_no_server_is_counted_out_loud(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A proxy that does not name the server must not read as one with no servers."""
+    rows = [
+        row("r1", CI_TOKEN, "2026-10-28T10:00:00"),
+        row(
+            "r2",
+            CI_TOKEN,
+            "2026-10-28T10:30:00",
+            call_type="call_mcp_tool",
+            tool="github-get_issue",
+            model="",
+        ),
+    ]
+
+    with caplog.at_level(logging.WARNING):
+        records = scan(FakeSession(spend=[spend_page(rows)]))
+
+    assert not [r for r in records if isinstance(r, McpServerRecord)]
+    assert "1 MCP tool call(s) named no server" in caplog.text
+
+
+def test_a_tool_calls_arguments_and_result_are_never_read() -> None:
+    rows = [
+        row("r1", CI_TOKEN, "2026-10-28T10:00:00"),
+        mcp_call("r2", CI_TOKEN, "2026-10-28T10:30:00", "github", "get_issue"),
+    ]
+
+    records = scan(FakeSession(spend=[spend_page(rows)]))
+
+    dumped = "".join(r.model_dump_json() for r in records)
+    assert ARGUMENT_SECRET not in dumped and RESULT_SECRET not in dumped
+
+
+def test_server_records_pass_the_output_contract_check() -> None:
+    rows = [mcp_call("r1", CI_TOKEN, "2026-10-28T10:00:00", "github", "get_issue")]
+
+    check_batch(scan(FakeSession(spend=[spend_page(rows)])), "LiteLLM")

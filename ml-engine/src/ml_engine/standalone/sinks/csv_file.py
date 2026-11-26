@@ -7,7 +7,9 @@ file is new or empty, and a file that already holds a different header stops the
 at startup rather than mixing two layouts in one file.
 
 ONLY AGENTS ARE WRITTEN. A scan's outcome is an event of a different shape, so it is
-skipped here; the engine logs it to stdout on every scan whatever the destination.
+skipped here; the engine logs it to stdout on every scan whatever the destination. An
+MCP server is skipped too, its columns not being an agent's, and the scan still counts
+it as published.
 
 A ROW IS FLAT. Nested values are spread over fixed columns and lists are joined, so the
 file opens as a spreadsheet; the JSON destinations carry everything a record holds.

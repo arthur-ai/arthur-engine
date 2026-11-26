@@ -20,6 +20,8 @@ from job_executors.discovery_scan import (
     DiscoveryErrorCode,
     DiscoveryScanOutcome,
     FailedDiscoveryRecord,
+    McpServerDetection,
+    McpServerRecord,
     UnreadableDevice,
     run_source_scan,
 )
@@ -27,6 +29,7 @@ from standalone.sinks import Destination
 from standalone.sinks.common import (
     DISCOVERED_AGENT_EVENT,
     EVENT_SCHEMA_VERSION,
+    MCP_SERVER_EVENT,
     SCAN_OUTCOME_EVENT,
     RefusedEvent,
     SinkDeliveryError,
@@ -317,3 +320,84 @@ def test_a_failed_delivery_fails_the_scan_as_a_publication_failure() -> None:
     assert scanned.records_published == 2
     assert scanned.error_code == DiscoveryErrorCode.PUBLICATION_FAILED
     assert scanned.error is not None and TOKEN not in scanned.error
+
+
+def server(name: str) -> McpServerRecord:
+    return McpServerRecord(
+        external_id=f"litellm:gw:mcp_server:{name}",
+        name=name,
+        last_seen=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+        detection=McpServerDetection.CALLED,
+        used_by=["a"],
+    )
+
+
+def test_an_mcp_server_is_sent_as_its_own_event_type_and_counted_apart() -> None:
+    """A destination alerting on a new agent must never see a server among them, and
+    the count of agents must not grow with the servers they call."""
+    sink = RecordingSink()
+
+    result = StandaloneRecordSink(sink, "gw", clock=lambda: OBSERVED_AT).publish(
+        "",
+        "",
+        config(),
+        [record("a"), server("github"), record("b")],
+    )
+
+    assert (result.accepted, result.mcp_servers, len(result.failed)) == (2, 1, 0)
+    agent_a, github, agent_b = sink.sent[0]
+    assert [agent_a["event_type"], agent_b["event_type"]] == [
+        DISCOVERED_AGENT_EVENT
+    ] * 2
+    assert github["event_type"] == MCP_SERVER_EVENT
+    assert "agent" not in github
+    assert github["mcp_server"] == {
+        "external_id": "litellm:gw:mcp_server:github",
+        "name": "github",
+        "last_seen": "2026-10-07T11:00:00Z",
+        "detection": "called",
+        "used_by": ["a"],
+    }
+    assert github["source"] == agent_a["source"]
+
+
+def test_a_refused_mcp_server_is_a_failed_record_and_not_a_delivered_one() -> None:
+    sink = RecordingSink(
+        refuse=[RefusedEvent(1, "document_parsing_exception", "field [mcp_server]")],
+    )
+
+    result = StandaloneRecordSink(sink, "gw").publish(
+        "",
+        "",
+        config(),
+        [record("a"), server("github"), server("jira")],
+    )
+
+    assert (result.accepted, result.mcp_servers) == (1, 1)
+    assert [f.external_id for f in result.failed] == ["litellm:gw:mcp_server:github"]
+
+
+def test_a_scan_counts_its_mcp_servers_apart_from_its_agents() -> None:
+    class Connector:
+        def scan(self, *args: Any) -> Iterator[Sequence[DiscoveryOutputRecord]]:
+            yield [record("a"), server("github")]
+            yield [server("jira")]
+
+    result = outcome()
+    run_source_scan(
+        config=config(),
+        lookback_hours=24,
+        workspace_id="",
+        data_plane_id="",
+        outcome=result,
+        connector=Connector(),
+        sink=StandaloneRecordSink(RecordingSink(), "gw"),
+        logger=LOG,
+        credentials={},
+        source_fields={},
+    )
+
+    payload = result.to_log_payload()
+    assert payload["records_published"] == 1
+    assert payload["mcp_servers_published"] == 2
+    assert payload["succeeded"] is True

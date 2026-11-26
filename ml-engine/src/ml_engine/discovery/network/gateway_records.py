@@ -128,6 +128,11 @@ class GatewayCallers:
         ]
 
 
+def caller_external_id(vendor: str, instance: str, key: CallerKey) -> str:
+    """A caller record's `external_id`, for whatever else names the caller by it."""
+    return f"{vendor}:{instance}:{key.kind.value}:{key.resource_id}"
+
+
 def caller_record(
     caller: Caller,
     vendor: str,
@@ -138,7 +143,7 @@ def caller_record(
     assert caller.last_seen is not None
     key = caller.key
     return DiscoveredAgentRecord(
-        external_id=f"{vendor}:{instance}:{key.kind.value}:{key.resource_id}",
+        external_id=caller_external_id(vendor, instance, key),
         name=caller.name,
         last_seen=caller.last_seen,
         llm_models=[LLMModel(name=m) for m in sorted(caller.models)] or None,

@@ -47,6 +47,7 @@ from job_executors.discovery_scan import (
     CorroboratingRecord,
     DiscoveryConfigurationError,
     DiscoveryConnectorFactory,
+    McpServerRecord,
 )
 from log_redaction import redact_secrets, register_secrets, secret_values
 
@@ -287,11 +288,12 @@ class _PreviewRun:
                     )
                 # A row per agent, as the sinks count them: a corroboration is one more
                 # piece of its agent's evidence, and as a row of its own it would read
-                # as the same agent again and spend the preview's limit on it.
+                # as the same agent again and spend the preview's limit on it. An MCP
+                # server is not an agent at all.
                 self._take(
                     _mapped_row(record)
                     for record in batch
-                    if not isinstance(record, CorroboratingRecord)
+                    if not isinstance(record, (CorroboratingRecord, McpServerRecord))
                 )
                 if self.truncated or self._past_deadline():
                     break

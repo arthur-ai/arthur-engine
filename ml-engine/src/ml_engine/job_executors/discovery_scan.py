@@ -333,6 +333,8 @@ class DiscoveryPublishResult:
 
     accepted: int
     failed: Sequence[FailedDiscoveryRecord] = ()
+    # `McpServerRecord`s the sink delivered. Apart from `accepted`, which counts agents.
+    mcp_servers: int = 0
 
 
 class CorroboratingRecord(DiscoveredAgentRecord):
@@ -377,6 +379,38 @@ def corroborated_candidates(external_id: str) -> list[str]:
     """
     cuts = [i for i, char in enumerate(external_id) if char == ":"]
     return [external_id[:cut] for cut in cuts[:-1]]
+
+
+class McpServerDetection(str, Enum):
+    """How a source knows an MCP server is there. One value per way a connector has of
+    knowing; a connector that learns of servers another way adds its own."""
+
+    # Tool calls to it were seen passing through a gateway.
+    CALLED = "called"
+
+
+class McpServerRecord(DiscoveryOutputRecord):
+    """An MCP server a scan found. NOT AN AGENT, and never resolved onto a task.
+
+    It shares the output contract's columns -- an identity, a name, when it was last
+    seen, the tools it serves -- so it travels the same seam as an agent record. Only a
+    standalone engine publishes it, as an event of its own type, so a destination
+    alerting on new agents never sees a server among them. The Platform has nowhere to
+    put one: its sink and Test Connection drop it.
+
+    `external_id` is the source's identity for the server where the source saw it, as
+    an agent's is. The same server seen through two gateways is two records.
+    """
+
+    detection: McpServerDetection = Field(
+        description="How this source knows the server is there.",
+    )
+    used_by: Optional[list[str]] = Field(
+        default=None,
+        description="`external_id` of each agent record of this scan seen using the "
+        "server. Absent when the source cannot tell who uses it, which is not the "
+        "same as nobody using it.",
+    )
 
 
 class DiscoveryRecordSink(Protocol):
@@ -468,6 +502,8 @@ class DiscoveryScanOutcome:
     # Agent records the sink accepted, created and updated alike -- see
     # DiscoveryRecordSink.
     records_published: int = 0
+    # MCP server records the sink delivered. Never part of `records_published`.
+    mcp_servers_published: int = 0
     # Records GenAI Engine could not resolve. They do not fail the run: the source
     # reported them and the rest of their batch landed, so the scan succeeded and these
     # are something for whoever configured the source to fix.
@@ -522,6 +558,7 @@ class DiscoveryScanOutcome:
             "finished_at": (self.finished_at.isoformat() if self.finished_at else None),
             "batches_published": self.batches_published,
             "records_published": self.records_published,
+            "mcp_servers_published": self.mcp_servers_published,
             "records_failed": len(self.failed_records),
             "failed_records": [asdict(record) for record in self.failed_records],
             "error_count": self.error_count,
@@ -594,6 +631,7 @@ def run_source_scan(
             publishing = False
             outcome.batches_published += 1
             outcome.records_published += result.accepted
+            outcome.mcp_servers_published += result.mcp_servers
             if result.failed:
                 outcome.failed_records.extend(result.failed)
                 # Each failure's detail travels on the outcome; this is the line

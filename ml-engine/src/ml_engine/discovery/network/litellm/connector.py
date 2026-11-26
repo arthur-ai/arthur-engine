@@ -27,8 +27,16 @@ ROWS THAT ARE NOT CALLERS:
   agent id. It joins its key's record when that record exists, moves `last_seen`, and
   adds no model. It never makes a record of its own.
 * An MCP tool call counts on its caller's record, `last_seen` and the tool, and is
-  never a record of its own. Without a caller record it is skipped and counted.
+  never an agent record of its own. Without a caller record it is skipped and counted.
 * An A2A call (`asend_message`) carries the CALLED agent's id, so it is read by its key.
+
+MCP SERVERS ARE RECORDS OF THEIR OWN KIND. Each server a tool call names
+(`metadata.mcp_tool_call_metadata.mcp_server_name`) is one `McpServerRecord`, with the
+tools called on it and the caller records that called it. The server's name is read
+from that field and never split out of the namespaced tool name, whose separator a
+server's own name may contain. Only called servers are seen: one registered on the
+proxy that nothing called in the window is not a record. The call's arguments and
+result sit beside the name in the row and are never read.
 
 A key with no requests in the window is not a record. When `/key/list` is refused
 (enrichment is optional), bindings are unknown: a bound key's rows read as claimed
@@ -37,16 +45,17 @@ agents and a borrowed id cannot be told, which the job log says.
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, ClassVar, Iterator, Mapping, Optional, Sequence
 
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
-from arthur_common.models.agent_discovery_schemas import DiscoveredAgentRecord
+from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 from arthur_common.models.agent_governance_schemas import (
     RAW_CREDENTIAL_PREFIXES,
     IdentityBasis,
     NetworkCallerKind,
+    Tool,
 )
 
 from discovery.address import address_problem
@@ -54,6 +63,7 @@ from discovery.network.gateway_records import (
     Caller,
     CallerKey,
     GatewayCallers,
+    caller_external_id,
     gateway_instance,
 )
 from discovery.network.litellm.client import (
@@ -64,7 +74,11 @@ from discovery.network.litellm.client import (
     VirtualKey,
 )
 from discovery.siem.tls import parse_tls_verification
-from job_executors.discovery_scan import DiscoveryConfigurationError
+from job_executors.discovery_scan import (
+    DiscoveryConfigurationError,
+    McpServerDetection,
+    McpServerRecord,
+)
 
 VENDOR = "litellm"
 
@@ -102,8 +116,19 @@ class _Row:
     call_type: str
     model: Optional[str]
     tool: Optional[str]
+    mcp_server: Optional[str]
     key_alias: Optional[str]
     team_alias: Optional[str]
+
+
+@dataclass
+class _Server:
+    """One MCP server and everything the scan saw called on it."""
+
+    name: str
+    last_seen: datetime
+    tools: set[str] = field(default_factory=set)
+    callers: set[CallerKey] = field(default_factory=set)
 
 
 @dataclass
@@ -116,6 +141,7 @@ class _Counts:
     borrowed_ids: int = 0
     refused_without_caller: int = 0
     tool_calls_without_caller: int = 0
+    tool_calls_without_server: int = 0
 
 
 class LiteLLMConnector:
@@ -149,7 +175,7 @@ class LiteLLMConnector:
         credentials: Mapping[str, Optional[str]],
         source_fields: Mapping[str, str],
         logger: logging.Logger,
-    ) -> Iterator[Sequence[DiscoveredAgentRecord]]:
+    ) -> Iterator[Sequence[DiscoveryOutputRecord]]:
         """`logger` is the JOB's, so what this reports reaches the Platform job log.
 
         A lookback of 0 reads everything the proxy still retains.
@@ -188,6 +214,7 @@ class LiteLLMConnector:
         counts = _Counts()
         seen: set[str] = set()
         deferred: list[tuple[CallerKey, _Row]] = []
+        servers: dict[str, _Server] = {}
         capped = False
         for page in client.spend_pages(start, end, self._should_stop):
             for raw in page[: self._max_rows - counts.read]:
@@ -222,6 +249,9 @@ class LiteLLMConnector:
         # Refused requests and tool calls only join a caller already seen.
         for key, row in deferred:
             found = callers.get(key)
+            if row.call_type in _MCP_CALL_TYPES:
+                # The server was called whether or not its caller has a record.
+                _fold_server(servers, row, key if found is not None else None, counts)
             if found is None:
                 if row.call_type in _MCP_CALL_TYPES:
                     counts.tool_calls_without_caller += 1
@@ -232,10 +262,13 @@ class LiteLLMConnector:
             if row.tool and row.succeeded:
                 found.tools.add(row.tool)
 
-        records = callers.records(VENDOR, instance)
+        records: list[DiscoveryOutputRecord] = [
+            *callers.records(VENDOR, instance),
+            *(_server_record(servers[name], instance) for name in sorted(servers)),
+        ]
         # Reported before the first batch is handed over, so a publish that fails part
         # way cannot leave a capped answer unannounced.
-        self._report(logger, callers, counts, capped)
+        self._report(logger, callers, len(servers), counts, capped)
         for offset in range(0, len(records), BATCH_SIZE):
             yield records[offset : offset + BATCH_SIZE]
 
@@ -264,6 +297,7 @@ class LiteLLMConnector:
         self,
         logger: logging.Logger,
         callers: GatewayCallers,
+        servers: int,
         counts: _Counts,
         capped: bool,
     ) -> None:
@@ -279,6 +313,17 @@ class LiteLLMConnector:
             by_basis.get(IdentityBasis.CLAIMED_AGENT, 0),
             by_basis.get(IdentityBasis.CREDENTIAL, 0),
         )
+        if servers:
+            logger.info("LiteLLM: %s MCP server(s) named by tool calls", servers)
+        if counts.tool_calls_without_server:
+            # Loud, because a proxy that stopped naming the server would otherwise
+            # read as a proxy nobody calls a server through.
+            logger.warning(
+                "LiteLLM: %s MCP tool call(s) named no server in "
+                "metadata.mcp_tool_call_metadata, so the server each called is not "
+                "reported.",
+                counts.tool_calls_without_server,
+            )
         skipped = {
             "rejected for an invalid key": counts.invalid_key,
             "without a usable key": counts.no_key,
@@ -352,6 +397,41 @@ def _caller_key(
     )
 
 
+def _fold_server(
+    servers: dict[str, _Server],
+    row: _Row,
+    caller: Optional[CallerKey],
+    counts: _Counts,
+) -> None:
+    """Count an MCP call on the server it names. `caller` is the key of its caller's
+    record, or None when the caller has none."""
+    if row.mcp_server is None:
+        counts.tool_calls_without_server += 1
+        return
+    server = servers.get(row.mcp_server)
+    if server is None:
+        server = servers[row.mcp_server] = _Server(row.mcp_server, row.when)
+    server.last_seen = max(server.last_seen, row.when)
+    if row.tool and row.succeeded:
+        server.tools.add(row.tool)
+    if caller is not None:
+        server.callers.add(caller)
+
+
+def _server_record(server: _Server, instance: str) -> McpServerRecord:
+    """One server's record. Tools are named as they are on a caller's record, so the
+    two join on the name."""
+    return McpServerRecord(
+        external_id=f"{VENDOR}:{instance}:mcp_server:{server.name}",
+        name=server.name,
+        last_seen=server.last_seen,
+        tools=[Tool(name=t) for t in sorted(server.tools)] or None,
+        detection=McpServerDetection.CALLED,
+        used_by=sorted(caller_external_id(VENDOR, instance, c) for c in server.callers)
+        or None,
+    )
+
+
 def _fold(caller: Caller, row: _Row, key: Optional[VirtualKey]) -> None:
     caller.seen(row.when)
     if caller.key.basis is not IdentityBasis.CLAIMED_AGENT:
@@ -382,6 +462,9 @@ def _row_of(raw: Mapping[str, Any]) -> Optional[_Row]:
         call_type=_text(raw.get("call_type")) or "",
         model=_served_model(raw),
         tool=_text(raw.get("mcp_namespaced_tool_name")),
+        mcp_server=_text(
+            _mapping(metadata.get("mcp_tool_call_metadata")).get("mcp_server_name")
+        ),
         key_alias=_text(metadata.get("user_api_key_alias")),
         team_alias=_text(metadata.get("user_api_key_team_alias")),
     )
@@ -409,6 +492,10 @@ def _time(value: Any) -> Optional[datetime]:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 
 def _text(value: Any) -> Optional[str]:

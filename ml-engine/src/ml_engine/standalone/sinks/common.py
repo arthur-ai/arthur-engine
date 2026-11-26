@@ -2,7 +2,7 @@
 
 EVERY EVENT IS SELF-DESCRIBING. A destination indexes events one at a time, so each
 carries its type, a schema version, when it was observed and which source and config
-produced it, alongside the record or outcome itself. The two builders below are the
+produced it, alongside the record or outcome itself. The three builders below are the
 whole event contract; a sink target only frames and delivers what it is given.
 """
 
@@ -13,11 +13,12 @@ from typing import Any, Optional, Protocol, Sequence
 from arthur_client.api_bindings import DiscoverySourceConfigSpec
 from arthur_common.models.agent_discovery_schemas import DiscoveryOutputRecord
 
-from job_executors.discovery_scan import DiscoveryScanOutcome
+from job_executors.discovery_scan import DiscoveryScanOutcome, McpServerRecord
 
 # Bumped when a field changes meaning or goes away; adding one does not.
 EVENT_SCHEMA_VERSION = 1
 DISCOVERED_AGENT_EVENT = "arthur.discovery.agent"
+MCP_SERVER_EVENT = "arthur.discovery.mcp_server"
 SCAN_OUTCOME_EVENT = "arthur.discovery.scan_outcome"
 
 Event = dict[str, Any]
@@ -99,6 +100,28 @@ def discovered_agent_event(
             "config_name": config.name,
         },
         "agent": record.model_dump(mode="json", exclude_none=True),
+    }
+
+
+def mcp_server_event(
+    record: McpServerRecord,
+    config: DiscoverySourceConfigSpec,
+    source_name: str,
+    observed_at: datetime,
+) -> Event:
+    """One discovered MCP server. Its own event type, so a search for agents, or an
+    alert on a new one, never counts a server."""
+    return {
+        "event_type": MCP_SERVER_EVENT,
+        "schema_version": EVENT_SCHEMA_VERSION,
+        "observed_at": observed_at.isoformat(),
+        "source": {
+            "id": config.discovery_source_id,
+            "name": source_name,
+            "vendor": config.vendor,
+            "config_name": config.name,
+        },
+        "mcp_server": record.model_dump(mode="json", exclude_none=True),
     }
 
 
