@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1130"
+        "version": "2.1.1135"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -18557,7 +18557,7 @@
                             }
                         ],
                         "title": "Cost",
-                        "description": "Cost of the continuous eval run"
+                        "description": "Estimated cost of the continuous eval run, in USD"
                     },
                     "created_at": {
                         "type": "string",
@@ -26678,7 +26678,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -26690,7 +26690,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -26702,7 +26702,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "id": {
                         "type": "string",
@@ -32108,7 +32120,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -32120,7 +32132,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -32132,7 +32144,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "session_id": {
                         "type": "string",
@@ -32446,7 +32470,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -32458,7 +32482,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -32470,7 +32494,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "id": {
                         "type": "string",
@@ -32681,7 +32717,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -32693,7 +32729,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -32705,7 +32741,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "id": {
                         "type": "string",
@@ -33981,7 +34029,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -33993,7 +34041,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -34005,7 +34053,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "trace_id": {
                         "type": "string",
@@ -34324,7 +34384,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -34336,7 +34396,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -34348,7 +34408,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "trace_id": {
                         "type": "string",
@@ -34811,7 +34883,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -34823,7 +34895,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -34835,7 +34907,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "user_id": {
                         "type": "string",
