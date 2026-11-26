@@ -19,7 +19,14 @@ describe("span scope form values", () => {
   });
 
   it("round-trips an eval's span settings", () => {
-    const values = { scope: "span" as const, spanName: "lookup_order", spanKind: "", rollupRule: "final_attempt" as const, maxSpans: "5" };
+    const values = {
+      scope: "span" as const,
+      spanName: "lookup_order",
+      spanKind: "",
+      conditions: [],
+      rollupRule: "final_attempt" as const,
+      maxSpans: "5",
+    };
     const request = spanScopeToRequest(values);
     expect(request).toEqual({
       scope: "span",
@@ -30,5 +37,30 @@ describe("span scope form values", () => {
     expect(spanScopeFromEval(request)).toEqual(values);
     expect(spanFilterJson(values)).toBe('{"span_name":"lookup_order","span_kind":null,"conditions":[]}');
     expect(spanFilterJson({ ...values, spanName: "" })).toBeNull();
+  });
+
+  // Conditions can only be set through the API; editing the eval in the form must keep them.
+  const refundCalls = {
+    scope: "span" as const,
+    span_filter: {
+      span_name: null,
+      span_kind: "TOOL",
+      conditions: [{ attribute_path: "attributes.tool.name", operator: "equals" as const, value: "refund", span_name: null }],
+    },
+    rollup_rule: "any_fail" as const,
+    max_spans_per_trace: 20,
+  };
+
+  it("keeps a span filter's conditions when the eval is edited", () => {
+    expect(spanScopeToRequest(spanScopeFromEval(refundCalls))).toEqual(refundCalls);
+    expect(JSON.parse(spanFilterJson(spanScopeFromEval(refundCalls)) ?? "null")).toEqual(refundCalls.span_filter);
+  });
+
+  it("accepts a span filter made only of conditions, as the API does", () => {
+    const conditionsOnly = { ...refundCalls, span_filter: { ...refundCalls.span_filter, span_kind: null } };
+    const values = spanScopeFromEval(conditionsOnly);
+    expect(spanScopeSchema.safeParse(values).success).toBe(true);
+    expect(spanScopeToRequest(values).span_filter).toEqual(conditionsOnly.span_filter);
+    expect(spanFilterJson(values)).not.toBeNull();
   });
 });

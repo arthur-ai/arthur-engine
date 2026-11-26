@@ -74,6 +74,12 @@ export const SpanScopeField = ({ value, onChange }: Props) => {
               sx={{ flex: 1 }}
             />
           </Stack>
+          {value.conditions.length > 0 && (
+            <Alert severity="info">
+              Only spans that also meet these conditions, set through the API, are judged:{" "}
+              {value.conditions.map((c) => [c.attribute_path, c.operator.replace("_", " "), c.value].filter(Boolean).join(" ")).join("; ")}.
+            </Alert>
+          )}
           <Stack spacing={0.5}>
             <Typography variant="subtitle2" color="text.primary">
               How span verdicts decide the trace

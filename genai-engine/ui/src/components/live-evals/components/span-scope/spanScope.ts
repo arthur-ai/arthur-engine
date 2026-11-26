@@ -1,12 +1,20 @@
 import z from "zod";
 
-import type { ContinuousEvalResponse, ContinuousEvalRollupRule, ContinuousEvalScope, ContinuousEvalSpanFilter } from "@/lib/api-client/api-client";
+import type {
+  ContinuousEvalResponse,
+  ContinuousEvalRollupRule,
+  ContinuousEvalScope,
+  ContinuousEvalSpanFilter,
+  ContinuousEvalTraceFilterCondition,
+} from "@/lib/api-client/api-client";
 
 // The form holds the span settings as strings; "" means unset.
 export type SpanScopeValues = {
   scope: ContinuousEvalScope;
   spanName: string;
   spanKind: string;
+  // Set only through the API; the form keeps them as they are.
+  conditions: ContinuousEvalTraceFilterCondition[];
   // No default: a span-scope eval must say how span verdicts decide the trace.
   rollupRule: ContinuousEvalRollupRule | "";
   maxSpans: string;
@@ -32,6 +40,7 @@ export const defaultSpanScope = (): SpanScopeValues => ({
   scope: "trace",
   spanName: "",
   spanKind: "",
+  conditions: [],
   rollupRule: "",
   maxSpans: String(DEFAULT_MAX_SPANS_PER_TRACE),
 });
@@ -41,12 +50,14 @@ export const spanScopeSchema = z
     scope: z.enum(["trace", "span"]),
     spanName: z.string(),
     spanKind: z.string(),
+    conditions: z.array(z.custom<ContinuousEvalTraceFilterCondition>()),
     rollupRule: z.enum(["", "any_fail", "final_attempt"]),
     maxSpans: z.string(),
   })
   .superRefine((value, ctx) => {
     if (value.scope !== "span") return;
-    if (!value.spanName.trim() && !value.spanKind.trim()) {
+    // As the API: a name, a kind or at least one condition.
+    if (!value.spanName.trim() && !value.spanKind.trim() && value.conditions.length === 0) {
       ctx.addIssue({ code: "custom", path: ["spanName"], message: "Span name or span kind is required" });
     }
     if (!value.rollupRule) {
@@ -63,7 +74,7 @@ export const spanFilterFromValues = (values: SpanScopeValues): ContinuousEvalSpa
     ? {
         span_name: values.spanName.trim() || null,
         span_kind: values.spanKind.trim() || null,
-        conditions: [],
+        conditions: values.conditions,
       }
     : null;
 
@@ -81,6 +92,7 @@ export const spanScopeFromEval = (
   scope: data.scope ?? "trace",
   spanName: data.span_filter?.span_name ?? "",
   spanKind: data.span_filter?.span_kind ?? "",
+  conditions: data.span_filter?.conditions ?? [],
   rollupRule: data.rollup_rule ?? "",
   maxSpans: String(data.max_spans_per_trace ?? DEFAULT_MAX_SPANS_PER_TRACE),
 });
@@ -88,7 +100,7 @@ export const spanScopeFromEval = (
 /** Span filter as the spend estimate takes it, or null for trace scope or a half-filled form. */
 export const spanFilterJson = (values: SpanScopeValues): string | null => {
   const filter = spanFilterFromValues(values);
-  if (!filter || (!filter.span_name && !filter.span_kind)) return null;
+  if (!filter || (!filter.span_name && !filter.span_kind && !filter.conditions?.length)) return null;
   return JSON.stringify(filter);
 };
 
