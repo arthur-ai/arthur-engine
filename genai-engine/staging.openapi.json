@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1134"
+        "version": "2.1.1136"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -22724,31 +22724,6 @@
                         "title": "Default Currency",
                         "default": "USD"
                     },
-                    "usd_exchange_rate": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Usd Exchange Rate",
-                        "description": "Units of default_currency one USD buys. Multiply the USD costs in API responses by it to show them in default_currency. None when no rate is available; show costs in USD then."
-                    },
-                    "exchange_rate_updated_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Exchange Rate Updated At",
-                        "description": "When usd_exchange_rate was fetched. None for USD, which needs no rate."
-                    },
                     "chatbot_enabled": {
                         "type": "boolean",
                         "title": "Chatbot Enabled",
@@ -32059,9 +32034,7 @@
                             }
                         ],
                         "title": "Display Currency",
-                        "description": "Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.",
-                        "default": "USD",
-                        "deprecated": true
+                        "description": "Currency code for cost fields"
                     },
                     "sessions": {
                         "items": {
@@ -32260,9 +32233,7 @@
                             }
                         ],
                         "title": "Display Currency",
-                        "description": "Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.",
-                        "default": "USD",
-                        "deprecated": true
+                        "description": "Currency code for cost fields"
                     },
                     "traces": {
                         "items": {
@@ -32413,9 +32384,7 @@
                             }
                         ],
                         "title": "Display Currency",
-                        "description": "Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.",
-                        "default": "USD",
-                        "deprecated": true
+                        "description": "Currency code for cost fields"
                     },
                     "spans": {
                         "items": {
@@ -33974,9 +33943,7 @@
                             }
                         ],
                         "title": "Display Currency",
-                        "description": "Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.",
-                        "default": "USD",
-                        "deprecated": true
+                        "description": "Currency code for cost fields"
                     },
                     "traces": {
                         "items": {
@@ -34830,9 +34797,7 @@
                             }
                         ],
                         "title": "Display Currency",
-                        "description": "Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.",
-                        "default": "USD",
-                        "deprecated": true
+                        "description": "Currency code for cost fields"
                     },
                     "users": {
                         "items": {
