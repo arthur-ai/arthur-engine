@@ -35,9 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     env:
       GIT_DEPTH: 100
     steps:
@@ -90,9 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     env:
       GIT_DEPTH: 100
     steps:
@@ -119,9 +117,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     env:
       GIT_DEPTH: 100
     steps:

@@ -34,9 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12.9-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
@@ -83,9 +82,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.13-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
@@ -138,9 +136,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12.9-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -445,9 +442,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12.9-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
@@ -499,15 +495,13 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.12.9-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     services:
       postgres:
         image: postgres:15
-        credentials:
-          username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+        # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+        credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
         ports:
           - "5432:5432"
         env:
@@ -545,9 +539,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python:3.13-bullseye
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
@@ -1265,9 +1258,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: node:20-alpine
-      credentials:
-        username: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_ENTERPRISE_TOKEN }}
+      # Fork PRs get no secrets; empty credentials fail template validation, so pull anonymously instead.
+      credentials: ${{ secrets.DOCKERHUB_ENTERPRISE_USERNAME && fromJSON(format('{{"username":"{0}","password":"{1}"}}', secrets.DOCKERHUB_ENTERPRISE_USERNAME, secrets.DOCKERHUB_ENTERPRISE_TOKEN)) || null }}
     environment: shared-protected-branch-secrets
     steps:
       - name: Trigger GitLab Pipeline
