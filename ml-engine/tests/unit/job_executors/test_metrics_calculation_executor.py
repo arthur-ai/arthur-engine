@@ -48,6 +48,7 @@ from mock_data.connector_helpers import (
 )
 from mock_data.mock_data_generator import random_model
 
+from connectors.connector import ConnectorReadResult
 from dataset_loader import DatasetLoader
 from job_executors.metrics_calculation_executor import (
     InternalAggregationKind,
@@ -206,10 +207,10 @@ def test_process_agg_args(
         filters=None,
         pagination_options=None,
     ):
-        return expected_data
+        return ConnectorReadResult(rows=expected_data, total_count=None)
 
     mock_connector = Mock()
-    mock_connector.read.side_effect = read_side_effect
+    mock_connector.read_with_total_count.side_effect = read_side_effect
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = mock_connector
 
@@ -295,7 +296,10 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
 
     # configure mock connector
     mock_connector = Mock()
-    mock_connector.read.return_value = expected_data
+    mock_connector.read_with_total_count.return_value = ConnectorReadResult(
+        rows=expected_data,
+        total_count=None,
+    )
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = mock_connector
 
@@ -606,7 +610,10 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
 
     # configure connector mocks
     mock_connector = Mock()
-    mock_connector.read.return_value = expected_data
+    mock_connector.read_with_total_count.return_value = ConnectorReadResult(
+        rows=expected_data,
+        total_count=None,
+    )
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = mock_connector
 
@@ -839,7 +846,10 @@ def test_metrics_run_reports_ml_ingest_bytes_even_when_not_configured():
     ]
     dataset = Dataset.model_validate(MOCK_BQ_DATASET)
     connector = Mock()
-    connector.read.return_value = rows
+    connector.read_with_total_count.return_value = ConnectorReadResult(
+        rows=rows,
+        total_count=None,
+    )
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = connector
     datasets_client = Mock()
@@ -858,10 +868,19 @@ def test_metrics_run_reports_ml_ingest_bytes_even_when_not_configured():
     executor, metrics_client = _consumption_executor([], dataset)
 
     with patch.object(executor, "_load_data", return_value=(conn, set())):
-        executor.execute(Mock(schedule_id=None), _job_spec(dataset, start, start + timedelta(hours=1)))
+        executor.execute(
+            Mock(schedule_id=None),
+            _job_spec(dataset, start, start + timedelta(hours=1)),
+        )
 
-    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs["metrics_upload"]
-    ingest = [m.actual_instance for m in upload.metrics if m.actual_instance.name == "ingest_bytes"]
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs[
+        "metrics_upload"
+    ]
+    ingest = [
+        m.actual_instance
+        for m in upload.metrics
+        if m.actual_instance.name == "ingest_bytes"
+    ]
     assert len(ingest) == 1
     series = ingest[0].numeric_series
     dimensions = {d.name: d.value for d in series[0].dimensions}
@@ -879,7 +898,10 @@ def test_consumption_failure_does_not_fail_the_metrics_job(caplog):
     executor, metrics_client = _consumption_executor([], dataset)
 
     with patch.object(executor, "_load_data", return_value=(conn, set())):
-        executor.execute(Mock(schedule_id=None), _job_spec(dataset, start, start + timedelta(hours=1)))
+        executor.execute(
+            Mock(schedule_id=None),
+            _job_spec(dataset, start, start + timedelta(hours=1)),
+        )
 
     metrics_client.post_model_metrics_by_version.assert_called_once()
     assert any(

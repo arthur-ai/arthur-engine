@@ -19,9 +19,11 @@ from discovery.endpoint.jamf.connector import _settings_from as jamf_settings_fr
 from standalone.discovery_config import (
     DISCOVERY_CONFIG_ENV_VAR,
     StandaloneConfigError,
+    config_fingerprint,
     load_config,
     standalone_config_path,
 )
+from standalone.sinks.csv_file import CsvDestination
 from standalone.sinks.siem.elasticsearch import ElasticsearchDestination
 from standalone.sinks.siem.splunk_hec import SplunkHecDestination
 from standalone.sinks.webhook import WebhookDestination
@@ -308,13 +310,14 @@ def test_every_registered_connector_declares_its_secrets() -> None:
     """Without it a connector can only be scanned via the Platform."""
     for vendor, connector in standalone_connectors().items():
         assert isinstance(
-            getattr(connector, "SENSITIVE_FIELDS", None), frozenset
+            getattr(connector, "SENSITIVE_FIELDS", None),
+            frozenset,
         ), vendor
 
 
 def test_an_unknown_query_language_is_refused(tmp_path: Path) -> None:
     text = minimal(
-        sources=VERTEX_SOURCE.replace("query_language: none", "query_language: sql")
+        sources=VERTEX_SOURCE.replace("query_language: none", "query_language: sql"),
     )
 
     assert "query_language must be one of" in load_error(tmp_path, text)
@@ -527,6 +530,39 @@ def test_an_elasticsearch_destination_reads_its_key_from_a_file(
     assert config.destination.api_key.get_secret_value() == "es-api-key-value-0005"
 
 
+def test_a_csv_destination_path_resolves_beside_the_config(tmp_path: Path) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: csv
+              path: output/agents.csv
+            """,
+        ),
+    )
+
+    config = load_config(write(tmp_path, text))
+
+    assert config is not None
+    assert isinstance(config.destination, CsvDestination)
+    assert config.destination.path == str(tmp_path / "output" / "agents.csv")
+
+
+def test_a_csv_destination_takes_no_http_settings(tmp_path: Path) -> None:
+    text = minimal(
+        destination=textwrap.dedent(
+            """\
+            destination:
+              type: csv
+              path: /var/lib/arthur/discovery/agents.csv
+              url: https://hooks.example.com/ingest
+            """,
+        ),
+    )
+
+    assert "url" in load_error(tmp_path, text)
+
+
 @pytest.mark.parametrize("allow", [False, True])
 def test_http_destination_needs_an_explicit_opt_in(
     tmp_path: Path,
@@ -562,6 +598,8 @@ def test_http_destination_needs_an_explicit_opt_in(
         ('"3600"', None),  # a string with no unit is ambiguous
         ("6 hours", None),
         ("30s", None),  # under the minimum
+        ("99999999999d", None),  # past what a timedelta holds
+        ("1.0e+300", None),  # a YAML float of seconds, as large
     ],
 )
 def test_interval_formats(
@@ -725,3 +763,16 @@ def test_an_elasticsearch_credential_error_never_quotes_the_password(
     assert "not both" in message
     assert "es-passw0rd-value-0003" not in message
     assert "es-api-key-value-0005" not in message
+
+
+def test_an_alias_that_contains_itself_is_refused(tmp_path: Path) -> None:
+    text = "version: 1\nsources: &a [*a]\n"
+
+    assert "alias that contains itself" in load_error(tmp_path, text)
+    assert config_fingerprint(tmp_path / "discovery.yaml")
+
+
+def test_an_alias_used_twice_is_not_a_self_reference(tmp_path: Path) -> None:
+    text = minimal(sources=VERTEX_SOURCE + "x-again: &f {a: 1}\nx-more: *f\n")
+
+    assert "contains itself" not in load_error(tmp_path, text)

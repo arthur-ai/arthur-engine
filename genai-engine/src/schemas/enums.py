@@ -67,6 +67,8 @@ class ApplicationConfigurations(str, Enum):
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
     TRACE_RETENTION_DAYS = "trace_retention_days"
     CHATBOT_BLACKLIST_ENDPOINTS = "chatbot_blacklist_endpoints"
+    DEFAULT_LLM_PROVIDER = "default_llm_provider"
+    DEFAULT_LLM_MODEL = "default_llm_model"
 
 
 class ClaimClassifierResultEnum(str, Enum):

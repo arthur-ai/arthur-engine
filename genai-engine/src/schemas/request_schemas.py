@@ -271,6 +271,16 @@ class PutModelProviderWhitelist(BaseModel):
     )
 
 
+class PutDefaultModelProvider(BaseModel):
+    provider: ModelProvider = Field(
+        description="Configured provider used wherever no model is named",
+    )
+    model_name: str = Field(
+        min_length=1,
+        description="Model of that provider, e.g. 'gpt-4.1-mini'",
+    )
+
+
 class PutModelProviderEvalDefaults(BaseModel):
     reasoning_effort: Optional[ReasoningEffortEnum] = Field(
         default=None,

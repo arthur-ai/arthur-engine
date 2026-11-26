@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.1125"
+        "version": "2.1.1135"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -9568,6 +9568,89 @@
                 }
             }
         },
+        "/api/v1/default_model_provider": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Get the default model provider and model.",
+                "description": "Returns the provider and model used wherever no model is named: Arthur's own features, such as synthetic data and the chatbot. Evals keep the model they were saved with. Both are null when no default is set.",
+                "operationId": "get_default_model_provider_api_v1_default_model_provider_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DefaultModelProvider"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set the default model provider and model.",
+                "description": "Sets the provider and model used wherever no model is named. The provider must already be configured. Everything using the default picks up a change on its next call; a model picked for a feature always wins.",
+                "operationId": "set_default_model_provider_api_v1_default_model_provider_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutDefaultModelProvider"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Default model provider set."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Clear the default model provider and model.",
+                "description": "Clears the default. Features that use the default fail with a 'no default model provider' error until a default is set again.",
+                "operationId": "clear_default_model_provider_api_v1_default_model_provider_delete",
+                "responses": {
+                    "204": {
+                        "description": "Default model provider cleared."
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v1/secrets/rotation": {
             "post": {
                 "tags": [
@@ -17331,7 +17414,7 @@
                     "Chatbot"
                 ],
                 "summary": "Get chatbot model configuration",
-                "description": "Returns the model provider, model name, blacklisted endpoints, and available endpoints.",
+                "description": "Returns the model the chatbot uses (the default model provider), blacklisted endpoints, and available endpoints.",
                 "operationId": "get_chatbot_config_api_v1_chatbot_config_get",
                 "responses": {
                     "200": {
@@ -17356,7 +17439,7 @@
                     "Chatbot"
                 ],
                 "summary": "Update chatbot model configuration",
-                "description": "Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.",
+                "description": "Updates the endpoints the chatbot may not call. The chatbot always uses the default model provider, set on the Model Providers page; sending model_provider or model_name returns 400.",
                 "operationId": "update_chatbot_config_api_v1_chatbot_config_put",
                 "requestBody": {
                     "content": {
@@ -20628,11 +20711,27 @@
             "ChatbotConfigResponse": {
                 "properties": {
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider the chatbot calls: the instance's default model provider. Null when none is set."
                     },
                     "model_name": {
-                        "type": "string",
-                        "title": "Model Name"
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "Model the chatbot calls: the instance's default model. Null when none is set."
                     },
                     "blacklist_endpoints": {
                         "items": {
@@ -20652,10 +20751,6 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "model_provider",
-                    "model_name"
-                ],
                 "title": "ChatbotConfigResponse"
             },
             "ChatbotConfigUpdateRequest": {
@@ -20668,7 +20763,8 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "description": "No longer accepted: the chatbot uses the default model provider. Sending it returns 400."
                     },
                     "model_name": {
                         "anyOf": [
@@ -20679,7 +20775,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Model Name"
+                        "title": "Model Name",
+                        "description": "No longer accepted: the chatbot uses the default model provider. Sending it returns 400."
                     },
                     "blacklist_endpoints": {
                         "anyOf": [
@@ -22745,6 +22842,35 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DefaultModelProvider": {
+                "properties": {
+                    "provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider used wherever no model is named, or null when unset"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "Model of that provider, or null when unset"
+                    }
+                },
+                "type": "object",
+                "title": "DefaultModelProvider"
             },
             "DemoTaskSignupResponse": {
                 "properties": {
@@ -26885,7 +27011,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -26897,7 +27023,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -26909,7 +27035,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "id": {
                         "type": "string",
@@ -29409,6 +29547,26 @@
                 ],
                 "title": "ProvenanceSource",
                 "description": "One source's contribution to a task's provenance.\n\nProvenance holds a list of these rather than scalars beside a list of source\nclasses: with scalars, an agent corroborated by two sources has two entries in\nfound_by but one address, and nothing says which source it belongs to."
+            },
+            "PutDefaultModelProvider": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Configured provider used wherever no model is named"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Model Name",
+                        "description": "Model of that provider, e.g. 'gpt-4.1-mini'"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model_name"
+                ],
+                "title": "PutDefaultModelProvider"
             },
             "PutModelProviderCredentials": {
                 "properties": {
@@ -32295,7 +32453,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -32307,7 +32465,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -32319,7 +32477,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "session_id": {
                         "type": "string",
@@ -32633,7 +32803,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -32645,7 +32815,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -32657,7 +32827,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "id": {
                         "type": "string",
@@ -32868,7 +33050,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -32880,7 +33062,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -32892,7 +33074,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "id": {
                         "type": "string",
@@ -33334,7 +33528,13 @@
                     "is_placeholder": {
                         "type": "boolean",
                         "title": "Is Placeholder",
-                        "description": "True when the prompt uses the empty placeholder model"
+                        "description": "True when the prompt uses the empty placeholder model and no default model provider is set"
+                    },
+                    "uses_default_model": {
+                        "type": "boolean",
+                        "title": "Uses Default Model",
+                        "description": "True when the prompt uses the empty placeholder, so the model shown is the instance's default model provider",
+                        "default": false
                     }
                 },
                 "type": "object",
@@ -34162,7 +34362,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -34174,7 +34374,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -34186,7 +34386,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "trace_id": {
                         "type": "string",
@@ -34505,7 +34717,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -34517,7 +34729,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -34529,7 +34741,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "trace_id": {
                         "type": "string",
@@ -35015,7 +35239,7 @@
                             }
                         ],
                         "title": "Prompt Token Cost",
-                        "description": "Cost of prompt tokens in USD"
+                        "description": "Estimated cost of prompt tokens, in USD"
                     },
                     "completion_token_cost": {
                         "anyOf": [
@@ -35027,7 +35251,7 @@
                             }
                         ],
                         "title": "Completion Token Cost",
-                        "description": "Cost of completion tokens in USD"
+                        "description": "Estimated cost of completion tokens, in USD"
                     },
                     "total_token_cost": {
                         "anyOf": [
@@ -35039,7 +35263,19 @@
                             }
                         ],
                         "title": "Total Token Cost",
-                        "description": "Total cost in USD"
+                        "description": "Estimated total cost, in USD"
+                    },
+                    "unpriced_span_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unpriced Span Count",
+                        "description": "Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported."
                     },
                     "user_id": {
                         "type": "string",
@@ -38122,7 +38358,7 @@
                             }
                         ],
                         "title": "Cost",
-                        "description": "Cost of the continuous eval run"
+                        "description": "Estimated cost of the continuous eval run, in USD"
                     },
                     "created_at": {
                         "type": "string",
@@ -38282,7 +38518,7 @@
                             }
                         ],
                         "title": "Cost",
-                        "description": "Cost of the continuous eval run"
+                        "description": "Estimated cost of the continuous eval run, in USD"
                     },
                     "created_at": {
                         "type": "string",

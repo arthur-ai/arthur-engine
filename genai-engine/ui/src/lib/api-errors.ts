@@ -58,3 +58,15 @@ export const getTokenLimitDetail = (err: unknown): TokenLimitExceededDetail | nu
   }
   return null;
 };
+
+// The GenAI Engine's DefaultModelProviderNotSetException: a feature that runs on the
+// default model provider was used while none is set. Its 400 detail starts with this.
+const DEFAULT_MODEL_NOT_SET_PREFIX = "No default model provider is set";
+
+/** True for the engine's "no default model provider is set" 400 response body. */
+export const isDefaultModelNotSetError = (status: number, body: unknown): boolean =>
+  status === 400 &&
+  typeof body === "object" &&
+  body !== null &&
+  typeof (body as { detail?: unknown }).detail === "string" &&
+  (body as { detail: string }).detail.startsWith(DEFAULT_MODEL_NOT_SET_PREFIX);

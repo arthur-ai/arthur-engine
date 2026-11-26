@@ -407,6 +407,17 @@ class ModelProviderWhitelist(BaseModel):
     )
 
 
+class DefaultModelProvider(BaseModel):
+    provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Provider used wherever no model is named, or null when unset",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model of that provider, or null when unset",
+    )
+
+
 class ModelProviderEvalDefaults(BaseModel):
     provider: ModelProvider = Field(description="Provider the defaults apply to")
     reasoning_effort: Optional[ReasoningEffortEnum] = Field(
@@ -1081,7 +1092,13 @@ class SyntheticDataPromptStatus(BaseModel):
     )
     is_placeholder: bool = Field(
         ...,
-        description="True when the prompt uses the empty placeholder model",
+        description="True when the prompt uses the empty placeholder model and no "
+        "default model provider is set",
+    )
+    uses_default_model: bool = Field(
+        default=False,
+        description="True when the prompt uses the empty placeholder, so the model "
+        "shown is the instance's default model provider",
     )
 
 

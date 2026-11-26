@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.1125"
+version = "2.1.1135"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -11,27 +11,27 @@ dependencies = [
   # edited this pin without relocking, so uv.lock kept 2.54.0 and `uv lock` could not
   # re-resolve at all. Raise this only once litellm supports openai v3.
   "openai==2.54.0",
-  "fastapi==0.163.0",
+  "fastapi==0.165.0",
   "uvicorn==0.54.0",
-  "pydantic==2.14.3",
-  "sse-starlette==3.7.0",
+  "pydantic==2.14.4",
+  "sse-starlette==3.7.1",
   "fastapi-sqlalchemy==0.2.1",
   "alembic==1.20.1",
-  "boto3==1.44.3",
+  "boto3==1.44.9",
   "python-dotenv==1.2.4",
   "psycopg2-binary==2.9.13",
   # Held below 2.1: opentelemetry-instrumentation-sqlalchemy (every release through 0.66b2)
   # declares sqlalchemy<2.1.0 and skips instrumenting outside it, so DB tracing would silently
   # stop. See the sqlalchemy rule in /renovate.json.
-  "sqlalchemy==2.0.57",
+  "sqlalchemy==2.0.58",
   "pgvector==0.5.1",
-  "python-multipart==0.0.33",
-  "pypdf==7.1.0",
+  "python-multipart==0.0.34",
+  "pypdf==7.1.1",
   "httpx==0.28.1",
   # Held below 5.14.0: gliner 0.2.28 (the latest release) requires
   # transformers>=4.51.3,<5.14.0. See the transformers rule in /renovate.json.
   "transformers==5.13.1",
-  "authlib==1.9.6",
+  "authlib==1.9.10",
   "requests==2.34.2",
   "starlette==1.10.0",
   "pyjwt==2.15.1",
@@ -53,13 +53,13 @@ dependencies = [
   "presidio-anonymizer==2.2.366",
   "python-keycloak==7.1.1",
   "bcrypt==5.0.0",
-  "cachetools==7.3.2",
+  "cachetools==7.3.3",
   "sentence-transformers==6.3.0",
   "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
   "torch==2.13.0 ; sys_platform == 'darwin'",
   "torch==2.13.0+cpu ; sys_platform == 'linux' or sys_platform == 'win32'",
   "commonmark==0.9.2",
-  "gunicorn>=26,<27",
+  "gunicorn>=27,<28",
   "fastapi-pagination==0.16.3",
   "pydantic-settings>=2.3.4,<3",
   "spacy>=3.8.3",
@@ -70,7 +70,7 @@ dependencies = [
   "langchain-openai==1.8.0",
   "langsmith==0.14.17",
   "msgpack==1.2.4",
-  "cloudpickle==3.1.2",
+  "cloudpickle==3.1.3",
   "amplitude-analytics>=1.1.5,<2",
   "sentencepiece==0.2.2",
   "gliner==0.2.30",
@@ -82,12 +82,12 @@ dependencies = [
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.111",
+  "arthur-common==2.4.112",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",
   "opentelemetry-semantic-conventions>=0.65b0,<0.67",
-  "arthur-client==1.4.3043",
+  "arthur-client==1.4.3093",
 ]
 
 [project.scripts]

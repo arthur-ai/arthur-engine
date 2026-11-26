@@ -27,6 +27,7 @@ from typing import Any, Callable, Iterator, Mapping, Optional, Sequence
 
 import requests
 from arthur_client.api_bindings import (
+    DiscoverySourceConfigSpec,
     DiscoverySourceReachability,
     DiscoverySourcesV1Api,
     DiscoverySourceTestError,
@@ -110,7 +111,15 @@ class DiscoverySourceTestExecutor:
                 "vendor": config.vendor,
             },
         )
-        result = _PreviewRun(self, job_spec).run()
+        result = _PreviewRun(
+            self,
+            config=config,
+            lookback_hours=int(job_spec.lookback_hours),
+            preview_limit=int(job_spec.preview_limit),
+            credentials=lambda: self._platform_credentials(
+                str(job_spec.discovery_source_config_id),
+            ),
+        ).run()
 
         # Counts and the error only. The rows are customer data bound for one
         # authorized read route; the job log is listed far more widely.
@@ -134,6 +143,51 @@ class DiscoverySourceTestExecutor:
         self.logger.info("Test result delivered to the Platform")
         return result
 
+    def _platform_credentials(self, config_id: str) -> dict[str, Optional[str]]:
+        try:
+            credentials: dict[str, Optional[str]] = (
+                self.discovery_sources_client.retrieve_discovery_source_credentials(
+                    config_id,
+                )
+            )
+        except Exception as e:
+            status = getattr(e, "status", None)
+            raise CredentialsUnavailable(
+                f"The engine could not read this config's credentials from the "
+                f"Platform{f' (HTTP {status})' if status else ''}: "
+                f"{type(e).__name__}",
+            ) from None
+        return credentials
+
+
+class CredentialsUnavailable(Exception):
+    """The test cannot get the config's credentials; the message says why."""
+
+
+def preview_source(
+    config: DiscoverySourceConfigSpec,
+    lookback_hours: int,
+    credentials: dict[str, Optional[str]],
+    logger: logging.Logger,
+    preview_limit: int = 20,
+    connectors: Optional[dict[str, DiscoveryConnectorFactory]] = None,
+) -> PutDiscoverySourceTestResult:
+    """Test Connection without a Platform: the same bounded, redacted preview, run
+    against credentials the caller already has, and returned rather than reported."""
+    executor = DiscoverySourceTestExecutor(
+        # Never asked: the credentials are given, and the result is returned.
+        discovery_sources_client=None,
+        logger=logger,
+        connectors=connectors,
+    )
+    return _PreviewRun(
+        executor,
+        config=config,
+        lookback_hours=lookback_hours,
+        preview_limit=preview_limit,
+        credentials=lambda: credentials,
+    ).run()
+
 
 class _PreviewRun:
     """One test's state: the rows so far, the column check, and the scrub set."""
@@ -141,13 +195,17 @@ class _PreviewRun:
     def __init__(
         self,
         executor: DiscoverySourceTestExecutor,
-        job_spec: TestDiscoverySourceJobSpec,
+        config: DiscoverySourceConfigSpec,
+        lookback_hours: int,
+        preview_limit: int,
+        credentials: Callable[[], dict[str, Optional[str]]],
     ) -> None:
         self.executor = executor
         self.logger = executor.logger
-        self.job_spec = job_spec
-        self.config = job_spec.discovery_source_config
-        self.limit = max(1, int(job_spec.preview_limit))
+        self.config = config
+        self.lookback_hours = lookback_hours
+        self.limit = max(1, preview_limit)
+        self.credentials = credentials
         self.started_at = datetime.now(timezone.utc)
         self.rows: list[dict[str, Any]] = []
         self.row_bytes = 0
@@ -179,21 +237,12 @@ class _PreviewRun:
             )
 
         try:
-            credentials: dict[str, Optional[str]] = (
-                self.executor.discovery_sources_client.retrieve_discovery_source_credentials(
-                    str(self.job_spec.discovery_source_config_id),
-                )
-            )
-        except Exception as e:
-            # Nothing came back, so there is nothing to scrub; the Platform's refusal
-            # names only the config. Its status says which refusal it was.
-            status = getattr(e, "status", None)
+            credentials = self.credentials()
+        except CredentialsUnavailable as e:
             return self._failed(
                 DiscoverySourceTestErrorCategory.CREDENTIALS_UNAVAILABLE,
                 DiscoverySourceReachability.UNKNOWN,
-                f"The engine could not read this config's credentials from the "
-                f"Platform{f' (HTTP {status})' if status else ''}: "
-                f"{type(e).__name__}",
+                str(e),
             )
         self.known_secrets = secret_values(credentials)
         register_secrets(self.logger, self.known_secrets)
@@ -209,7 +258,7 @@ class _PreviewRun:
                 connector.stop_when(self._past_deadline)
             scan = connector.scan(
                 self.config,
-                int(self.job_spec.lookback_hours),
+                self.lookback_hours,
                 credentials,
                 dict(self.config.source_fields or {}),
                 self.logger,
