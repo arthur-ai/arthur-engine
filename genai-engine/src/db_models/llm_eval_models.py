@@ -185,6 +185,13 @@ class DatabaseContinuousEval(Base):
         default=None,
         nullable=True,
     )
+    # Conditions a trace must meet to be judged, as a list of
+    # ContinuousEvalTraceFilterCondition dicts. NULL judges every sampled trace.
+    trace_filter: Mapped[Optional[List[dict[str, Optional[str]]]]] = mapped_column(
+        JSON,
+        default=None,
+        nullable=True,
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(

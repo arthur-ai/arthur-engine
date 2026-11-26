@@ -6,7 +6,7 @@ genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformE
 """
 
 import json
-from typing import Any, List
+from typing import Any, List, Optional, Protocol, Sequence
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.response_schemas import (
@@ -15,6 +15,8 @@ from arthur_common.models.response_schemas import (
 )
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 
+from schemas.common_schemas import ContinuousEvalTraceFilterCondition
+from schemas.enums import ContinuousEvalTraceFilterOperator
 from schemas.response_schemas import (
     TransformExtractionResponseList,
 )
@@ -133,4 +135,97 @@ def execute_transform(
         variables=variables,
         missing_variables=missing_variables,
         missing_spans=missing_spans,
+    )
+
+
+def _filter_value_string(value: Any) -> str:
+    # JSON booleans compare as "true"/"false", the way they appear in the span.
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return stringify_value(value)
+
+
+class FilterableSpan(Protocol):
+    """A span the trace filter can read: API responses and DB rows both fit."""
+
+    @property
+    def span_name(self) -> Optional[str]: ...
+
+    @property
+    def raw_data(self) -> Any: ...
+
+
+def _trace_filter_condition_holds(
+    flat_spans: Sequence[FilterableSpan],
+    condition: ContinuousEvalTraceFilterCondition,
+) -> bool:
+    spans = [
+        span
+        for span in flat_spans
+        if condition.span_name is None or span.span_name == condition.span_name
+    ]
+    found: List[str] = []
+    for span in spans:
+        if "*" in condition.attribute_path:
+            # A wildcard path collects one value per matched item; each is compared
+            # on its own, so "contains" on a list means "any item contains".
+            matches = get_nested_value_wildcard(span.raw_data, condition.attribute_path)
+            values = matches if isinstance(matches, list) else [matches]
+        else:
+            values = [get_nested_value(span.raw_data, condition.attribute_path)]
+        found.extend(_filter_value_string(v) for v in values if v is not None)
+
+    match condition.operator:
+        case ContinuousEvalTraceFilterOperator.EXISTS:
+            return len(found) > 0
+        case ContinuousEvalTraceFilterOperator.EQUALS:
+            return condition.value in found
+        case ContinuousEvalTraceFilterOperator.NOT_EQUALS:
+            # A span without the attribute doesn't hold the value, so it counts as
+            # not equal: "plan != paid" keeps traces that never set a plan.
+            return condition.value not in found
+        case ContinuousEvalTraceFilterOperator.CONTAINS:
+            return any(str(condition.value) in value for value in found)
+    raise ValueError(f"Unknown trace filter operator: {condition.operator}")
+
+
+def trace_matches_filter(
+    trace: TraceResponse,
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+) -> bool:
+    """Check a trace against a continuous eval's trace filter.
+
+    Every condition must hold. Over the checked spans (only spans named `span_name`,
+    when set): `equals`, `contains` and `exists` hold when any value at
+    `attribute_path` meets them; `not_equals` holds when no value equals it, so a
+    trace without the attribute counts as not equal. Paths resolve against each
+    span's raw data, the same as transforms; a wildcard path compares each matched
+    item.
+
+    Args:
+        trace: TraceResponse object containing root_spans
+        trace_filter: The conditions, or None/empty for no filter
+
+    Returns:
+        True when the trace should be judged
+    """
+    if not trace_filter:
+        return True
+
+    flat_spans: List[NestedSpanWithMetricsResponse] = []
+    for span in trace.root_spans:
+        flat_spans.extend(_flatten_spans(span))
+
+    return spans_match_filter(flat_spans, trace_filter)
+
+
+def spans_match_filter(
+    spans: Sequence[FilterableSpan],
+    trace_filter: Optional[List[ContinuousEvalTraceFilterCondition]],
+) -> bool:
+    """trace_matches_filter over a trace's spans given as a flat list."""
+    if not trace_filter:
+        return True
+    return all(
+        _trace_filter_condition_holds(spans, condition) for condition in trace_filter
     )
