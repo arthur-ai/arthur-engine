@@ -25,7 +25,11 @@ from genai_client import TaskResolutionMethod as WireMethod
 
 from job_executors import discovery_record_sink as sink_module
 from job_executors.discovery_record_sink import GenAIEngineRecordSink
-from job_executors.discovery_scan import CorroboratingRecord
+from job_executors.discovery_scan import (
+    CorroboratingRecord,
+    McpServerDetection,
+    McpServerRecord,
+)
 
 SOURCE_ID = "44444444-4444-4444-4444-444444444444"
 
@@ -465,3 +469,29 @@ def test_corroborations_are_split_at_the_endpoint_limit_too(tasks: FakeTasks) ->
     )
     assert [len(r.records) for r in tasks.requests] == [1, 2, 2, 1]
     assert result.accepted == 1
+
+
+def _mcp_server() -> McpServerRecord:
+    return McpServerRecord(
+        external_id="litellm:gw:mcp_server:github",
+        name="github",
+        last_seen=datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc),
+        detection=McpServerDetection.CALLED,
+    )
+
+
+def test_an_mcp_server_is_never_resolved_onto_a_task(tasks: FakeTasks) -> None:
+    """It is not an agent: resolved, it would mint a task for a server."""
+    result = _sink().publish("ws", "dp", _config(), [_record(), _mcp_server()])
+
+    [request] = tasks.requests
+    assert [r["external_id"] for r in _body(request)["records"]] == ["m1:codex-cli"]
+    assert (result.accepted, result.mcp_servers) == (1, 0)
+
+
+def test_a_batch_of_only_mcp_servers_sends_nothing(tasks: FakeTasks) -> None:
+    """An empty request is a 422, which would fail the scan over records it drops."""
+    result = _sink().publish("ws", "dp", _config(), [_mcp_server()])
+
+    assert tasks.requests == []
+    assert (result.accepted, result.mcp_servers) == (0, 0)

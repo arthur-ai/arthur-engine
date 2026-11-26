@@ -971,6 +971,14 @@ the key may not use) counts toward its key's `last_seen` but adds no model, and 
 makes a record of its own; neither does an MCP tool call, which adds its tool to its
 caller's record.
 
+Each MCP server a tool call names is reported as an
+[MCP server event](#what-the-destination-receives), with the tools called on it and the
+callers that called it. Only servers called in the window are seen: one registered on
+the proxy that nothing called is not reported. A server is reported even when its only
+caller made no model request and so is no agent. The scan reads the server's name from
+the request log and never the call's arguments or result; a tool call that names no
+server is counted in a job-log warning.
+
 The key needs `proxy_admin_viewer`: the scan first calls `GET /user/list`, which answers a
 key without the role 403, then `GET /key/list` for the keys' agent bindings. It calls no
 write route and reads no request or response bodies. The proxy writes its request log
@@ -1124,6 +1132,34 @@ A discovered agent, one per agent per scan:
 }
 ```
 
+A discovered MCP server, one per server per scan, from a source that can see them
+(today `litellm`). It is never sent as an agent, so a search or an alert on
+`arthur.discovery.agent` does not count servers:
+
+```json
+{
+  "event_type": "arthur.discovery.mcp_server",
+  "schema_version": 1,
+  "observed_at": "2026-10-07T18:00:00.123456+00:00",
+  "source": {"id": "6b0f…", "name": "llm-gateway", "vendor": "litellm", "config_name": "requests"},
+  "mcp_server": {
+    "external_id": "litellm:litellm.example.com:4000:mcp_server:github",
+    "name": "github",
+    "last_seen": "2026-10-07T17:58:12+00:00",
+    "detection": "called",
+    "tools": [{"name": "github-get_issue", "arguments": []}],
+    "used_by": ["litellm:litellm.example.com:4000:virtual_key:9f3b…"]
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `external_id` | The server where this source saw it. The same server behind two gateways is two events; dedupe on it with `source.id`, as for an agent |
+| `detection` | How the source knows the server is there. `called`: tool calls to it passed through the gateway |
+| `tools` | The tools the source saw on it, named as they are in an agent's `tools`. Left out when it saw none |
+| `used_by` | The `agent.external_id` of each agent in the same scan seen using the server. Left out when the source cannot name one |
+
 A scan's outcome, one per scan when `emit_scan_outcomes` is on, so a source that stops
 working is visible where its agents are:
 
@@ -1136,6 +1172,7 @@ working is visible where its agents are:
   "outcome": {
     "succeeded": true,
     "records_published": 12,
+    "mcp_servers_published": 3,
     "batches_published": 1,
     "records_failed": 0,
     "failed_records": [],
@@ -1211,7 +1248,8 @@ the destination dedupes on `agent.external_id` and `source.id` if it needs to.
 ### A CSV file
 
 A `csv` destination writes each discovered-agent event as one row, UTF-8, with these
-columns in this order:
+columns in this order. MCP server events are not written to the file; use a JSON
+destination to receive them.
 
 | Column | From the event |
 |---|---|

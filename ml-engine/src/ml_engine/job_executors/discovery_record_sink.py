@@ -30,6 +30,7 @@ from job_executors.discovery_scan import (
     CorroboratingRecord,
     DiscoveryPublishResult,
     FailedDiscoveryRecord,
+    McpServerRecord,
 )
 
 # (connect, read). The generated client defaults to `_request_timeout=None`, which is
@@ -113,6 +114,11 @@ class GenAIEngineRecordSink:
             # The request declares `min_length=1`, so an empty batch is a 422 rather
             # than a no-op. The caller already skips these; this is the guard for the
             # connector that yields one anyway.
+            return DiscoveryPublishResult(accepted=0)
+
+        # An MCP server is not an agent, and resolving one would mint a task for it.
+        records = [r for r in records if not isinstance(r, McpServerRecord)]
+        if not records:
             return DiscoveryPublishResult(accepted=0)
 
         agents = [r for r in records if not isinstance(r, CorroboratingRecord)]

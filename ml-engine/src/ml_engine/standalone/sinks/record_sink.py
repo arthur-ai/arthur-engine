@@ -17,8 +17,9 @@ from job_executors.discovery_scan import (
     CorroboratingRecord,
     DiscoveryPublishResult,
     FailedDiscoveryRecord,
+    McpServerRecord,
 )
-from standalone.sinks.common import Sink, discovered_agent_event
+from standalone.sinks.common import Sink, discovered_agent_event, mcp_server_event
 
 
 class StandaloneRecordSink:
@@ -59,28 +60,46 @@ class StandaloneRecordSink:
         A `CorroboratingRecord` is not sent. It exists to put a further piece of
         evidence on its agent's task, and an event per record would report the agent
         once for each.
+
+        An `McpServerRecord` is sent as an MCP server event and counted apart from
+        the agents, so `accepted` stays a count of agents.
         """
-        agents = [r for r in records if not isinstance(r, CorroboratingRecord)]
-        if not agents:
+        sent = [r for r in records if not isinstance(r, CorroboratingRecord)]
+        if not sent:
             return DiscoveryPublishResult(accepted=0)
         observed_at = self._clock()
         refused = self._sink.send(
             [
-                discovered_agent_event(record, config, self._source_name, observed_at)
-                for record in agents
+                (
+                    mcp_server_event(record, config, self._source_name, observed_at)
+                    if isinstance(record, McpServerRecord)
+                    else discovered_agent_event(
+                        record,
+                        config,
+                        self._source_name,
+                        observed_at,
+                    )
+                )
+                for record in sent
             ],
         )
         # A refusal's position is into the events sent, which leave corroborating
-        # records out, so it names one of `agents`, not of `records`.
+        # records out, so it names one of `sent`, not of `records`.
         failed = tuple(
             FailedDiscoveryRecord(
-                external_id=agents[r.position].external_id,
+                external_id=sent[r.position].external_id,
                 reason=r.reason,
                 detail=r.detail,
             )
             for r in refused
         )
+        refused_at = {r.position for r in refused}
+        servers = sum(
+            isinstance(record, McpServerRecord) and position not in refused_at
+            for position, record in enumerate(sent)
+        )
         return DiscoveryPublishResult(
-            accepted=len(agents) - len(failed),
+            accepted=len(sent) - len(refused_at) - servers,
             failed=failed,
+            mcp_servers=servers,
         )

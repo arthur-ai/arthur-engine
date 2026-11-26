@@ -52,6 +52,8 @@ from job_executors.discovery_output_contract import OutputContractError, check_c
 from job_executors.discovery_scan import (
     CorroboratingRecord,
     DiscoveryConfigurationError,
+    McpServerDetection,
+    McpServerRecord,
 )
 from job_executors.discovery_source_test_executor import (
     PREVIEW_DEADLINE_SECONDS,
@@ -251,6 +253,23 @@ def test_a_corroboration_is_not_a_row_of_its_own(job_log) -> None:
     client = _client()
 
     _run(connector, _spec(preview_limit=2), client, logger)
+
+    assert [row["external_id"] for row in _delivered(client).rows] == ["a", "b"]
+
+
+def test_an_mcp_server_is_not_a_preview_row(job_log) -> None:
+    """The preview lists the agents a scan would create, and a server is not one."""
+    logger, _ = job_log
+    server = McpServerRecord(
+        external_id="litellm:gw:mcp_server:github",
+        name="github",
+        last_seen=datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc),
+        detection=McpServerDetection.CALLED,
+    )
+    connector = FakeConnector(batches=[[_record("a"), server, _record("b")]])
+    client = _client()
+
+    _run(connector, _spec(), client, logger)
 
     assert [row["external_id"] for row in _delivered(client).rows] == ["a", "b"]
 

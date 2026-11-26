@@ -27,11 +27,16 @@ from arthur_common.models.agent_governance_schemas import (
     Tool,
 )
 
-from job_executors.discovery_scan import DiscoveryScanOutcome
+from job_executors.discovery_scan import (
+    DiscoveryScanOutcome,
+    McpServerDetection,
+    McpServerRecord,
+)
 from standalone.config_values import BASE_DIR_CONTEXT
 from standalone.sinks.common import (
     SinkDeliveryError,
     discovered_agent_event,
+    mcp_server_event,
     scan_outcome_event,
 )
 from standalone.sinks.csv_file import COLUMNS, CsvDestination, CsvSink
@@ -302,6 +307,25 @@ def test_scan_outcomes_are_not_written(tmp_path: Path) -> None:
 
     refused = sink.send([plain("a"), scan_outcome_event(outcome, "corp")])
     sink.send([scan_outcome_event(outcome, "corp")])
+    sink.close()
+
+    assert not refused
+    assert [r["external_id"] for r in rows(path)] == ["a"]
+
+
+def test_mcp_servers_are_not_written(tmp_path: Path) -> None:
+    path = tmp_path / "agents.csv"
+    server = McpServerRecord(
+        external_id="litellm:proxy:mcp_server:github",
+        name="github",
+        last_seen=LAST_SEEN,
+        detection=McpServerDetection.CALLED,
+    )
+    sink = CsvSink(path, LOG)
+
+    refused = sink.send(
+        [plain("a"), mcp_server_event(server, config("litellm"), "corp", OBSERVED_AT)],
+    )
     sink.close()
 
     assert not refused
