@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-11-24T02:28:14.98841203Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.3094"
+version = "1.4.3095"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -173,9 +173,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/57/7d/cf8c4ef4dfa0c533942dc089ac550b10c3fa93bf6cc9cd487fff80922e3e/arthur_client-1.4.3094.tar.gz", hash = "sha256:7dcae8cc27f8adfb46de138c2bd30b362c9c969c76081eff7e2f024d764ac006", size = 609173, upload-time = "2026-11-26T14:10:56.439Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/17/8921b6253dcf84366c96094df51fb00082c2480e6f678e9a5a33081688cb/arthur_client-1.4.3095.tar.gz", hash = "sha256:ca7b469e65e6a6ebdb2473a4cafcdc2523a2c6b9f4cf359989955cf6ca49aa77", size = 609171, upload-time = "2026-11-27T09:10:56.153Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/63/472a2f6de30844d8139f9916f588b7cc0e88bb1e36df4ba2121a86d992ab/arthur_client-1.4.3094-py3-none-any.whl", hash = "sha256:e9c915072e854b5008863fb968df1e86c4615238ee09da378bf7a5e4347f1037", size = 2043533, upload-time = "2026-11-26T14:10:58.856Z" },
+    { url = "https://files.pythonhosted.org/packages/30/07/5e75c68a8d2b317e53278dc67c2d8b7cf111a86f9759558527d927a605ad/arthur_client-1.4.3095-py3-none-any.whl", hash = "sha256:8dbcc4c523377949ffec186f46ed4acf8944e8eec48ac117665e4b9009d63ade", size = 2043530, upload-time = "2026-11-27T09:10:59.028Z" },
 ]
 
 [[package]]
@@ -1629,7 +1629,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2026.8.0" },
-    { name = "arthur-client", specifier = "==1.4.3094" },
+    { name = "arthur-client", specifier = "==1.4.3095" },
     { name = "arthur-common", specifier = "==2.4.112" },
     { name = "azure-ai-projects", specifier = "==2.4.0" },
     { name = "azure-identity", specifier = "==1.27.0" },
