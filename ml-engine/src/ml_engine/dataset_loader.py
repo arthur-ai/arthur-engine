@@ -32,6 +32,8 @@ class DatasetLoader:
         self.connector_constructor = connector_constructor
         self.datasets_client = datasets_client
         self.logger = logger
+        # Keyed by physical dataset id; a joined dataset has no entry since its sides' totals don't add up to its own.
+        self.total_counts: dict[str, int | None] = {}
 
     """
     Obtain a list of all physical datasets in the list. These might be at the root level, or nested within join specs, so do so recursively
@@ -83,13 +85,15 @@ class DatasetLoader:
         else:
             connector_id = dataset.connector_id
         connector = self.connector_constructor.get_connector_from_spec(connector_id)
-        data = connector.read(
+        read_result = connector.read_with_total_count(
             dataset,
             start_time,
             end_time,
             filters,
             pagination_options,
         )
+        data = read_result.rows
+        self.total_counts[dataset.id] = read_result.total_count
         self.logger.info(f"Retrieved {len(data)} inferences for dataset {dataset.id}")
         schema = (
             client_to_common_dataset_schema(dataset.dataset_schema)

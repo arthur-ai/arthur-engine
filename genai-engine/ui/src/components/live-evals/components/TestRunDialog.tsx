@@ -1,4 +1,4 @@
-import { CopyableChip } from "@arthur/shared-components";
+import { CopyableChip, formatCost } from "@arthur/shared-components";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -29,7 +29,6 @@ import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
-import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const columnHelper = createMRTColumnHelper<AgenticAnnotationResponse>();
@@ -51,7 +50,7 @@ function parseTraceIds(raw: string): string[] {
 }
 
 export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRunId: externalTestRunId }: Props) => {
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
 
   // Setup phase state
   const [traceIdsInput, setTraceIdsInput] = useState("");
@@ -125,7 +124,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRun
         header: "Cost",
         Cell: ({ cell }) => {
           const cost = cell.getValue();
-          return <Typography variant="body2">{cost != null ? formatCurrency(cost, defaultCurrency) : "—"}</Typography>;
+          return <Typography variant="body2">{cost != null ? formatCost(cost, currency) : "—"}</Typography>;
         },
       }),
       columnHelper.display({
@@ -146,7 +145,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRun
         ),
       }),
     ],
-    [taskId, defaultCurrency]
+    [taskId, currency]
   );
 
   const resultsData = resultsQuery.data?.annotations ?? [];

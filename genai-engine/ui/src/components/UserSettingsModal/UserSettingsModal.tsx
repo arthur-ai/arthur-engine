@@ -1,4 +1,5 @@
 import Close from "@mui/icons-material/Close";
+import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -22,8 +23,6 @@ import React, { useEffect, useState } from "react";
 
 import { DEFAULT_TIMEZONE_OPTIONS } from "./constants";
 import type { UserSettingsModalProps } from "./types";
-
-import type { ModelProvider } from "@/lib/api-client/api-client";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "info.main",
@@ -55,6 +54,9 @@ function MethodChip({ method, compact = false }: { method: string; compact?: boo
 const TITLE_ID = "user-settings-dialog-title";
 const DESCRIPTION_ID = "user-settings-dialog-description";
 
+// Stable fallback: a fresh [] each render would re-run the reset-on-open effect and undo edits.
+const NO_RETENTION_DAYS: number[] = [];
+
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   open,
   onClose,
@@ -63,13 +65,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   isLoading = false,
   isSaving = false,
   timezoneOptions = DEFAULT_TIMEZONE_OPTIONS,
-  enabledProviders = [],
-  availableModelsMap = new Map(),
+  defaultModelLabel = null,
+  onOpenModelProviders,
   availableEndpoints = [],
   chatbotEnabled = false,
   traceRetentionEnabled = false,
   initialTraceRetentionDays,
-  allowedTraceRetentionDays = [],
+  allowedTraceRetentionDays = NO_RETENTION_DAYS,
   isLoadingTraceRetention = false,
   isTenant = false,
   title = "Settings",
@@ -85,8 +87,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [timezone, setTimezone] = useState<string>(resolvedTimezone);
   const [use24Hour, setUse24Hour] = useState<boolean>(resolvedUse24Hour);
   const [enableChatbot, setEnableChatbot] = useState<boolean>(resolvedEnableChatbot);
-  const [chatbotProvider, setChatbotProvider] = useState<ModelProvider | "">(initialSettings?.chatbotModelProvider ?? "");
-  const [chatbotModelName, setChatbotModelName] = useState<string>(initialSettings?.chatbotModelName ?? "");
   const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>(initialSettings?.blacklistEndpoints ?? []);
   const [blacklistSearch, setBlacklistSearch] = useState("");
   const retentionDefault = initialTraceRetentionDays ?? allowedTraceRetentionDays[0];
@@ -97,8 +97,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setTimezone(initialSettings?.timezone ?? "UTC");
       setUse24Hour(initialSettings?.use24Hour ?? false);
       setEnableChatbot(initialSettings?.enableChatbot ?? true);
-      setChatbotProvider(initialSettings?.chatbotModelProvider ?? "");
-      setChatbotModelName(initialSettings?.chatbotModelName ?? "");
       setBlacklistEndpoints(initialSettings?.blacklistEndpoints ?? []);
       setBlacklistSearch("");
       setTraceRetentionDays(initialTraceRetentionDays ?? allowedTraceRetentionDays[0]);
@@ -108,8 +106,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     initialSettings?.timezone,
     initialSettings?.use24Hour,
     initialSettings?.enableChatbot,
-    initialSettings?.chatbotModelProvider,
-    initialSettings?.chatbotModelName,
     initialSettings?.blacklistEndpoints,
     initialTraceRetentionDays,
     allowedTraceRetentionDays,
@@ -117,9 +113,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   const options = timezoneOptions.length > 0 ? timezoneOptions : DEFAULT_TIMEZONE_OPTIONS;
   const value = options.some((opt) => opt.value === timezone) ? timezone : (options[0]?.value ?? "UTC");
-
-  const chatbotModels = chatbotProvider ? (availableModelsMap.get(chatbotProvider) ?? []) : [];
-  const staleChatbotModel = chatbotModelName && !chatbotModels.includes(chatbotModelName) ? chatbotModelName : null;
 
   const handleTimezoneChange = (event: SelectChangeEvent<string>) => {
     setTimezone(event.target.value);
@@ -129,24 +122,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     setUse24Hour(event.target.value === "24");
   };
 
-  const handleProviderChange = (event: SelectChangeEvent<string>) => {
-    const newProvider = event.target.value as ModelProvider | "";
-    setChatbotProvider(newProvider);
-    setChatbotModelName("");
-  };
-
-  const handleModelNameChange = (event: SelectChangeEvent<string>) => {
-    setChatbotModelName(event.target.value);
-  };
-
   const handleSave = () => {
     onSave({
       timezone: value,
       use24Hour,
       traceRetentionDays: traceRetentionDays !== initialTraceRetentionDays ? traceRetentionDays : undefined,
       enableChatbot,
-      chatbotModelProvider: chatbotProvider,
-      chatbotModelName,
       blacklistEndpoints,
     });
   };
@@ -218,7 +199,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           </>
         )}
 
-        {!isTenant && chatbotEnabled && (
+        {!isTenant && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography
@@ -228,42 +209,45 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 mb: 1,
               }}
             >
-              AI Assistant
+              AI features
             </Typography>
-            <FormControlLabel
-              control={<Switch checked={enableChatbot} onChange={(e) => setEnableChatbot(e.target.checked)} disabled={isLoading} />}
-              label="Enable AI Assistant"
-            />
-            {enableChatbot && enabledProviders.length > 0 && (
-              <>
-                <FormControl fullWidth size="small" disabled={isLoading} sx={{ mt: 2 }}>
-                  <InputLabel id="chatbot-provider-label">Model Provider</InputLabel>
-                  <Select labelId="chatbot-provider-label" label="Model Provider" value={chatbotProvider} onChange={handleProviderChange}>
-                    {enabledProviders.map((provider) => (
-                      <MenuItem key={provider} value={provider}>
-                        {provider}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl fullWidth size="small" disabled={isLoading || !chatbotProvider} sx={{ mt: 2 }}>
-                  <InputLabel id="chatbot-model-label">Model Name</InputLabel>
-                  <Select labelId="chatbot-model-label" label="Model Name" value={chatbotModelName} onChange={handleModelNameChange}>
-                    {staleChatbotModel && (
-                      <MenuItem key={staleChatbotModel} value={staleChatbotModel}>
-                        {staleChatbotModel}
-                      </MenuItem>
-                    )}
-                    {chatbotModels.map((model: string) => (
-                      <MenuItem key={model} value={model}>
-                        {model}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Arthur&apos;s AI features run on the default model set on the Model Providers page.
+            </Typography>
+            {defaultModelLabel ? (
+              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mt: 1 }}>
+                <Typography variant="body2">
+                  Default model: <strong>{defaultModelLabel}</strong>
+                </Typography>
+                {onOpenModelProviders && (
+                  <Button size="small" onClick={onOpenModelProviders}>
+                    Change
+                  </Button>
+                )}
+              </Stack>
+            ) : (
+              <Alert
+                severity="warning"
+                sx={{ mt: 1 }}
+                action={
+                  onOpenModelProviders && (
+                    <Button color="inherit" size="small" onClick={onOpenModelProviders}>
+                      Set default
+                    </Button>
+                  )
+                }
+              >
+                No default model is set, so Arthur&apos;s AI features can&apos;t run.
+              </Alert>
             )}
-            {availableEndpoints.length > 0 && (
+            {chatbotEnabled && (
+              <FormControlLabel
+                sx={{ mt: 1, display: "flex" }}
+                control={<Switch checked={enableChatbot} onChange={(e) => setEnableChatbot(e.target.checked)} disabled={isLoading} />}
+                label="Enable AI Assistant"
+              />
+            )}
+            {chatbotEnabled && availableEndpoints.length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Typography
                   variant="subtitle2"

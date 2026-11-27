@@ -56,6 +56,7 @@ class TreeBuildingService:
                 prompt_token_cost = metadata.prompt_token_cost
                 completion_token_cost = metadata.completion_token_cost
                 total_token_cost = metadata.total_token_cost
+                unpriced_span_count = metadata.unpriced_span_count
                 input_content = metadata.input_content
                 output_content = metadata.output_content
             else:
@@ -71,6 +72,7 @@ class TreeBuildingService:
                 prompt_token_cost = None
                 completion_token_cost = None
                 total_token_cost = None
+                unpriced_span_count = None
                 input_content = None
                 output_content = None
 
@@ -96,6 +98,10 @@ class TreeBuildingService:
                         span.completion_token_cost,
                     )
                     total_token_cost = safe_add(total_token_cost, span.total_token_cost)
+                    unpriced_span_count = safe_add(
+                        unpriced_span_count,
+                        span.unpriced_span_count,
+                    )
 
             # Build nested spans for this trace
             root_spans = self._build_span_tree(trace_spans)
@@ -114,6 +120,7 @@ class TreeBuildingService:
                 prompt_token_cost=prompt_token_cost,
                 completion_token_cost=completion_token_cost,
                 total_token_cost=total_token_cost,
+                unpriced_span_count=unpriced_span_count,
             )
             traces.append(trace_response)
 

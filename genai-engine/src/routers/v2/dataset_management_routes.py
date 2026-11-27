@@ -20,6 +20,7 @@ from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.custom_exceptions import DefaultModelProviderNotSetException
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Dataset, Task, User
 from schemas.request_schemas import (
@@ -519,6 +520,7 @@ def get_synthetic_data_prompt_status(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SyntheticDataPromptStatus:
     prompt_repo = AgenticPromptRepository(db_session)
+    prompt: AgenticPrompt | None
     try:
         prompt = cast(
             AgenticPrompt,
@@ -530,25 +532,40 @@ def get_synthetic_data_prompt_status(
         )
     except ValueError:
         # Not bootstrapped yet
-        return SyntheticDataPromptStatus.model_validate(
-            {
-                "model_provider": EMPTY_MODEL_PROVIDER,
-                "model_name": EMPTY_MODEL_NAME,
-                "is_placeholder": True,
-            }
-        )
+        prompt = None
 
-    is_placeholder = (
+    if prompt is None or (
         prompt.model_provider == EMPTY_MODEL_PROVIDER
         or prompt.model_name == EMPTY_MODEL_NAME
-    )
+    ):
+        # The placeholder runs on the default model provider, when one is set
+        try:
+            provider, model_name = ModelProviderRepository(db_session).resolve_model(
+                EMPTY_MODEL_PROVIDER,
+                EMPTY_MODEL_NAME,
+            )
+        except DefaultModelProviderNotSetException:
+            return SyntheticDataPromptStatus.model_validate(
+                {
+                    "model_provider": EMPTY_MODEL_PROVIDER,
+                    "model_name": EMPTY_MODEL_NAME,
+                    "is_placeholder": True,
+                }
+            )
+        return SyntheticDataPromptStatus(
+            model_provider=provider,
+            model_name=model_name,
+            is_placeholder=False,
+            uses_default_model=True,
+        )
+
     # Pydantic coerces the string sentinel ("empty") or enum value back into the
     # Union[ModelProvider, Literal["empty"]] at construction time.
     return SyntheticDataPromptStatus.model_validate(
         {
             "model_provider": prompt.model_provider,
             "model_name": prompt.model_name,
-            "is_placeholder": is_placeholder,
+            "is_placeholder": False,
         }
     )
 

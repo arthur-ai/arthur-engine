@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.11, <3.14"
 
 [options]
-exclude-newer = "2026-11-15T17:13:07.065732514Z"
+exclude-newer = "2026-11-24T10:23:25.212815197Z"
 exclude-newer-span = "P3D"
 
 [manifest]
@@ -142,7 +142,7 @@ wheels = [
 
 [[package]]
 name = "arthur-observability-sdk"
-version = "2.1.1124"
+version = "2.1.1140"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

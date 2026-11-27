@@ -106,7 +106,7 @@ export interface AgenticAnnotationResponse {
   continuous_eval_name?: string | null;
   /**
    * Cost
-   * Cost of the continuous eval run
+   * Estimated cost of the continuous eval run, in USD
    */
   cost?: number | null;
   /**
@@ -1459,17 +1459,25 @@ export interface ChatbotConfigResponse {
    * @default []
    */
   blacklist_endpoints?: string[];
-  /** Model Name */
-  model_name: string;
-  model_provider: ModelProvider;
+  /**
+   * Model Name
+   * Model the chatbot calls: the instance's default model. Null when none is set.
+   */
+  model_name?: string | null;
+  /** Provider the chatbot calls: the instance's default model provider. Null when none is set. */
+  model_provider?: ModelProvider | null;
 }
 
 /** ChatbotConfigUpdateRequest */
 export interface ChatbotConfigUpdateRequest {
   /** Blacklist Endpoints */
   blacklist_endpoints?: string[] | null;
-  /** Model Name */
+  /**
+   * Model Name
+   * No longer accepted: the chatbot uses the default model provider. Sending it returns 400.
+   */
   model_name?: string | null;
+  /** No longer accepted: the chatbot uses the default model provider. Sending it returns 400. */
   model_provider?: ModelProvider | null;
 }
 
@@ -2725,8 +2733,18 @@ export interface DisplaySettingsResponse {
    * @default "USD"
    */
   default_currency?: string;
+  /**
+   * Exchange Rate Updated At
+   * When usd_exchange_rate was fetched. None for USD, which needs no rate.
+   */
+  exchange_rate_updated_at?: string | null;
   /** Scope Url */
   scope_url?: string | null;
+  /**
+   * Usd Exchange Rate
+   * Units of default_currency one USD buys. Multiply the USD costs in API responses by it to show them in default_currency. None when no rate is available; show costs in USD then.
+   */
+  usd_exchange_rate?: number | null;
 }
 
 /** DocumentStorageConfigurationResponse */
@@ -4038,6 +4056,37 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 
 /** Response Get Default Rules Api V2 Default Rules Get */
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
+
+/** DefaultModelProvider */
+export interface DefaultModelProvider {
+  /**
+   * Model Name
+   * Model of that provider, or null when unset
+   */
+  model_name?: string | null;
+  /** Provider used wherever no model is named, or null when unset */
+  provider?: ModelProvider | null;
+}
+
+/** PutDefaultModelProvider */
+export interface PutDefaultModelProvider {
+  /**
+   * Model Name
+   * Model of that provider, e.g. 'gpt-4.1-mini'
+   * @minLength 1
+   */
+  model_name: string;
+  /** Configured provider used wherever no model is named */
+  provider: ModelProvider;
+}
+
+export type ClearDefaultModelProviderApiV1DefaultModelProviderDeleteData = any;
+
+export type GetDefaultModelProviderApiV1DefaultModelProviderGetData = DefaultModelProvider;
+
+export type SetDefaultModelProviderApiV1DefaultModelProviderPutData = any;
+
+export type SetDefaultModelProviderApiV1DefaultModelProviderPutError = HTTPValidationError;
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 
@@ -7091,7 +7140,7 @@ export interface NestedSpanWithMetricsResponse {
   children?: NestedSpanWithMetricsResponse[];
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -7131,7 +7180,7 @@ export interface NestedSpanWithMetricsResponse {
   parent_span_id?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -7163,7 +7212,7 @@ export interface NestedSpanWithMetricsResponse {
   task_id?: string | null;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -7173,6 +7222,11 @@ export interface NestedSpanWithMetricsResponse {
   total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * @format date-time
@@ -10833,7 +10887,9 @@ export interface SessionListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -10850,7 +10906,7 @@ export interface SessionListResponse {
 export interface SessionMetadataResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -10877,7 +10933,7 @@ export interface SessionMetadataResponse {
   latest_end_time: string;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -10902,7 +10958,7 @@ export interface SessionMetadataResponse {
   task_id: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -10920,6 +10976,11 @@ export interface SessionMetadataResponse {
    * List of trace IDs in this session
    */
   trace_ids: string[];
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * User Id
    * User ID if available
@@ -10939,7 +11000,9 @@ export interface SessionTracesResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -11021,7 +11084,9 @@ export interface SpanListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -11038,7 +11103,7 @@ export interface SpanListResponse {
 export interface SpanMetadataResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -11085,7 +11150,7 @@ export interface SpanMetadataResponse {
   parent_span_id?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -11131,7 +11196,7 @@ export interface SpanMetadataResponse {
   task_id?: string | null;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -11144,6 +11209,11 @@ export interface SpanMetadataResponse {
    * ID of the parent trace
    */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * When the span was updated
@@ -11161,7 +11231,7 @@ export interface SpanMetadataResponse {
 export interface SpanWithMetricsResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -11201,7 +11271,7 @@ export interface SpanWithMetricsResponse {
   parent_span_id?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -11233,7 +11303,7 @@ export interface SpanWithMetricsResponse {
   task_id?: string | null;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -11243,6 +11313,11 @@ export interface SpanWithMetricsResponse {
   total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * @format date-time
@@ -11431,7 +11506,7 @@ export interface SyntheticDataGenerationResponse {
 export interface SyntheticDataPromptStatus {
   /**
    * Is Placeholder
-   * True when the prompt uses the empty placeholder model
+   * True when the prompt uses the empty placeholder model and no default model provider is set
    */
   is_placeholder: boolean;
   /**
@@ -11444,6 +11519,12 @@ export interface SyntheticDataPromptStatus {
    * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
   model_provider: ModelProvider | "empty";
+  /**
+   * Uses Default Model
+   * True when the prompt uses the empty placeholder, so the model shown is the instance's default model provider
+   * @default false
+   */
+  uses_default_model?: boolean;
 }
 
 /**
@@ -11899,7 +11980,9 @@ export interface TraceListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -11921,7 +12004,7 @@ export interface TraceMetadataResponse {
   annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -11958,7 +12041,7 @@ export interface TraceMetadataResponse {
   output_content?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -11994,7 +12077,7 @@ export interface TraceMetadataResponse {
   task_id: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -12007,6 +12090,11 @@ export interface TraceMetadataResponse {
    * ID of the trace
    */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * Updated At
    * When the trace was last updated
@@ -12115,7 +12203,7 @@ export interface TraceResponse {
   annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -12141,7 +12229,7 @@ export interface TraceResponse {
   output_content?: string | null;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -12163,7 +12251,7 @@ export interface TraceResponse {
   start_time: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -12176,6 +12264,11 @@ export interface TraceResponse {
    * ID of the trace
    */
   trace_id: string;
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
 }
 
 /** TraceSortBy */
@@ -12390,7 +12483,9 @@ export interface TraceUserListResponse {
   count: number;
   /**
    * Display Currency
-   * Currency code for cost fields
+   * Always USD: cost fields are in USD. To show costs in the configured currency, convert them with the rate from /api/v2/display-settings.
+   * @deprecated
+   * @default "USD"
    */
   display_currency?: string | null;
   /**
@@ -12407,7 +12502,7 @@ export interface TraceUserListResponse {
 export interface TraceUserMetadataResponse {
   /**
    * Completion Token Cost
-   * Cost of completion tokens in USD
+   * Estimated cost of completion tokens, in USD
    */
   completion_token_cost?: number | null;
   /**
@@ -12429,7 +12524,7 @@ export interface TraceUserMetadataResponse {
   latest_end_time: string;
   /**
    * Prompt Token Cost
-   * Cost of prompt tokens in USD
+   * Estimated cost of prompt tokens, in USD
    */
   prompt_token_cost?: number | null;
   /**
@@ -12459,7 +12554,7 @@ export interface TraceUserMetadataResponse {
   task_id: string;
   /**
    * Total Token Cost
-   * Total cost in USD
+   * Estimated total cost, in USD
    */
   total_token_cost?: number | null;
   /**
@@ -12477,6 +12572,11 @@ export interface TraceUserMetadataResponse {
    * List of trace IDs for this user
    */
   trace_ids: string[];
+  /**
+   * Unpriced Span Count
+   * Number of LLM spans whose cost couldn't be estimated because their model's pricing is unknown. Their cost is left out of the cost fields. None when not reported.
+   */
+  unpriced_span_count?: number | null;
   /**
    * User Id
    * User identifier
@@ -15562,7 +15662,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
+     * @description Returns the model the chatbot uses (the default model provider), blacklisted endpoints, and available endpoints.
      *
      * @tags Chatbot
      * @name GetChatbotConfigApiV1ChatbotConfigGet
@@ -16002,6 +16102,60 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "GET",
         secure: true,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Clears the default. Features that use the default fail with a 'no default model provider' error until a default is set again.
+     *
+     * @tags Model Providers
+     * @name ClearDefaultModelProviderApiV1DefaultModelProviderDelete
+     * @summary Clear the default model provider and model.
+     * @request DELETE:/api/v1/default_model_provider
+     * @secure
+     */
+    clearDefaultModelProviderApiV1DefaultModelProviderDelete: (params: RequestParams = {}) =>
+      this.request<ClearDefaultModelProviderApiV1DefaultModelProviderDeleteData, any>({
+        path: `/api/v1/default_model_provider`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Returns the provider and model used wherever no model is named: Arthur's own features, such as synthetic data and the chatbot. Evals keep the model they were saved with. Both are null when no default is set.
+     *
+     * @tags Model Providers
+     * @name GetDefaultModelProviderApiV1DefaultModelProviderGet
+     * @summary Get the default model provider and model.
+     * @request GET:/api/v1/default_model_provider
+     * @secure
+     */
+    getDefaultModelProviderApiV1DefaultModelProviderGet: (params: RequestParams = {}) =>
+      this.request<GetDefaultModelProviderApiV1DefaultModelProviderGetData, any>({
+        path: `/api/v1/default_model_provider`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Sets the provider and model used wherever no model is named. The provider must already be configured. Everything using the default picks up a change on its next call; a model picked for a feature always wins.
+     *
+     * @tags Model Providers
+     * @name SetDefaultModelProviderApiV1DefaultModelProviderPut
+     * @summary Set the default model provider and model.
+     * @request PUT:/api/v1/default_model_provider
+     * @secure
+     */
+    setDefaultModelProviderApiV1DefaultModelProviderPut: (data: PutDefaultModelProvider, params: RequestParams = {}) =>
+      this.request<SetDefaultModelProviderApiV1DefaultModelProviderPutData, SetDefaultModelProviderApiV1DefaultModelProviderPutError>({
+        path: `/api/v1/default_model_provider`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
 
@@ -17867,7 +18021,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.
+     * @description Updates the endpoints the chatbot may not call. The chatbot always uses the default model provider, set on the Model Providers page; sending model_provider or model_name returns 400.
      *
      * @tags Chatbot
      * @name UpdateChatbotConfigApiV1ChatbotConfigPut

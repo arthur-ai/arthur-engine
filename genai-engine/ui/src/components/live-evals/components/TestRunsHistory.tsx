@@ -1,4 +1,4 @@
-import { CopyableChip } from "@arthur/shared-components";
+import { CopyableChip, formatCost } from "@arthur/shared-components";
 import { TracesEmptyState } from "@arthur/shared-components/traces";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
@@ -31,7 +31,7 @@ import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import type { AgenticAnnotationResponse, ContinuousEvalTestRunResponse } from "@/lib/api-client/api-client";
-import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 // --- Test run list columns ---
@@ -118,7 +118,7 @@ function TestRunResultsModal({
   onSwitchTestRun: (testRun: ContinuousEvalTestRunResponse) => void;
 }) {
   const api = useApi()!;
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const queryClient = useQueryClient();
   const createTestRun = useCreateTestRun(evalId);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
@@ -178,7 +178,7 @@ function TestRunResultsModal({
         header: "Cost",
         Cell: ({ cell }) => {
           const cost = cell.getValue();
-          return <Typography variant="body2">{cost != null ? formatCurrency(cost, defaultCurrency) : "—"}</Typography>;
+          return <Typography variant="body2">{cost != null ? formatCost(cost, currency) : "—"}</Typography>;
         },
       }),
       resultColumnHelper.display({
@@ -201,7 +201,7 @@ function TestRunResultsModal({
         ),
       }),
     ],
-    [taskId, defaultCurrency]
+    [taskId, currency]
   );
 
   const table = useMaterialReactTable({

@@ -25,7 +25,9 @@ import { isAxiosError } from "axios";
 import { useSnackbar } from "notistack";
 import React, { useState } from "react";
 
+import { DefaultModelCard } from "./components/default-model-card";
 import { EditForm } from "./components/edit-form";
+import { useDefaultModelProvider } from "./hooks/useDefaultModelProvider";
 import { useProviders } from "./hooks/useProviders";
 import { useRemoveProvider } from "./hooks/useRemoveProvider";
 import { useSaveModelWhitelist } from "./hooks/useSaveModelWhitelist";
@@ -37,6 +39,8 @@ import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-cl
 export const ModelProviders: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { data: providers, isLoading, error } = useProviders();
+  const { data: defaultModel } = useDefaultModelProvider();
+  const enabledProviders = providers?.filter((p) => p.enabled).map((p) => p.provider) ?? [];
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     provider: ModelProviderResponse | null;
@@ -176,7 +180,8 @@ export const ModelProviders: React.FC = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }}>
+          <DefaultModelCard enabledProviders={enabledProviders} getProviderDisplayName={getProviderDisplayName} />
           <Card variant="outlined">
             <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
               <TableContainer sx={{ maxHeight: "calc(100vh - 300px)", overflow: "auto" }}>
@@ -239,6 +244,9 @@ export const ModelProviders: React.FC = () => {
                               >
                                 {getProviderDisplayName(provider.provider)}
                               </Typography>
+                              {defaultModel?.provider === provider.provider && (
+                                <Chip label="Default" size="small" color="primary" variant="outlined" />
+                              )}
                             </Box>
                           </TableCell>
                           <TableCell align="center">{getStatusBadge(provider.enabled)}</TableCell>
@@ -257,8 +265,14 @@ export const ModelProviders: React.FC = () => {
                                 size="small"
                                 color="error"
                                 onClick={() => handleDeleteClick(provider)}
-                                disabled={!provider.enabled}
-                                title={provider.enabled ? "Delete provider" : "Delete provider (disabled - provider not enabled)"}
+                                disabled={!provider.enabled || defaultModel?.provider === provider.provider}
+                                title={
+                                  defaultModel?.provider === provider.provider
+                                    ? "Delete provider (disabled - it is the default model provider)"
+                                    : provider.enabled
+                                      ? "Delete provider"
+                                      : "Delete provider (disabled - provider not enabled)"
+                                }
                               >
                                 <Delete />
                               </IconButton>

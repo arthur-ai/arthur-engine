@@ -3,12 +3,17 @@ from typing import Any, overload
 
 import tiktoken
 from arthur_common.models.llm_model_providers import ModelProvider
+from arthur_common.models.response_schemas import TokenCountCostSchema
 from litellm import cost_per_token, token_counter
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 TIKTOKEN_ENCODER = "cl100k_base"
+
+# Token counts and costs (incl. unpriced_span_count) that add up from spans to
+# traces, sessions and users.
+TOKEN_COST_FIELDS: tuple[str, ...] = tuple(TokenCountCostSchema.model_fields)
 
 
 class TokenCountCost(BaseModel):
@@ -20,9 +25,10 @@ class TokenCountCost(BaseModel):
     prompt_token_count: int | None = None
     completion_token_count: int | None = None
     total_token_count: int | None = None
-    # True when a model had tokens but could not be priced (model unrecognized),
-    # so its cost is unknown rather than a real $0.
-    cost_unknown: bool = False
+    # For an LLM span: 1 when it had tokens but could not be priced (model missing
+    # or unrecognized), so its cost is unknown rather than a real $0; 0 when priced.
+    # None for other span kinds.
+    unpriced_span_count: int | None = None
 
 
 def _model_name_candidates(model_name: str) -> list[str]:

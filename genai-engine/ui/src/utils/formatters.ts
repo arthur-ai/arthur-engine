@@ -7,7 +7,6 @@ import {
   formatDurationMs,
   formatTimestampDuration as formatTimestampDurationShared,
   formatUTCTimestamp,
-  getLocaleForCurrency,
   truncateText,
 } from "@arthur/shared-components";
 
@@ -16,32 +15,9 @@ import {
  * truncateText come from @arthur/shared-components; use them when no user timezone or 12/24h
  * preference is needed.
  *
- * Local / extended: formatCurrency(amount, currencyCode) and formatDateInTimezone(value, timezone,
- * options?) are local; these are intended to be migrated into shared-components later.
+ * Local / extended: formatDateInTimezone(value, timezone, options?) is local; it is intended to be
+ * migrated into shared-components later. Format costs with formatCost from @arthur/shared-components.
  */
-
-/**
- * Local implementation so call sites can pass currency code (e.g. from useDisplaySettings).
- * shared-components formatCurrency only accepts (amount); we need (amount, currencyCode).
- */
-function getCurrencyFormatter(currency: string): Intl.NumberFormat {
-  const code = currency || "USD";
-  return new Intl.NumberFormat(getLocaleForCurrency(code), {
-    style: "currency",
-    currency: code,
-    minimumFractionDigits: 6,
-    maximumFractionDigits: 6,
-  });
-}
-
-export function formatCurrency(amount: number, currencyCode: string = "USD"): string {
-  const formatter = getCurrencyFormatter(currencyCode);
-  const smallThreshold = 0.000001;
-  if (amount < smallThreshold) {
-    return `< ${formatter.format(smallThreshold)}`;
-  }
-  return formatter.format(amount);
-}
 
 function toDate(value: string | number | Date | null | undefined): Date | null {
   if (value == null) return null;

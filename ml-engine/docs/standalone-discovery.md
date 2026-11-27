@@ -2,7 +2,7 @@
 
 The ML Engine can run as a single-container agent discovery runner: it scans the
 discovery sources named in a config file on an interval and sends every agent it finds
-to a SIEM or webhook. In this mode it talks to no Arthur Platform and no GenAI Engine.
+to a SIEM, a webhook or a CSV file. In this mode it talks to no Arthur Platform and no GenAI Engine.
 
 - [Turning it on](#turning-it-on)
 - [The config file](#the-config-file)
@@ -12,6 +12,8 @@ to a SIEM or webhook. In this mode it talks to no Arthur Platform and no GenAI E
 - [What the destination receives](#what-the-destination-receives)
 - [Running it](#running-it)
 - [How scans are scheduled](#how-scans-are-scheduled)
+- [Changing the config while it runs](#changing-the-config-while-it-runs)
+- [Asking for a scan now](#asking-for-a-scan-now)
 
 ## Turning it on
 
@@ -976,7 +978,7 @@ write route and reads no request or response bodies. The proxy writes its reques
 
 ### Destination
 
-Exactly one. Every destination has:
+Exactly one. Every HTTP destination (`splunk_hec`, `elasticsearch`, `webhook`) has:
 
 | Key | Default | |
 |---|---|---|
@@ -1070,6 +1072,30 @@ answering for the cluster, fails the batch.
 | `headers` | `{}` | Sent with every request; values are treated as secrets |
 
 Each request is a `POST` of a JSON array of events.
+
+#### `csv` — a CSV file on the engine's filesystem
+
+| Key | Default | |
+|---|---|---|
+| `path` | | The file to append to; a relative path is resolved against the config file's directory, as a `{file: ...}` reference is |
+
+Each discovered agent is appended to the file as one row (see
+[What the destination receives](#a-csv-file)). The file and its directory are created if
+missing, and the header is written only when the file is new or empty. A file that
+already starts with a different header, or one the engine cannot open for writing, stops
+the engine at startup rather than mixing two layouts in one file; move the old file aside
+or point `path` at a new one. A write that fails (a full disk) fails that batch with
+`publication_failed`.
+
+Scan outcomes are not written to the file — they are a different shape from an agent —
+so `emit_scan_outcomes` has no effect here. Every scan's outcome is still logged to
+stdout as its `discovery_scan_outcome` line.
+
+In a container, mount a directory the engine can write to and point `path` into it: the
+image runs as UID `65532`, so on a Linux host the directory has to be writable by that
+UID (`chown 65532:65532 output`). The
+[Docker Compose example](../../deployment/docker-compose/ml-engine-standalone-discovery/README.md)
+mounts `./output` at `/var/lib/arthur/discovery` for this.
 
 ## What the destination receives
 
@@ -1182,6 +1208,39 @@ credential is ever in it.
 The same agents arrive on every scan: each scan sends what the source reports now, and
 the destination dedupes on `agent.external_id` and `source.id` if it needs to.
 
+### A CSV file
+
+A `csv` destination writes each discovered-agent event as one row, UTF-8, with these
+columns in this order:
+
+| Column | From the event |
+|---|---|
+| `observed_at` | `observed_at` |
+| `source_id`, `source_name`, `source_vendor`, `source_config_name` | `source.id`, `source.name`, `source.vendor`, `source.config_name` |
+| `external_id`, `name`, `last_seen`, `runs_on`, `platform`, `task_id` | the same fields of `agent` |
+| `creation_source_type`, `creation_source_vendor` | `agent.creation_source.type` (`CLOUD`, `SIEM`, `ENDPOINT`, `NETWORK`) and `.vendor` |
+| `address_instance`, `address_scope`, `address_resource_kind`, `address_resource_id` | `agent.creation_source.address.*` |
+| `host_name`, `host_group`, `os_version`, `assigned_user`, `install_path`, `version`, `classification` | `agent.creation_source.observations.*` |
+| `llm_models`, `tools`, `sub_agents` | each item's `name` |
+| `data_sources` | each item's `url` |
+| `network_destinations` | each of `agent.creation_source.destinations`' `host` (network sources) |
+| `identity_basis` | `agent.creation_source.identity_basis` (gateway callers) |
+| `permissions`, `service_names` | `agent.creation_source.observations.*` |
+
+A list is joined into one cell with `; `. **An empty cell means the source did not report
+that field: read it as unknown, not as none.** A list the source reported as empty is an
+empty cell too, so where that difference matters, use a JSON destination. What the row
+leaves out (tool arguments, each destination's provider, `occurrences`, the address's
+`query`) is in the JSON event the other destinations receive.
+
+A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with a
+leading `'`, so a spreadsheet shows an agent's name or path as text instead of running it
+as a formula.
+
+Rows are only ever appended, and every scan writes a row for every agent it sees, so the
+same agent repeats once per scan. To get the current inventory, keep the row with the
+latest `observed_at` for each `source_id` and `external_id`.
+
 ## Running it
 
 With Docker Compose, see
@@ -1198,6 +1257,9 @@ docker run --rm \
   --stop-timeout 30 \
   arthurplatform/ml-engine:latest
 ```
+
+For a `csv` destination, also mount a directory the engine can write to, e.g.
+`-v "$PWD/output:/var/lib/arthur/discovery"`.
 
 From a checkout, after the developer setup in the [README](../README.md):
 
@@ -1230,3 +1292,87 @@ The health check on port `7492` (`GET /health`) works as it does in Platform mod
   engine waits up to 15 seconds before exiting. A scan still running then is abandoned
   without an outcome. Give the container more than that to stop — Docker's default is
   10 seconds, so use `--stop-timeout 30` or `stop_grace_period: 30s`.
+
+## Changing the config while it runs
+
+The engine checks its config file every 5 seconds, and with it every file a
+`{file: path}` reference reads, so a changed secret file counts too. A changed file is
+loaded and validated whole, as at startup.
+
+- **Sources apply at once.** A new (source, config) pair is scanned right away. A changed
+  one is scanned again right away, or on its next run if it is running. A removed one
+  that is running is told to stop.
+- **`schedule`, `destination` and `emit_scan_outcomes` need a restart.** The engine
+  logs that they changed and applies the file's sources anyway.
+- **A file it can't use is ignored.** The engine logs why and keeps scanning with what
+  it had, and tries again when the file next changes.
+- **Edit the file in place.** A single file bind-mounted into a container stays the
+  file the container started with if an editor saves by replacing it. Mount its folder
+  instead, or use an editor that writes in place.
+- **`.env` changes still need the container recreated.** A container's environment is
+  fixed when it is created, so a new `${NAME}` value isn't seen until then. A secret
+  in a `{file: path}` is seen at once.
+
+## Asking for a scan now
+
+Give the engine a token and it serves a small API for bringing a scan
+forward, for a dashboard's "Scan now" button. Without it there is no such API.
+
+| Variable | Default | |
+|---|---|---|
+| `ML_ENGINE_CONTROL_TOKEN` | unset: off | At least 32 characters; `openssl rand -hex 32` makes one |
+| `ML_ENGINE_CONTROL_TOKEN_FILE` | unset | A file holding the token instead, such as a mounted secret |
+| `ML_ENGINE_CONTROL_PORT` | `7494` | |
+| `ML_ENGINE_CONTROL_HOST` | `0.0.0.0` | Every interface, so another container can reach it |
+
+Every request needs `Authorization: Bearer <token>`.
+
+- `GET /scans` lists every (source, config) pair: `source_id` (the `source.id` in its
+  events), `source_name`, `vendor`, `config_name`, `status`, `last_started_at` and
+  `next_due_at`. `status` is `running`, `waiting` (due, waiting for a free
+  `max_concurrent_scans` slot), `scheduled`, or `stopping` (past `scan_timeout`, told to
+  stop, not ended yet).
+- `POST /scans/run` with `{"source_id": "...", "config_name": "..."}` makes the source's
+  pairs -- or only the one named -- due now, and answers `202` with each one's status.
+  `404` means no configured scan matches.
+
+- `GET /config` gives the config file the engine runs: `path`, `loaded_at`, `error`
+  (why the file as it is now couldn't be used, or `null`) and `restart_required` (the
+  sections changed that wait for a restart).
+- `POST /config/reload` applies the config file now if it has changed, rather than at
+  the engine's next check (every 5 s), and starts every scan that is due and has a free
+  slot. It answers with `config` (as `GET /config` gives it) and `scans` (as `GET /scans`
+  does), so a dashboard that has just added a source sees it `running`, or `waiting` for
+  a slot. A file the engine can't use is reported in `config.error`, as on a check.
+- `GET /source-types` gives each vendor's form, from the Platform's discovery source
+  types: its fields with their descriptions, which are secret and which are optional.
+  `scripts/snapshot_discovery_source_types.py` refreshes the snapshot it serves.
+- `POST /sources/test` with `{"source": {...}, "config_name": "...",
+  "keep_secrets_from": "..."}` runs Test Connection: the same bounded, redacted preview
+  the Platform's has, without publishing anything. `source` is a `sources` entry as the
+  config file holds one, but its values are taken as they are: a `${NAME}` is text, and
+  a `{file: path}` is refused. `keep_secrets_from` names a configured source of the same
+  vendor whose secrets fill the ones `source` leaves blank, and whose values fill any
+  field given as `null`, so a form that edits a source can test it without reading its
+  secrets back. A kept secret goes only where the configured source sends it: if
+  `source` changes a field that decides that (a URL, a CA certificate,
+  `tls_verification`), the test is refused until the secret is given again. A source with
+  none of its vendor's secrets would run as the engine's own identity where the engine
+  allows that, so it is tested only when a configured source of that vendor has no
+  secrets either and the same settings; otherwise save it and scan it.
+  `"validate_only": true` checks `source` as the config file's loader would, without
+  running a connector; the rule on kept secrets applies to it too.
+
+An asked-for scan is an ordinary run. It waits for a free slot, a pair already running is
+not started again (its status says `running`), and its next scheduled run is one
+`interval` after it starts. The API changes no config. The token's holder can scan the
+configured sources more often, and test a source with credentials it sends or with a
+configured source's own, sent only where that source sends them. Treat the token like
+those secrets, and publish the port only to what needs it: `ML_ENGINE_CONTROL_HOST=127.0.0.1`
+where the caller shares the engine's network. A connection idle for 30 seconds is closed.
+
+```bash
+curl -s -H "Authorization: Bearer $ML_ENGINE_CONTROL_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"source_id": "..."}' \
+  http://localhost:7494/scans/run
+```

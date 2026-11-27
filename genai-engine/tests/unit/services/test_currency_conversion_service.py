@@ -4,6 +4,7 @@ import pytest
 
 from services.currency.currency_conversion_service import (
     CurrencyConversionService,
+    UsdRate,
     get_currency_conversion_service,
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
@@ -11,47 +12,41 @@ from services.currency.currency_conversion_service import (
 
 
 @pytest.mark.unit_tests
-def test_convert_usd_to_empty_cache_returns_usd() -> None:
+def test_get_usd_rate_empty_cache_returns_none() -> None:
     service = CurrencyConversionService()
-    amount, currency = service.convert_usd_to(10.0, "EUR")
-    assert amount == 10.0
-    assert currency == "USD"
+    assert service.get_usd_rate("EUR") is None
 
 
 @pytest.mark.unit_tests
-def test_convert_usd_to_usd_returns_unconverted() -> None:
+def test_get_usd_rate_returns_rate_and_refresh_time() -> None:
     service = CurrencyConversionService()
-    service._rates = {"USD": 1.0, "EUR": 0.92}
-    amount, currency = service.convert_usd_to(10.0, "USD")
-    assert amount == 10.0
-    assert currency == "USD"
+    provider = MagicMock()
+    provider.fetch_rates.return_value = {"EUR": 0.92}
+    service._provider = provider
+    service._refresh()
+
+    rate = service.get_usd_rate("EUR")
+
+    assert rate is not None
+    assert rate.rate == 0.92
+    assert rate.updated_at == service._last_updated
+    assert service.get_usd_rate("USD") == UsdRate(rate=1.0, updated_at=service._last_updated)
 
 
 @pytest.mark.unit_tests
-def test_convert_usd_to_eur_with_rate() -> None:
+def test_get_usd_rate_unknown_currency_returns_none() -> None:
     service = CurrencyConversionService()
     service._rates = {"USD": 1.0, "EUR": 0.92}
-    amount, currency = service.convert_usd_to(10.0, "EUR")
-    assert amount == 9.2
-    assert currency == "EUR"
+    assert service.get_usd_rate("XYZ") is None
 
 
 @pytest.mark.unit_tests
-def test_convert_usd_to_unknown_currency_returns_usd() -> None:
+def test_get_usd_rate_normalizes_currency_case() -> None:
     service = CurrencyConversionService()
     service._rates = {"USD": 1.0, "EUR": 0.92}
-    amount, currency = service.convert_usd_to(10.0, "XYZ")
-    assert amount == 10.0
-    assert currency == "USD"
-
-
-@pytest.mark.unit_tests
-def test_convert_usd_to_normalizes_target_currency_case() -> None:
-    service = CurrencyConversionService()
-    service._rates = {"USD": 1.0, "EUR": 0.92}
-    amount, currency = service.convert_usd_to(10.0, "eur")
-    assert amount == 9.2
-    assert currency == "EUR"
+    rate = service.get_usd_rate(" eur ")
+    assert rate is not None
+    assert rate.rate == 0.92
 
 
 @pytest.mark.unit_tests
@@ -87,16 +82,6 @@ def test_has_rates_empty_cache() -> None:
     assert service.has_rates() is False
     service._rates = {"USD": 1.0, "EUR": 0.92}
     assert service.has_rates() is True
-
-
-@pytest.mark.unit_tests
-def test_convert_usd_to_on_exception_returns_usd() -> None:
-    service = CurrencyConversionService()
-    service._rates = {"USD": 1.0, "EUR": 0.92}
-    # Simulate a bug: invalid type could cause exception in round()
-    amount, currency = service.convert_usd_to(10.0, 123)  # type: ignore[arg-type]
-    assert amount == 10.0
-    assert currency == "USD"
 
 
 @pytest.mark.unit_tests

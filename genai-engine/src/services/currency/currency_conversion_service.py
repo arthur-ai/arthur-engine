@@ -3,6 +3,8 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from pydantic import BaseModel
+
 from clients.currency.abc_currency_rate_provider import ABCCurrencyRateProvider
 from clients.currency.frankfurter_provider import FrankfurterCurrencyRateProvider
 from clients.currency.static_provider import StaticCurrencyRateProvider
@@ -11,7 +13,6 @@ from services.base_queue_service import BaseQueueJob, BaseQueueService
 
 logger = logging.getLogger(__name__)
 
-CONVERSION_PRECISION = 6
 SIX_HOURS_SECONDS = 6 * 3600
 
 CURRENCY_REFRESH_JOB_KEY = "currency_refresh"
@@ -31,6 +32,13 @@ def _next_six_hour_boundary_utc() -> float:
     return (next_run - now).total_seconds()
 
 
+class UsdRate(BaseModel):
+    """Exchange rate from USD to another currency."""
+
+    rate: float
+    updated_at: Optional[datetime]
+
+
 class CurrencyRefreshJob(BaseQueueJob):
     """Job representing a single currency rate refresh."""
 
@@ -41,7 +49,8 @@ class CurrencyRefreshJob(BaseQueueJob):
 class CurrencyConversionService(BaseQueueService[CurrencyRefreshJob]):
     """
     In-memory cache of USD exchange rates with a background thread that refreshes
-    every 6 hours at 00:00, 06:00, 12:00, 18:00 UTC. Falls back to USD on errors.
+    every 6 hours at 00:00, 06:00, 12:00, 18:00 UTC. Costs stay in USD; clients
+    convert them for display with the rate from get_usd_rate.
     """
 
     job_model = CurrencyRefreshJob
@@ -84,28 +93,17 @@ class CurrencyConversionService(BaseQueueService[CurrencyRefreshJob]):
             self.enqueue(CurrencyRefreshJob(delay_seconds=0))
         logger.info(f"Background thread stopped for {self.service_name}")
 
-    def convert_usd_to(
-        self, amount_usd: float, target_currency: str
-    ) -> tuple[float, str]:
+    def get_usd_rate(self, currency: str) -> Optional[UsdRate]:
         """
-        Convert an amount from USD to the target currency.
-
-        Returns (converted_amount, currency_code). If target is USD, rate is
-        missing, or any error occurs, returns (amount_usd, "USD") (unconverted).
+        Return how many units of the currency one USD buys, and when the cached
+        rates were fetched. None when the currency has no cached rate.
         """
-        try:
-            target = (target_currency or "").strip().upper()
-            if not target or target == "USD":
-                return (amount_usd, "USD")
-            with self._lock:
-                rate = self._rates.get(target)
+        code = currency.strip().upper()
+        with self._lock:
+            rate = self._rates.get(code)
             if rate is None:
-                return (amount_usd, "USD")
-            converted = round(amount_usd * rate, CONVERSION_PRECISION)
-            return (converted, target)
-        except Exception as e:
-            logger.warning("Currency conversion failed, returning USD: %s", e)
-            return (amount_usd, "USD")
+                return None
+            return UsdRate(rate=rate, updated_at=self._last_updated)
 
     def has_rates(self) -> bool:
         """Return True if the cache has at least one rate (e.g. after first successful refresh)."""

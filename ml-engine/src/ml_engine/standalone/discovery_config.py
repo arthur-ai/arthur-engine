@@ -30,6 +30,7 @@ was wrong, never what was in it: pydantic's default message quotes the input, an
 input to a credential field is the credential.
 """
 
+import hashlib
 import logging
 import math
 import os
@@ -60,6 +61,7 @@ from standalone.config_values import (
     BASE_DIR_CONTEXT,
     StrictModel,
     read_file_reference,
+    resolve_path,
 )
 from standalone.sinks import Destination
 
@@ -91,18 +93,28 @@ class StandaloneConfigError(Exception):
     """The config file cannot be used as written. The message says where, not what."""
 
 
+class _SelfReference(Exception):
+    """A YAML alias that contains itself, as `sources: &a [*a]` does: walking it would
+    never end, so it is refused rather than left to exhaust the stack."""
+
+
 def _duration(value: Any) -> Any:
     """`90s`, `15m`, `6h`, `1d`, or a number of seconds."""
     if isinstance(value, bool):
         raise ValueError("expected a duration like 15m, 6h or 1d")
-    if isinstance(value, (int, float)):
-        return timedelta(seconds=value)
-    if isinstance(value, str):
-        match = _DURATION.match(value)
-        if match is None:
-            raise ValueError("expected a duration like 15m, 6h or 1d")
-        amount, unit = match.groups()
-        return timedelta(**{_DURATION_UNITS[unit]: int(amount)})
+    try:
+        if isinstance(value, (int, float)):
+            return timedelta(seconds=value)
+        if isinstance(value, str):
+            match = _DURATION.match(value)
+            if match is None:
+                raise ValueError("expected a duration like 15m, 6h or 1d")
+            amount, unit = match.groups()
+            return timedelta(**{_DURATION_UNITS[unit]: int(amount)})
+    except OverflowError:
+        # Pydantic reports a ValueError as a validation error; an OverflowError would
+        # escape load_config, and a reload would neither apply nor report the file.
+        raise ValueError("duration is too long") from None
     return value
 
 
@@ -284,32 +296,7 @@ class StandaloneDiscoveryConfig(StrictModel):
 
     def scans(self) -> list[ResolvedScan]:
         """Every (source, config) pair, split into what the connector reads."""
-        resolved = []
-        for source in self.sources:
-            secret_keys = sensitive_fields(source.vendor) or frozenset()
-            source_fields = {
-                f.key: f.value for f in source.fields if f.key not in secret_keys
-            }
-            credentials: dict[str, Optional[str]] = {
-                f.key: f.value for f in source.fields if f.key in secret_keys
-            }
-            for config in source.configs:
-                resolved.append(
-                    ResolvedScan(
-                        source_name=source.name,
-                        discovery_source_config_id=_id(
-                            config.discovery_source_id,
-                            config.name,
-                        ),
-                        config=config.model_copy(
-                            update={"source_fields": source_fields},
-                        ),
-                        lookback_hours=math.ceil(config.lookback_window_seconds / 3600),
-                        source_fields=source_fields,
-                        credentials=credentials,
-                    ),
-                )
-        return resolved
+        return [scan for source in self.sources for scan in resolve_source(source)]
 
     def configs_with_gaps(self) -> list[str]:
         """`source/config` for each config whose window is shorter than the interval.
@@ -325,6 +312,102 @@ class StandaloneDiscoveryConfig(StrictModel):
             for config in source.configs
             if 0 < config.lookback_window_seconds < interval
         ]
+
+
+def resolve_source(source: StandaloneSource) -> list[ResolvedScan]:
+    """One source's (source, config) pairs, its fields split into what the connector
+    reads as settings and what it reads as credentials."""
+    secret_keys = sensitive_fields(source.vendor) or frozenset()
+    source_fields = {f.key: f.value for f in source.fields if f.key not in secret_keys}
+    credentials: dict[str, Optional[str]] = {
+        f.key: f.value for f in source.fields if f.key in secret_keys
+    }
+    return [
+        ResolvedScan(
+            source_name=source.name,
+            discovery_source_config_id=_id(config.discovery_source_id, config.name),
+            config=config.model_copy(update={"source_fields": source_fields}),
+            lookback_hours=math.ceil(config.lookback_window_seconds / 3600),
+            source_fields=source_fields,
+            credentials=credentials,
+        )
+        for config in source.configs
+    ]
+
+
+def source_from_values(raw: Any) -> StandaloneSource:
+    """A source given as values, not as config text: nothing in it is a `${NAME}` or a
+    `{file: path}` reference, so a caller can name only credentials it already holds.
+    Raises StandaloneConfigError naming what is wrong, never a value."""
+    try:
+        source: StandaloneSource = StandaloneSource.model_validate(raw)
+    except ValidationError as e:
+        raise StandaloneConfigError(f"The source is invalid:\n{_describe(e)}") from None
+    return source
+
+
+def config_fingerprint(path: Path) -> str:
+    """A digest of the config file and every file its `{file: path}` references read,
+    so a changed secret file counts as a changed config even when the config text is
+    the same. Never raises: what cannot be read is left out, for `load_config` to
+    report when it is loaded.
+    """
+    digest = hashlib.sha256()
+    try:
+        text = path.read_bytes()
+    except OSError:
+        return ""
+    digest.update(text)
+    try:
+        raw = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return digest.hexdigest()
+    # The paths the loader reads: `${NAME}` expanded first, as it does. One that isn't
+    # set expands to nothing here; the load reports it, as it does a self-reference.
+    try:
+        raw = _interpolate(raw, [])
+    except _SelfReference:
+        return digest.hexdigest()
+    if not isinstance(raw, dict):
+        return digest.hexdigest()
+
+    def add(value: Any) -> None:
+        if not (isinstance(value, dict) and isinstance(value.get("file"), str)):
+            return
+        referenced = resolve_path(value["file"], path.parent)
+        digest.update(referenced.as_posix().encode())
+        try:
+            digest.update(referenced.read_bytes())
+        except (OSError, ValueError):
+            # ValueError: a path with a NUL in it, which the load reports.
+            digest.update(b"\0unreadable")
+
+    sources = raw.get("sources")
+    for source in sources if isinstance(sources, list) else []:
+        if not isinstance(source, dict):
+            continue
+        entries = [*_entries(source, "fields"), *_entries(source, "configs")]
+        for entry in entries:
+            if isinstance(entry, dict):
+                add(entry.get("value"))
+                add(entry.get("query"))
+    # A destination's credentials and certificate can be files too: a token, a
+    # header, an API key, a CA. A change to one is reported as needing a restart,
+    # as any destination change is.
+    for value in _file_references(raw.get("destination")):
+        add(value)
+    return digest.hexdigest()
+
+
+def _file_references(value: Any) -> list[dict[str, Any]]:
+    """Every `{file: path}` value nested anywhere in value, in order."""
+    if isinstance(value, dict):
+        if set(value) == {"file"}:
+            return [value]
+        return [ref for item in value.values() for ref in _file_references(item)]
+    if isinstance(value, list):
+        return [ref for item in value for ref in _file_references(item)]
+    return []
 
 
 def standalone_config_path() -> Optional[Path]:
@@ -371,7 +454,12 @@ def load_config(path: Path) -> Optional[StandaloneDiscoveryConfig]:
         return None
 
     missing: list[str] = []
-    interpolated = _interpolate(raw, missing)
+    try:
+        interpolated = _interpolate(raw, missing)
+    except _SelfReference:
+        raise StandaloneConfigError(
+            f"Discovery config {path} has a YAML alias that contains itself",
+        ) from None
     if missing:
         raise StandaloneConfigError(
             f"Discovery config {path} references environment variable(s) that are "
@@ -404,12 +492,29 @@ def load_config(path: Path) -> Optional[StandaloneDiscoveryConfig]:
     return config
 
 
-def _interpolate(value: Any, missing: list[str]) -> Any:
-    """`value` with every `${NAME}` in its strings replaced from the environment."""
-    if isinstance(value, dict):
-        return {key: _interpolate(item, missing) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_interpolate(item, missing) for item in value]
+def _interpolate(
+    value: Any,
+    missing: list[str],
+    _within: Optional[set[int]] = None,
+) -> Any:
+    """`value` with every `${NAME}` in its strings replaced from the environment.
+
+    The copy is a tree even where YAML aliases made `value` share a node, and raises
+    _SelfReference where one contains itself."""
+    if isinstance(value, (dict, list)):
+        within = set() if _within is None else _within
+        if id(value) in within:
+            raise _SelfReference()
+        within.add(id(value))
+        try:
+            if isinstance(value, dict):
+                return {
+                    key: _interpolate(item, missing, within)
+                    for key, item in value.items()
+                }
+            return [_interpolate(item, missing, within) for item in value]
+        finally:
+            within.discard(id(value))
     if isinstance(value, str):
 
         def substitute(match: re.Match[str]) -> str:
@@ -436,10 +541,10 @@ def _read_source_files(raw: dict[str, Any], base_dir: Path) -> list[str]:
             continue
         targets = [
             (entry, "value", f"sources.{i}.fields.{j}.value", True)
-            for j, entry in enumerate(source.get("fields") or [])
+            for j, entry in enumerate(_entries(source, "fields"))
         ] + [
             (entry, "query", f"sources.{i}.configs.{j}.query", False)
-            for j, entry in enumerate(source.get("configs") or [])
+            for j, entry in enumerate(_entries(source, "configs"))
         ]
         for entry, key, location, strip in targets:
             if isinstance(entry, dict) and isinstance(entry.get(key), dict):
@@ -448,6 +553,13 @@ def _read_source_files(raw: dict[str, Any], base_dir: Path) -> list[str]:
                 except ValueError as e:
                     problems.append(f"  {location}: {e}")
     return problems
+
+
+def _entries(source: dict[str, Any], key: str) -> list[Any]:
+    """A source's `fields` or `configs`, or none when it isn't a list: what it is then
+    is for validation to report, not for reading files to trip over."""
+    value = source.get(key)
+    return value if isinstance(value, list) else []
 
 
 def _describe(error: ValidationError) -> str:

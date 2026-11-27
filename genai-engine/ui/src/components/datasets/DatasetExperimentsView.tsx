@@ -1,3 +1,4 @@
+import { formatCost } from "@arthur/shared-components";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
@@ -30,13 +31,12 @@ import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments } from "@/hooks/usePromptExperiments";
-import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const DatasetExperimentsView: React.FC = () => {
   const { id: taskId, datasetId } = useParams<{ id: string; datasetId: string }>();
   const navigate = useNavigate();
-  const { defaultCurrency } = useDisplaySettings();
+  const { currency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
@@ -325,7 +325,7 @@ export const DatasetExperimentsView: React.FC = () => {
                                       color: "text.secondary",
                                     }}
                                   >
-                                    <strong>Cost:</strong> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
+                                    <strong>Cost:</strong> {formatCost(parseFloat(experiment.total_cost), currency)}
                                   </Typography>
                                 )}
                               </Box>

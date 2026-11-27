@@ -75,3 +75,19 @@ class LLMContentFilterException(GenaiEngineLLMException):
 class LLMExecutionException(GenaiEngineLLMException):
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class DefaultModelProviderNotSetException(HTTPException):
+    """A call asked for the default model provider, but none is set.
+
+    A distinct type so callers can tell "no default configured" apart from a failed
+    LLM call, e.g. to report an insight as skipped instead of failed."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No default model provider is set. Set one on the Model Providers "
+                "page: it is used wherever no model is named."
+            ),
+        )

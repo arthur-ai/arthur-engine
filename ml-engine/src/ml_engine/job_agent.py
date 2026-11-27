@@ -21,6 +21,7 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings.exceptions import ApiException
 
 from arthur_client_support import (
+    DEQUEUE_DECLARES_AGENT_TASK_SYNC,
     DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
 )
@@ -30,6 +31,7 @@ from memory_limits import ContainerMemory
 from standalone.agent import StandaloneDiscoveryAgent
 from standalone.discovery_config import (
     StandaloneConfigError,
+    config_fingerprint,
     load_config,
     standalone_config_path,
 )
@@ -152,16 +154,19 @@ class JobAgent:
             )
 
     def _dequeue_parameters(self) -> JobDequeueParameters:
-        """What this engine can take, including whether it runs Test Connection jobs.
+        """What this engine can take, including whether it runs Test Connection jobs
+        and task syncs.
 
-        `discovery_source_test` is sent only when the installed client both has the
-        field and can run the job; otherwise the request is exactly what it was before
-        the field existed. Built from a dict because the pinned client's model does
-        not declare the field, and a keyword it does not know would not type-check.
+        Each capability is sent only when the installed client both has the field and
+        can run the job; otherwise the request is exactly what it was before the field
+        existed. Built from a dict because the pinned client's model does not declare
+        the fields, and a keyword it does not know would not type-check.
         """
         params: dict[str, Any] = {"memory_limit_mb": self._dequeue_memory_limit_mb()}
         if TEST_DISCOVERY_SOURCE_SUPPORTED and DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST:
             params["discovery_source_test"] = True
+        if DEQUEUE_DECLARES_AGENT_TASK_SYNC:
+            params["agent_task_sync"] = True
         return JobDequeueParameters(**params)
 
     def _read_job(self, job_run: JobRun) -> Job | None:
@@ -362,14 +367,28 @@ def main() -> None:
     """
     path = standalone_config_path()
     if path is not None:
+        # Before the load, so an edit made while it loads is seen as a change and
+        # reloaded, rather than taken for the file the engine is running.
+        fingerprint = config_fingerprint(path)
         try:
             config = load_config(path)
         except StandaloneConfigError as e:
             raise SystemExit(str(e)) from None
         if config is not None:
-            # Built once, here, and shared by every scan the agent runs.
-            sink = config.destination.build_sink(logging.getLogger("standalone.sink"))
-            StandaloneDiscoveryAgent(config, sink).run()
+            # Built once, here, and shared by every scan the agent runs. A destination
+            # it cannot open -- a csv file it cannot write -- stops it the same way.
+            try:
+                sink = config.destination.build_sink(
+                    logging.getLogger("standalone.sink"),
+                )
+            except ValueError as e:
+                raise SystemExit(str(e)) from None
+            StandaloneDiscoveryAgent(
+                config,
+                sink,
+                config_path=path,
+                fingerprint=fingerprint,
+            ).run()
             return
         logger.info(f"Standalone discovery is disabled in {path}; polling the Platform")
     JobAgent().run()
