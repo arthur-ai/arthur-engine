@@ -51,7 +51,7 @@ dependencies = [
   "snowflake-sqlalchemy==1.11.1",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.3095",
+  "arthur-client==1.4.3098",
 ]
 
 [dependency-groups]
