@@ -187,16 +187,6 @@
         "TomLisankie"
       ],
       "reviewersSampleSize": 1
-    },
-    {
-      "description": "Deferred by PR #2307 (Update material-ui monorepo to v9), labelled heavy: this update is a migration, not a bump, and is tracked on its own ticket. Delete this rule to let Renovate propose it again.",
-      "matchPackageNames": [
-        "@mui/icons-material",
-        "@mui/material",
-        "@mui/x-charts",
-        "@mui/x-date-pickers"
-      ],
-      "enabled": false
     }
   ]
 }
