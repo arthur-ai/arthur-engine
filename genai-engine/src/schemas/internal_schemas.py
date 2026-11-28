@@ -3984,6 +3984,10 @@ class ContinuousEval(BaseModel):
         default=None,
         description="Fraction of traces evaluated, in (0, 1]. Null evaluates every trace.",
     )
+    judge_changed_at: Optional[datetime] = Field(
+        default=None,
+        description="When the eval started using its current evaluator. Null for evals created before this was tracked.",
+    )
 
     @staticmethod
     def from_db_model(
@@ -4010,6 +4014,7 @@ class ContinuousEval(BaseModel):
             transform_variable_mapping=transform_variable_mapping,
             enabled=db_eval.enabled,
             sample_rate=db_eval.sample_rate,
+            judge_changed_at=db_eval.judge_changed_at,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:

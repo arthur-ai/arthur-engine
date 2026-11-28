@@ -642,8 +642,10 @@ def get_daily_annotation_analytics(
     summary="Get recent and estimated daily spend for a continuous eval",
     description="Returns the number and total cost of the eval's live runs in the last 24 hours, "
     "and an estimated daily cost: the task's traces per day over the last 7 days, times the "
-    "eval's sample rate, times the average cost of its live runs that called the LLM "
-    "(passed or failed) over the last 7 days. Test runs are not counted.",
+    "eval's sample rate, times the share of finished runs that reached the LLM, times the "
+    "average cost of its live runs that called the LLM (passed or failed) and have a recorded "
+    "cost over the last 7 days. If the evaluator changed in that window, only runs since the "
+    "change are averaged; otherwise all of them are. Test runs are not counted.",
     response_model=ContinuousEvalSpendResponse,
     tags=["Continuous Evals"],
 )
@@ -676,8 +678,11 @@ def get_continuous_eval_spend(
     summary="Estimate the daily spend of a new continuous eval",
     description="Estimates the daily cost of a continuous eval that would run the given evaluator "
     "at the given sample rate: the task's traces per day over the last 7 days, times the sample "
-    "rate, times the average cost of the live runs that called the LLM (passed or failed) over "
-    "the last 7 days of the task's continuous evals using that evaluator.",
+    "rate, times the share of finished runs that reached the LLM, times the average cost of the "
+    "live runs that called the LLM (passed or failed) and have a recorded cost over the last 7 "
+    "days of the task's continuous evals using that evaluator version (latest by default), counting each "
+    "eval's runs since its evaluator last changed, or all its runs in the window if it never "
+    "changed.",
     response_model=ContinuousEvalDailySpendEstimate,
     tags=["Continuous Evals"],
 )
@@ -688,6 +693,12 @@ def estimate_continuous_eval_spend(
         str,
         Query(description="Name of the evaluator the continuous eval would run."),
     ],
+    llm_eval_version: Annotated[
+        str,
+        Query(
+            description="Version of the evaluator the continuous eval would run: 'latest', a version number, an ISO datetime string, or a tag. Each version can use a different judge model.",
+        ),
+    ] = "latest",
     sample_rate: Annotated[
         Optional[float],
         Query(
@@ -703,10 +714,19 @@ def estimate_continuous_eval_spend(
 ) -> ContinuousEvalDailySpendEstimate:
     try:
         # 404 for an evaluator the task doesn't have
-        LLMEvalsRepository(db_session).get_llm_item(task.id, llm_eval_name, "latest")
+        llm_eval = LLMEvalsRepository(db_session).get_llm_item(
+            task.id,
+            llm_eval_name,
+            llm_eval_version,
+        )
         return ContinuousEvalSpendRepository(
             db_session,
-        ).estimate_daily_spend_for_llm_eval(task.id, llm_eval_name, sample_rate)
+        ).estimate_daily_spend_for_llm_eval(
+            task.id,
+            llm_eval_name,
+            llm_eval.version,
+            sample_rate,
+        )
     except HTTPException:
         raise
     except ValueError as e:
