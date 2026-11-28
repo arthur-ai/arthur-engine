@@ -3,6 +3,8 @@ import { Box, Typography } from "@mui/material";
 import { useTransformVersions } from "../hooks/useTransformVersions";
 import { TransformRowExpansionProps } from "../types";
 
+import { describeVariableSpans } from "@/components/transforms/variableRows";
+
 export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ transform }) => {
   const { data: versions = [] } = useTransformVersions(transform.id);
   const definition = versions[0]?.definition;
@@ -55,7 +57,7 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
                   color: "text.secondary",
                 }}
               >
-                Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
+                Span: <code>{describeVariableSpans(variable)}</code> → Path: <code>{variable.attribute_path}</code>
               </Typography>
               {variable.fallback !== undefined && (
                 <Typography

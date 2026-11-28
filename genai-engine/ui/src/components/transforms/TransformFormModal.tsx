@@ -16,22 +16,17 @@ import {
   Autocomplete,
   Divider,
   CircularProgress,
+  MenuItem,
 } from "@mui/material";
 import { useState, useEffect } from "react";
 
 import { useTransforms } from "./hooks/useTransforms";
 import { useTransformVersions } from "./hooks/useTransformVersions";
 import { TransformFormModalProps } from "./types";
+import { emptyVariableRow, rowToVariable, SPAN_SELECTORS, validateVariableRow, variableToRow, type VariableRow } from "./variableRows";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
-
-interface VariableMapping {
-  variable_name: string;
-  span_name: string;
-  attribute_path: string;
-  fallback: string;
-}
 
 export const TransformFormModal: React.FC<TransformFormModalProps> = ({
   open,
@@ -44,7 +39,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [variables, setVariables] = useState<VariableMapping[]>([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+  const [variables, setVariables] = useState<VariableRow[]>([emptyVariableRow()]);
   const [errors, setErrors] = useState<string[]>([]);
 
   // State for copying from existing transform
@@ -66,68 +61,35 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       setName(initialTransform.name);
       setDescription(initialTransform.description || "");
       if (initialTransformDefinition) {
-        setVariables(
-          initialTransformDefinition.variables.map((variable) => ({
-            variable_name: variable.variable_name,
-            span_name: variable.span_name,
-            attribute_path: variable.attribute_path,
-            fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
-          }))
-        );
+        setVariables(initialTransformDefinition.variables.map(variableToRow));
       }
     } else if (initialVariableNames && initialVariableNames.length > 0) {
       setName("");
       setDescription("");
-      setVariables(
-        initialVariableNames.map((name) => ({
-          variable_name: name,
-          span_name: "",
-          attribute_path: "",
-          fallback: "",
-        }))
-      );
+      setVariables(initialVariableNames.map((name) => emptyVariableRow(name)));
       setSelectedTransformId(null);
     } else {
       setName("");
       setDescription("");
-      setVariables([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+      setVariables([emptyVariableRow()]);
       setSelectedTransformId(null);
     }
     setErrors([]);
   }, [initialTransform, initialTransformDefinition, initialVariableNames, open]);
 
   const handleAddVariable = () => {
-    setVariables([...variables, { variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+    setVariables([...variables, emptyVariableRow()]);
   };
 
   const handleRemoveVariable = (index: number) => {
     setVariables(variables.filter((_, i) => i !== index));
   };
 
-  const handleVariableChange = (index: number, field: keyof VariableMapping, value: string) => {
-    const newVariables = [...variables];
-    newVariables[index][field] = value;
-    setVariables(newVariables);
+  const handleVariableChange = <K extends keyof VariableRow>(index: number, field: K, value: VariableRow[K]) => {
+    setVariables(variables.map((variable, i) => (i === index ? { ...variable, [field]: value } : variable)));
   };
 
-  const buildTransformDefinition = (): TransformDefinition => {
-    return {
-      variables: variables.map((variable) => {
-        let fallbackValue = undefined;
-        if (variable.fallback && variable.fallback.trim()) {
-          const parsed = JSON.parse(variable.fallback);
-          // Only set fallback if it's not null
-          fallbackValue = parsed !== null ? parsed : undefined;
-        }
-        return {
-          variable_name: variable.variable_name,
-          span_name: variable.span_name,
-          attribute_path: variable.attribute_path,
-          fallback: fallbackValue,
-        };
-      }),
-    };
-  };
+  const buildTransformDefinition = (): TransformDefinition => ({ variables: variables.map(rowToVariable) });
 
   const handleSave = async () => {
     const validationErrors: string[] = [];
@@ -140,24 +102,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       validationErrors.push("At least one variable mapping is required");
     }
 
-    variables.forEach((variable, idx) => {
-      if (!variable.variable_name.trim()) {
-        validationErrors.push(`Variable ${idx + 1}: Variable name is required`);
-      }
-      if (!variable.span_name.trim()) {
-        validationErrors.push(`Variable ${idx + 1}: Span name is required`);
-      }
-      if (!variable.attribute_path.trim()) {
-        validationErrors.push(`Variable ${idx + 1}: Attribute path is required`);
-      }
-      if (variable.fallback) {
-        try {
-          JSON.parse(variable.fallback);
-        } catch {
-          validationErrors.push(`Variable ${idx + 1}: Fallback must be valid JSON`);
-        }
-      }
-    });
+    variables.forEach((variable, idx) => validationErrors.push(...validateVariableRow(variable, idx)));
 
     try {
       const transformDef = buildTransformDefinition();
@@ -195,14 +140,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     if (selectedTransform) {
       setName(selectedTransform.name);
       setDescription(selectedTransform.description || "");
-      setVariables(
-        copyTransformDefinition.variables.map((variable) => ({
-          variable_name: variable.variable_name,
-          span_name: variable.span_name,
-          attribute_path: variable.attribute_path,
-          fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
-        }))
-      );
+      setVariables(copyTransformDefinition.variables.map(variableToRow));
       setErrors([]);
     }
   }, [selectedTransformId, copyTransformDefinition, availableTransforms]);
@@ -355,15 +293,40 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                       required
                       fullWidth
                     />
+                    <Stack direction="row" spacing={2}>
+                      <TextField
+                        label="Span Name"
+                        value={variable.span_name}
+                        onChange={(e) => handleVariableChange(idx, "span_name", e.target.value)}
+                        placeholder="e.g., DatabaseQuery"
+                        size="small"
+                        fullWidth
+                      />
+                      <TextField
+                        label="Span Kind (Optional)"
+                        value={variable.span_kind}
+                        onChange={(e) => handleVariableChange(idx, "span_kind", e.target.value)}
+                        placeholder="e.g., TOOL"
+                        helperText="Alone, matches every span of this kind"
+                        size="small"
+                        fullWidth
+                      />
+                    </Stack>
                     <TextField
-                      label="Span Name"
-                      value={variable.span_name}
-                      onChange={(e) => handleVariableChange(idx, "span_name", e.target.value)}
-                      placeholder="e.g., DatabaseQuery"
+                      select
+                      label="When Several Spans Match"
+                      value={variable.span_selector}
+                      onChange={(e) => handleVariableChange(idx, "span_selector", e.target.value as VariableRow["span_selector"])}
+                      helperText={SPAN_SELECTORS.find((s) => s.value === variable.span_selector)?.help}
                       size="small"
-                      required
                       fullWidth
-                    />
+                    >
+                      {SPAN_SELECTORS.map((selector) => (
+                        <MenuItem key={selector.value} value={selector.value}>
+                          {selector.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
                     <TextField
                       label="Attribute Path"
                       value={variable.attribute_path}
