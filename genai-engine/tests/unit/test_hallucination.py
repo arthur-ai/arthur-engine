@@ -52,12 +52,18 @@ NONCLAIM_REQUEST = ScoreRequest(
 )
 
 
+@pytest.fixture(autouse=True)
+def pin_env_judge(monkeypatch):
+    """These tests mock the env model, so the checks must not pick the default."""
+    monkeypatch.setenv("GENAI_ENGINE_LLM_CHECKS_MODEL_SOURCE", "env")
+
+
 @pytest.fixture
 def claim_classifier_embedding_model():
     return get_claim_classifier_embedding_model()
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(
     AzureChatOpenAI,
@@ -89,7 +95,7 @@ def test_all_claims_valid_v2(
         assert constants.HALLUCINATION_CLAIMS_VALID_MESSAGE in score.details.message
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(
     AzureChatOpenAI,
@@ -140,7 +146,7 @@ def test_claim_and_nonclaims_v2(
     )
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
@@ -169,7 +175,7 @@ def test_some_claims_invalid_v2(
     )
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
@@ -198,7 +204,7 @@ def test_all_claims_invalid_v2(
     )
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
@@ -224,7 +230,7 @@ def test_all_dialog(
     )
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
@@ -250,7 +256,7 @@ def test_all_nonclaims(
     )
 
 
-@patch("scorer.checks.hallucination.v2.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests

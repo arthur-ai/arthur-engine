@@ -122,10 +122,11 @@ class LLMContentExecutionException:
 
 @pytest.mark.unit_tests
 def test_llm_execution_exception_handling():
-    with mock.patch.object(
-        SensitiveDataCustomExamples,
-        "prompt_llm",
-        side_effect=LLMExecutionException("test error"),
+    with mock.patch(
+        "scorer.checks.sensitive_data.custom_examples.resolve_judge",
+        return_value=mock.Mock(
+            text=mock.Mock(side_effect=LLMExecutionException("test error")),
+        ),
     ):
         sensitive_data_rule = SensitiveDataCustomExamples()
         rule_score = sensitive_data_rule.score(BASE_CASE_REQUEST)
@@ -133,10 +134,11 @@ def test_llm_execution_exception_handling():
         assert rule_score.result == RuleResultEnum.UNAVAILABLE
         assert rule_score.details.message == "test error"
 
-    with mock.patch.object(
-        SensitiveDataCustomExamples,
-        "prompt_llm",
-        side_effect=LLMContentFilterException(),
+    with mock.patch(
+        "scorer.checks.sensitive_data.custom_examples.resolve_judge",
+        return_value=mock.Mock(
+            text=mock.Mock(side_effect=LLMContentFilterException()),
+        ),
     ):
         sensitive_data_rule = SensitiveDataCustomExamples()
         rule_score = sensitive_data_rule.score(BASE_CASE_REQUEST)

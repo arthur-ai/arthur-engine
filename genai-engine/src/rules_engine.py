@@ -11,7 +11,7 @@ from opentelemetry import trace
 
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
-from scorer.llm_client import get_llm_executor
+from scorer.judge_model import resolve_judge
 from scorer.score import ScorerClient
 from utils import constants
 from utils.metric_counters import RULE_FAILURE_COUNTER
@@ -56,12 +56,13 @@ class RuleEngine:
         self.hallucination_token_limit = self.set_hallucination_token_limit()
 
     def set_hallucination_token_limit(self) -> int:
-        token_limit = get_llm_executor().get_gpt_model_token_limit()
-
-        if token_limit == -1:
-            return MAX_HALLUCINATION_TOKEN_LIMIT
-
-        return token_limit
+        """The input window of the model the hallucination check runs on now."""
+        try:
+            judge = resolve_judge()
+        except Exception:
+            judge = None
+        token_limit = judge.max_input_tokens() if judge is not None else None
+        return token_limit or MAX_HALLUCINATION_TOKEN_LIMIT
 
     def evaluate(
         self,

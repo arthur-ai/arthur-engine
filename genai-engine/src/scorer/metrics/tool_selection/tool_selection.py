@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable
+from typing import Any
 
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import MetricType, ToolClassEnum
@@ -8,13 +8,11 @@ from arthur_common.models.metric_schemas import (
 )
 from langchain_core.output_parsers.json import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableSerializable
-from langchain_openai.chat_models import AzureChatOpenAI, ChatOpenAI
 from pydantic import BaseModel, Field
 
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricScoreDetails, ToolSelectionCorrectnessMetric
-from scorer.llm_client import extract_chain_model_name, get_llm_executor
+from scorer.judge_model import LLMJudge, resolve_judge
 from scorer.metrics.tool_selection.prompt_templates import (
     TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,
     TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
@@ -45,128 +43,39 @@ class ToolUsageResponseSchema(BaseModel):
     )
 
 
-def get_model(temperature: float = 0.0) -> AzureChatOpenAI | ChatOpenAI:
-    model = get_llm_executor().get_gpt_model(chat_temperature=temperature)
-    if model is None:
-        raise RuntimeError(
-            "Failed to initialize LLM model for ToolSelectionCorrectnessScorer. "
-            "Check your LLM configuration.",
+INPUT_VARIABLES = ["system_prompt", "user_query", "context"]
+
+
+def run_tool_judge(
+    judge: LLMJudge,
+    structured_template: str,
+    legacy_template: str,
+    schema: type[ToolSelectionResponseSchema] | type[ToolUsageResponseSchema],
+    inputs: dict[str, Any],
+    operation: str,
+) -> tuple[dict[str, str | int], LLMTokenConsumption]:
+    """Ask the judge to classify tool selection or usage, with structured output when
+    the model supports it and a JSON prompt otherwise."""
+    if judge.supports_structured_output():
+        pt = PromptTemplate(
+            input_variables=INPUT_VARIABLES,
+            template=structured_template,
         )
-    return model
-
-
-# Structured output chains
-def get_tool_selection_chain_structured(
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema]:
-    """Structured output chain for tool selection"""
-    model = get_model(temperature)
+        response, tokens = judge.structured(pt, inputs, schema, operation)
+        return response.model_dump(), tokens
+    parser = JsonOutputParser(pydantic_object=schema)
     pt = PromptTemplate(
-        input_variables=["system_prompt", "user_query", "context"],
-        template=TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
+        input_variables=INPUT_VARIABLES,
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+        template=legacy_template,
     )
-    evaluation_chain = pt | model.with_structured_output(ToolSelectionResponseSchema)
-    return evaluation_chain  # type: ignore[return-value]
-
-
-def get_tool_usage_chain_structured(
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema]:
-    """Structured output chain for tool usage"""
-    model = get_model(temperature)
-    pt = PromptTemplate(
-        input_variables=["system_prompt", "user_query", "context"],
-        template=TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE,
-    )
-    evaluation_chain = pt | model.with_structured_output(ToolUsageResponseSchema)
-    return evaluation_chain  # type: ignore[return-value]
-
-
-# Legacy chains with JSON parser
-def get_tool_selection_chain_legacy(
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema]:
-    """Legacy chain for tool selection with JSON parser"""
-    model = get_model(temperature)
-    parser = JsonOutputParser(pydantic_object=ToolSelectionResponseSchema)
-    pt = PromptTemplate(
-        input_variables=["system_prompt", "user_query", "context"],
-        partial_variables={
-            "format_instructions": parser.get_format_instructions(),
-        },
-        template=TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,
-    )
-    evaluation_chain = pt | model | parser
-    return evaluation_chain
-
-
-def get_tool_usage_chain_legacy(
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema]:
-    """Legacy chain for tool usage with JSON parser"""
-    model = get_model(temperature)
-
-    parser = JsonOutputParser(pydantic_object=ToolUsageResponseSchema)
-    pt = PromptTemplate(
-        input_variables=["system_prompt", "user_query", "context"],
-        partial_variables={
-            "format_instructions": parser.get_format_instructions(),
-        },
-        template=TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE,
-    )
-
-    evaluation_chain = pt | model | parser
-    return evaluation_chain
-
-
-# Legacy functions for backward compatibility
-def get_tool_selection_chain(
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema]:
-    """Legacy function - uses structured outputs if supported, falls back to legacy"""
-    if get_llm_executor().supports_structured_outputs():
-        return get_tool_selection_chain_structured(temperature)
-    else:
-        return get_tool_selection_chain_legacy(temperature)
-
-
-def get_tool_usage_chain(
-    temperature: float = 0.0,
-) -> RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema]:
-    """Legacy function - uses structured outputs if supported, falls back to legacy"""
-    if get_llm_executor().supports_structured_outputs():
-        return get_tool_usage_chain_structured(temperature)
-    else:
-        return get_tool_usage_chain_legacy(temperature)
+    text, tokens = judge.text(pt, inputs, operation)
+    return schema.model_validate(parser.parse(text)).model_dump(), tokens
 
 
 class ToolSelectionCorrectnessScorer(MetricScorer):
     def __init__(self) -> None:
         super().__init__()
-
-    def _get_chains(
-        self,
-    ) -> tuple[
-        RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema],
-        RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema],
-    ]:
-        """Get the appropriate chains based on structured output support"""
-        if get_llm_executor().supports_structured_outputs():
-            return (
-                get_tool_selection_chain_structured(),
-                get_tool_usage_chain_structured(),
-            )
-        else:
-            return get_tool_selection_chain_legacy(), get_tool_usage_chain_legacy()
-
-    @staticmethod
-    def prompt_llm(
-        f: Callable[[], Any],
-        operation_name: str,
-        model_name: str | None = None,
-    ) -> tuple[Any, LLMTokenConsumption]:
-        """Execute chain with token tracking, similar to relevance scorer"""
-        return get_llm_executor().execute(f, operation_name, model_name=model_name)
 
     def invoke_chain(
         self,
@@ -174,27 +83,11 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         system_prompt: str,
         context: list[dict[str, Any]],
     ) -> tuple[dict[str, str | int], dict[str, int]]:
-        tool_selection_chain, tool_usage_chain = self._get_chains()
-        tool_selection_model_name = extract_chain_model_name(tool_selection_chain)
-        tool_usage_model_name = extract_chain_model_name(tool_usage_chain)
-
-        # Create lambda for tool selection chain
-        tool_selection_call = lambda: tool_selection_chain.invoke(
-            input={  # In newer versions of langchain this is a general type for input, ignore type for now
-                "system_prompt": system_prompt,
-                "user_query": user_query,
-                "context": context,  # type: ignore[dict-item]
-            },
-        )
-
-        # Create lambda for tool usage chain
-        tool_usage_call = lambda: tool_usage_chain.invoke(
-            input={  # In newer versions of langchain this is a general type for input
-                "system_prompt": system_prompt,
-                "user_query": user_query,
-                "context": context,  # type: ignore[dict-item]
-            },
-        )
+        inputs: dict[str, Any] = {
+            "system_prompt": system_prompt,
+            "user_query": user_query,
+            "context": context,
+        }
 
         default_tool_selection: dict[str, str | int] = {
             "tool_selection": 2,
@@ -205,17 +98,24 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             "tool_usage_reason": "Could not evaluate tool usage",
         }
         default_tokens = LLMTokenConsumption(prompt_tokens=0, completion_tokens=0)
-        # Execute chains using prompt_llm pattern
         try:
-            tool_selection_response: dict[str, str | int]
-            tool_selection_response, selection_tokens = self.prompt_llm(
-                tool_selection_call,
+            judge = resolve_judge(temperature=0.0)
+        except Exception:
+            judge = None
+        if judge is None:
+            return {**default_tool_selection, **default_tool_usage}, {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+            }
+        try:
+            tool_selection_response, selection_tokens = run_tool_judge(
+                judge,
+                TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
+                TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,
+                ToolSelectionResponseSchema,
+                inputs,
                 "Tool Selection Check",
-                model_name=tool_selection_model_name,
             )
-            # Convert Pydantic model to dict if using structured outputs
-            if isinstance(tool_selection_response, ToolSelectionResponseSchema):
-                tool_selection_response = tool_selection_response.model_dump()
         except Exception as e:
             tool_selection_response, selection_tokens = (
                 default_tool_selection,
@@ -226,14 +126,14 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             tool_usage_response: dict[str, str | int]
             # If tool selection is not 2, then we can evaluate tool usage
             if tool_selection_response["tool_selection"] != 2:
-                tool_usage_response, usage_tokens = self.prompt_llm(
-                    tool_usage_call,
+                tool_usage_response, usage_tokens = run_tool_judge(
+                    judge,
+                    TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE,
+                    TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE,
+                    ToolUsageResponseSchema,
+                    inputs,
                     "Tool Usage Check",
-                    model_name=tool_usage_model_name,
                 )
-                # Convert Pydantic model to dict if using structured outputs
-                if isinstance(tool_usage_response, ToolUsageResponseSchema):
-                    tool_usage_response = tool_usage_response.model_dump()
             else:
                 tool_usage_response, usage_tokens = default_tool_usage, default_tokens
         except Exception as e:

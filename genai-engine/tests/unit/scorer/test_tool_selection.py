@@ -1,3 +1,4 @@
+import json
 import os
 from unittest.mock import Mock, patch
 
@@ -5,9 +6,13 @@ import pytest
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import MetricType, ToolClassEnum
 from arthur_common.models.metric_schemas import MetricRequest
+from langchain_core.messages import AIMessage
 
 from schemas.internal_schemas import MetricResult
-from scorer.metrics.tool_selection.tool_selection import ToolSelectionCorrectnessScorer
+from scorer.metrics.tool_selection.tool_selection import (
+    ToolSelectionCorrectnessScorer,
+    ToolSelectionResponseSchema,
+)
 from utils import utils
 
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = (
@@ -16,24 +21,24 @@ os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
-@pytest.mark.unit_tests
-def test_tool_selection_correctness_scorer_init(mock_get_llm_executor):
-    # Arrange
-    mock_get_llm_executor.return_value.supports_structured_outputs.return_value = True
+@pytest.fixture(autouse=True)
+def pin_env_judge(monkeypatch):
+    """These tests mock the env model, so the checks must not pick the default."""
+    monkeypatch.setenv("GENAI_ENGINE_LLM_CHECKS_MODEL_SOURCE", "env")
 
-    # Act
+
+def as_message(output: dict) -> AIMessage:
+    """What the model sends back on the JSON-prompt path, before parsing."""
+    return AIMessage(content=json.dumps(output))
+
+
+@pytest.mark.unit_tests
+def test_tool_selection_correctness_scorer_init():
+    # Building the scorer needs no model: it's resolved when a request is scored
     scorer = ToolSelectionCorrectnessScorer()
 
-    # Assert - verify the scorer can be initialized and has the expected methods
-    assert hasattr(scorer, "_get_chains")
     assert hasattr(scorer, "score")
     assert hasattr(scorer, "invoke_chain")
-
-    # Verify _get_chains returns a tuple of 2 elements (selection_chain, usage_chain)
-    chains = scorer._get_chains()
-    assert isinstance(chains, tuple)
-    assert len(chains) == 2
 
 
 @patch.object(ToolSelectionCorrectnessScorer, "invoke_chain")
@@ -150,7 +155,7 @@ def scorer(mock_tool_selection_chain, mock_tool_usage_chain):
     return scorer
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_score_with_successful_tool_selection_and_usage_fixed(mock_get_llm_executor):
     # Arrange
@@ -200,7 +205,7 @@ def test_score_with_successful_tool_selection_and_usage_fixed(mock_get_llm_execu
     assert score.completion_tokens == 100
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_score_with_no_tool_selection_fixed(mock_get_llm_executor):
     # Arrange
@@ -238,7 +243,7 @@ def test_score_with_no_tool_selection_fixed(mock_get_llm_executor):
     assert score.completion_tokens == 50
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_tool_selection_scorer_structured_outputs(mock_get_llm_executor):
     """Test ToolSelectionCorrectnessScorer with structured outputs enabled"""
@@ -298,7 +303,7 @@ def test_tool_selection_scorer_structured_outputs(mock_get_llm_executor):
     assert result.completion_tokens == 115
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_tool_selection_scorer_legacy_outputs(mock_get_llm_executor):
     """Test ToolSelectionCorrectnessScorer with legacy/unstructured outputs"""
@@ -307,17 +312,21 @@ def test_tool_selection_scorer_legacy_outputs(mock_get_llm_executor):
     mock_execute = Mock()
     mock_execute.side_effect = [
         (
-            {
-                "tool_selection": 0,
-                "tool_selection_reason": "Wrong tool was selected, detected via legacy output",
-            },
+            as_message(
+                {
+                    "tool_selection": 0,
+                    "tool_selection_reason": "Wrong tool was selected, detected via legacy output",
+                }
+            ),
             LLMTokenConsumption(prompt_tokens=140, completion_tokens=70),
         ),
         (
-            {
-                "tool_usage": 0,
-                "tool_usage_reason": "Tool was used incorrectly, detected via legacy output",
-            },
+            as_message(
+                {
+                    "tool_usage": 0,
+                    "tool_usage_reason": "Tool was used incorrectly, detected via legacy output",
+                }
+            ),
             LLMTokenConsumption(prompt_tokens=130, completion_tokens=65),
         ),
     ]
@@ -358,7 +367,7 @@ def test_tool_selection_scorer_legacy_outputs(mock_get_llm_executor):
     assert result.completion_tokens == 135
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_tool_selection_scorer_no_tool_structured(mock_get_llm_executor):
     """Test ToolSelectionCorrectnessScorer when no tool is needed (structured outputs)"""
@@ -409,7 +418,7 @@ def test_tool_selection_scorer_no_tool_structured(mock_get_llm_executor):
     assert result.completion_tokens == 50
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_tool_selection_scorer_no_tool_legacy(mock_get_llm_executor):
     """Test ToolSelectionCorrectnessScorer when no tool is needed (legacy outputs)"""
@@ -418,10 +427,12 @@ def test_tool_selection_scorer_no_tool_legacy(mock_get_llm_executor):
     mock_execute = Mock()
     mock_execute.side_effect = [
         (
-            {
-                "tool_selection": 2,
-                "tool_selection_reason": "No tool was needed for this query (legacy)",
-            },
+            as_message(
+                {
+                    "tool_selection": 2,
+                    "tool_selection_reason": "No tool was needed for this query (legacy)",
+                }
+            ),
             LLMTokenConsumption(prompt_tokens=110, completion_tokens=55),
         ),
     ]
@@ -457,77 +468,55 @@ def test_tool_selection_scorer_no_tool_legacy(mock_get_llm_executor):
     assert result.completion_tokens == 55
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
 @pytest.mark.unit_tests
-def test_tool_selection_scorer_chain_selection_structured(mock_get_llm_executor):
-    """Test that the scorer correctly selects structured output chains"""
-    # Arrange
-    mock_get_llm_executor.return_value.supports_structured_outputs.return_value = True
+def test_tool_selection_scorer_chain_selection_structured():
+    """The scorer asks for structured output only when the model supports it"""
+    judge = Mock()
+    judge.supports_structured_output.return_value = True
+    judge.structured.return_value = (
+        ToolSelectionResponseSchema(tool_selection=2, tool_selection_reason="none"),
+        LLMTokenConsumption(prompt_tokens=1, completion_tokens=1),
+    )
+    judge.text.return_value = (
+        json.dumps({"tool_selection": 2, "tool_selection_reason": "none"}),
+        LLMTokenConsumption(prompt_tokens=1, completion_tokens=1),
+    )
 
-    scorer = ToolSelectionCorrectnessScorer()
-
-    # Mock the chains to verify which ones are called
-    with (
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_selection_chain_structured",
-        ) as mock_structured_selection,
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_usage_chain_structured",
-        ) as mock_structured_usage,
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_selection_chain_legacy",
-        ) as mock_legacy_selection,
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_usage_chain_legacy",
-        ) as mock_legacy_usage,
+    with patch(
+        "scorer.metrics.tool_selection.tool_selection.resolve_judge",
+        return_value=judge,
     ):
+        ToolSelectionCorrectnessScorer().invoke_chain("query", "system", [])
 
-        # Act
-        chains = scorer._get_chains()
-
-        # Assert
-        mock_structured_selection.assert_called_once()
-        mock_structured_usage.assert_called_once()
-        mock_legacy_selection.assert_not_called()
-        mock_legacy_usage.assert_not_called()
+    getattr(judge, "structured").assert_called_once()
+    getattr(judge, "text").assert_not_called()
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
 @pytest.mark.unit_tests
-def test_tool_selection_scorer_chain_selection_legacy(mock_get_llm_executor):
-    """Test that the scorer correctly selects legacy output chains"""
-    # Arrange
-    mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
+def test_tool_selection_scorer_chain_selection_legacy():
+    """The scorer asks for structured output only when the model supports it"""
+    judge = Mock()
+    judge.supports_structured_output.return_value = False
+    judge.structured.return_value = (
+        ToolSelectionResponseSchema(tool_selection=2, tool_selection_reason="none"),
+        LLMTokenConsumption(prompt_tokens=1, completion_tokens=1),
+    )
+    judge.text.return_value = (
+        json.dumps({"tool_selection": 2, "tool_selection_reason": "none"}),
+        LLMTokenConsumption(prompt_tokens=1, completion_tokens=1),
+    )
 
-    scorer = ToolSelectionCorrectnessScorer()
-
-    # Mock the chains to verify which ones are called
-    with (
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_selection_chain_structured",
-        ) as mock_structured_selection,
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_usage_chain_structured",
-        ) as mock_structured_usage,
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_selection_chain_legacy",
-        ) as mock_legacy_selection,
-        patch(
-            "scorer.metrics.tool_selection.tool_selection.get_tool_usage_chain_legacy",
-        ) as mock_legacy_usage,
+    with patch(
+        "scorer.metrics.tool_selection.tool_selection.resolve_judge",
+        return_value=judge,
     ):
+        ToolSelectionCorrectnessScorer().invoke_chain("query", "system", [])
 
-        # Act
-        chains = scorer._get_chains()
-
-        # Assert
-        mock_structured_selection.assert_not_called()
-        mock_structured_usage.assert_not_called()
-        mock_legacy_selection.assert_called_once()
-        mock_legacy_usage.assert_called_once()
+    getattr(judge, "text").assert_called_once()
+    getattr(judge, "structured").assert_not_called()
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_tool_selection_scorer_exception_handling_structured(mock_get_llm_executor):
     """Test exception handling in structured output mode"""
@@ -578,7 +567,7 @@ def test_tool_selection_scorer_exception_handling_structured(mock_get_llm_execut
     assert result.completion_tokens == 50
 
 
-@patch("scorer.metrics.tool_selection.tool_selection.get_llm_executor")
+@patch("scorer.judge_model.get_llm_executor")
 @pytest.mark.unit_tests
 def test_tool_selection_scorer_exception_handling_legacy(mock_get_llm_executor):
     """Test exception handling in legacy output mode"""

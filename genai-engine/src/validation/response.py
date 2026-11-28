@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from repositories.inference_repository import InferenceRepository
 from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
+from scorer.judge_model import llm_checks_billed_to, task_org_id
 from scorer.score import ScorerClient
 from services.trace.guardrail_span_emitter import guardrail_span
 
@@ -47,7 +48,13 @@ def validate_response(
         user_id=inference.user_id,
         session_id=inference.conversation_id,
     ) as gspan:
-        rule_results = RuleEngine(scorer_client).evaluate(validation_request, rules)
+        # The chat route passes no task_id; the inference records its task
+        billing_task_id = task_id or inference.task_id
+        with llm_checks_billed_to(task_org_id(db_session, billing_task_id)):
+            rule_results = RuleEngine(scorer_client).evaluate(
+                validation_request,
+                rules,
+            )
         gspan.set_rule_results(rule_results)
 
     inference_response = inference_repo.save_response(
