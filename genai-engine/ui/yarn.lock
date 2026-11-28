@@ -2996,12 +2996,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:19.3.2":
-  version: 19.3.2
-  resolution: "@types/react@npm:19.3.2"
+"@types/react@npm:19.3.3":
+  version: 19.3.3
+  resolution: "@types/react@npm:19.3.3"
   dependencies:
     csstype: "npm:^3.2.2"
-  checksum: 10c0/a48b88520146e39681fedd80f0a56002fa58ca588e44a8332136ac02e9c68511c1bb96fadfb24ada1f3c7a1c0f0a99578c603179b1ae771883aa85852a133d22
+  checksum: 10c0/b435951e715578f769df747431bcdd95e07b93238008365622b76d46e3ec76235c869d3007b2ea9063c30f05c35dc3baa2d9833bf09c3faf1e548f0e028f79ec
   languageName: node
   linkType: hard
 
@@ -8856,7 +8856,7 @@ __metadata:
     "@total-typescript/ts-reset": "npm:0.6.1"
     "@types/node": "npm:24.19.4"
     "@types/papaparse": "npm:5.5.2"
-    "@types/react": "npm:19.3.2"
+    "@types/react": "npm:19.3.3"
     "@types/react-dom": "npm:19.3.0"
     "@vitejs/plugin-react": "npm:6.3.0"
     axios: "npm:1.21.1"
