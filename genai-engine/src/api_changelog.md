@@ -2,6 +2,8 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/23/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional `header` request parameter `x-arthur-session-id`
 # 11/26/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/traces  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/spans  token costs are always in USD, also on engines whose `CURRENCY_DEFAULT_CURRENCY` is not USD; convert them for display with `usd_exchange_rate` from `/api/v2/display-settings`
