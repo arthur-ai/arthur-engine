@@ -25,6 +25,7 @@ from utils import constants
 from utils.model_load import (
     get_harmful_request_classifier,
     get_profanity_classifier,
+    get_toxicity_chunking_tokenizer,
     get_toxicity_classifier,
     get_toxicity_model,
     get_toxicity_tokenizer,
@@ -101,13 +102,16 @@ class ToxicityScorer(RuleScorer):
         logger.info("Model and tokenizer downloaded and classifier initialized.")
 
     def chunk_text(self, text: str, chunk_size: int) -> list[str]:
-        if self.toxicity_tokenizer is None:
+        # The chunker has its own tokenizer object, separate from the pipeline's, so
+        # neither ever changes truncation setting under another thread.
+        chunking_tokenizer = get_toxicity_chunking_tokenizer()
+        if self.toxicity_tokenizer is None or chunking_tokenizer is None:
             raise ValueError(
                 "Toxicity tokenizer is not available.",
             )
         chunk_iterator = ChunkIterator(
             text,
-            self.toxicity_tokenizer,
+            chunking_tokenizer,
             chunk_size,
         )
 

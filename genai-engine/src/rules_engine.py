@@ -13,7 +13,7 @@ from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
 from scorer.llm_client import get_llm_executor
 from scorer.score import ScorerClient
-from utils import constants
+from utils import constants, model_load
 from utils.metric_counters import RULE_FAILURE_COUNTER
 from utils.token_count import TokenCounter
 from utils.utils import TracedThreadPoolExecutor, get_env_var
@@ -87,7 +87,7 @@ class RuleEngine:
             get_env_var(
                 constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
                 default=str(constants.DEFAULT_THREAD_POOL_MAX_WORKERS),
-            )
+            ),
         )
         with TracedThreadPoolExecutor(tracer, max_workers=num_threads) as executor:
             for rule in rules:
@@ -300,11 +300,16 @@ class RuleEngine:
     @tracer.start_as_current_span("run pii data rule")
     def run_pii_data_rule(self, request: ValidationRequest, rule: Rule) -> RuleScore:
         pii_config = rule.get_pii_config()
+        confidence_threshold = pii_config.confidence_threshold
+        # Rules never store a threshold of 0, so 0 here means "not set". The V2
+        # classifier then applies its own default; V1 keeps filtering at 0.
+        if model_load.USE_PII_MODEL_V2 and not confidence_threshold:
+            confidence_threshold = None
         score_request = ScoreRequest(
             scoring_text=request.get_scoring_text(),
             rule_type=RuleType.PII_DATA,
             disabled_pii_entities=pii_config.disabled_pii_entities,
-            pii_confidence_threshold=pii_config.confidence_threshold,
+            pii_confidence_threshold=confidence_threshold,
             allow_list=pii_config.allow_list,
         )
 

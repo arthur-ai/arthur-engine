@@ -10,7 +10,6 @@ from schemas.scorer_schemas import (
     ScorerPIIEntitySpan,
     ScorerRuleDetails,
 )
-from scorer.checks.pii.classifier import get_gliner_model, get_gliner_tokenizer
 from scorer.checks.pii.pii_utils import (
     filter_by_allow_list,
     postprocess_spans,
@@ -20,6 +19,11 @@ from scorer.checks.pii.pii_utils import (
 from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from scorer.checks.pii.validations import is_name
 from scorer.scorer import RuleScorer
+from utils.model_load import (
+    get_gliner_model,
+    get_gliner_tokenizer,
+    get_presidio_analyzer,
+)
 
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
@@ -27,7 +31,7 @@ logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 class BinaryPIIDataClassifierV1(RuleScorer):
     def __init__(self) -> None:
         """Initialized the binary classifier for PII Data"""
-        self.analyzer: AnalyzerEngine = AnalyzerEngine()
+        self.analyzer: AnalyzerEngine | None = get_presidio_analyzer()
         self.default_confidence_threshold: float = 0.5
         self.gliner_model = get_gliner_model()
         self.gliner_tokenizer = get_gliner_tokenizer()

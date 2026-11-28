@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from arthur_common.models.enums import RuleResultEnum, RuleType
 
 from schemas.enums import EvalKind
+from schemas.request_schemas import ToxicityEvalConfig
 from schemas.response_schemas import EvalRunResponse
 from schemas.scorer_schemas import ScoreRequest
 from scorer.base_ml_scorer import BaseMLScorer
@@ -12,6 +13,7 @@ from scorer.checks.pii.classifier import BinaryPIIDataClassifier
 from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
 from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClassifier
 from scorer.checks.toxicity.toxicity import ToxicityScorer
+from utils.constants import DEFAULT_TOXICITY_RULE_THRESHOLD
 from utils.model_load import (
     PROMPT_INJECTION_MODEL,
     PROMPT_INJECTION_TOKENIZER,
@@ -65,11 +67,16 @@ class ToxicityMLScorer(BaseMLScorer):
         self._scorer = scorer
 
     def run(self, text: str, config: Dict[str, Any]) -> EvalRunResponse:
+        # Without a threshold the scorer skips the check, which would be reported
+        # as a failure; default it the way the guardrail rule does.
+        threshold = ToxicityEvalConfig.model_validate(config).toxicity_threshold
         request = ScoreRequest(
             rule_type=RuleType.TOXICITY,
             scoring_text=text,
             user_prompt=text,
-            toxicity_threshold=config.get("toxicity_threshold"),
+            toxicity_threshold=(
+                DEFAULT_TOXICITY_RULE_THRESHOLD if threshold is None else threshold
+            ),
         )
         return _score_to_response(self._scorer.score(request))
 
@@ -89,7 +96,8 @@ class PromptInjectionMLScorer(BaseMLScorer):
 def get_ml_scorer(eval_type: str) -> Optional[BaseMLScorer]:
     """Return a BaseMLScorer for the given eval_type, or None if unknown.
 
-    Underlying models are cached by model_load.py; scorer wrappers are lightweight.
+    Every model a scorer uses, including the PII classifiers' spaCy pipelines, is a
+    per-process singleton in model_load.py, so building a scorer per eval is cheap.
     """
     if eval_type == EvalKind.PII.value:
         return PIIScorerV2(BinaryPIIDataClassifier())
