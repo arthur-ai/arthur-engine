@@ -614,8 +614,8 @@ helm template arthur-genai-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/a
     # (Optional) GCP service account credentials for Vertex AI integration.
     # The secret key MUST be named 'credentials.json' — this becomes the filename
     # mounted inside the container at /var/secrets/google/credentials.json.
-    # Set gcpDiscoveryConfig.isEnabled=true and gcpDiscoveryConfig.googleCredentialsSecretName
-    # in your values.yaml to enable.
+    # Set gcpCredentials.isEnabled=true and gcpCredentials.googleCredentialsSecretName
+    # in your values.yaml to enable (gcpDiscoveryConfig, the old name, still works).
     kubectl -n arthur create secret generic gcp-sa-key \
         --from-file credentials.json='<path_to_your_gcp_service_account_key.json>'
     ```

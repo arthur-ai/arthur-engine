@@ -1,4 +1,5 @@
 {{- if eq .Values.genaiEngineDeploymentType "deployment" }}
+{{- $gcp := include "arthur-genai-engine.gcpCredentials" . | fromYaml }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -191,13 +192,13 @@ spec:
             - name: HF_HUB_OFFLINE
               value: "1"
             {{- end }}
-            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            {{- if $gcp.isEnabled }}
             - name: GOOGLE_CLOUD_PROJECT
-              value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
+              value: {{ $gcp.googleCloudProject | quote }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: "/var/secrets/google/credentials.json"
             - name: GOOGLE_CLOUD_LOCATION
-              value: {{ .Values.gcpDiscoveryConfig.googleCloudLocation | quote }}
+              value: {{ $gcp.googleCloudLocation | quote }}
             {{- end }}
             {{- if .Values.genaiEngineInternalHost }}
             - name: GENAI_ENGINE_INTERNAL_HOST
@@ -225,7 +226,7 @@ spec:
               value: {{ .Values.arthurGenaiEngineDeployment.auditLog.includeAiActivity | default false | quote }}
             {{- end }}
           volumeMounts:
-            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            {{- if $gcp.isEnabled }}
             - name: gcp-credentials
               mountPath: /var/secrets/google
               readOnly: true
@@ -240,10 +241,10 @@ spec:
               readOnly: {{ .Values.modelPVC.readOnly }}
             {{- end }}
       volumes:
-        {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+        {{- if $gcp.isEnabled }}
         - name: gcp-credentials
           secret:
-            secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
+            secretName: {{ $gcp.googleCredentialsSecretName }}
             defaultMode: 420
         {{- end }}
         {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
