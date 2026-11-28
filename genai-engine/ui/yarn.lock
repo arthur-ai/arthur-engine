@@ -140,16 +140,16 @@ __metadata:
   linkType: hard
 
 "@amplitude/plugin-session-replay-browser@npm:^1.33.6":
-  version: 1.37.2
-  resolution: "@amplitude/plugin-session-replay-browser@npm:1.37.2"
+  version: 1.37.3
+  resolution: "@amplitude/plugin-session-replay-browser@npm:1.37.3"
   dependencies:
     "@amplitude/analytics-core": "npm:2.63.0"
     "@amplitude/analytics-types": "npm:2.11.1"
     "@amplitude/rrweb-plugin-console-record": "npm:2.1.5"
     "@amplitude/rrweb-record": "npm:2.1.5"
-    "@amplitude/session-replay-browser": "npm:1.53.1"
+    "@amplitude/session-replay-browser": "npm:1.53.2"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/bd1fbc8d742ba0ce6ec7269c18f2c9c4cbc6d621e5b76e151f6d7f34a4c20f5880818e0e0fb5078499cc4ccb43df3a216c168e66395c088601590bb15ef72a8e
+  checksum: 10c0/d3bdcee9c131a9247c736e5436855b48337e218812364697f901cf628574d8dd5663a7bf5c9d2551edb64632e915436bdaa975c7893458f082a516a04ed7652a
   languageName: node
   linkType: hard
 
@@ -231,9 +231,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/session-replay-browser@npm:1.53.1":
-  version: 1.53.1
-  resolution: "@amplitude/session-replay-browser@npm:1.53.1"
+"@amplitude/session-replay-browser@npm:1.53.2":
+  version: 1.53.2
+  resolution: "@amplitude/session-replay-browser@npm:1.53.2"
   dependencies:
     "@amplitude/analytics-core": "npm:2.63.0"
     "@amplitude/analytics-types": "npm:2.11.1"
@@ -244,7 +244,7 @@ __metadata:
     "@amplitude/targeting": "npm:0.3.11"
     idb: "npm:8.0.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/bd485ce41e88840e1253d1f692d698fc9e7ef6fa91bf128cced1c24c461856b4c98f83844f0b996fe3c879d7cbfefe55dd61431a125821abd460c510eb9c419c
+  checksum: 10c0/fcdd761664dcb467f9edf852b6ffe8c7ebe0d7903bc951c5c40bf7aee56f4af4f3ac77e69e5485d95976c418abac78c147ae727591fce98d88f020f07d241557
   languageName: node
   linkType: hard
 
@@ -2996,12 +2996,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:19.3.0":
-  version: 19.3.0
-  resolution: "@types/react@npm:19.3.0"
+"@types/react@npm:19.3.1":
+  version: 19.3.1
+  resolution: "@types/react@npm:19.3.1"
   dependencies:
     csstype: "npm:^3.2.2"
-  checksum: 10c0/fbcabf303f935ca9f36ed2dcf81751cf84744098c5a683c8a62a0fa7edd31714b48d5c46b12fd0014f7f2dfe4d9ec6de428a850748eec719a70294e51029551b
+  checksum: 10c0/c008307c9e11bdf69d81073fb1814169ee8373193fc09e7582663ee8c66afb1d3572de2cd5b7a23a7077f66ad0a7114a116579d908f62b3d11aed579c2a5ceaa
   languageName: node
   linkType: hard
 
@@ -7788,8 +7788,8 @@ __metadata:
   linkType: hard
 
 "react-router@npm:^8.3.0":
-  version: 8.5.2
-  resolution: "react-router@npm:8.5.2"
+  version: 8.5.3
+  resolution: "react-router@npm:8.5.3"
   dependencies:
     "@remix-run/route-pattern": "npm:^0.22.1"
     cookie-es: "npm:^3.1.1"
@@ -7805,7 +7805,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/4ff6e74255ca0372cd29698874534d21c4be3c4ca8853707f7176d9fb6284339112896db9a87ae79a6346aa6f8afeb608534de675320c2cd6c674b3ee0bdbf09
+  checksum: 10c0/3941806b91d3c1d983b4943f07919bb6baa7f30108c11140ebe7bf31f72ed6a16f9d0682de007cec4f326d32d2567b1c27152e8d1ba7bd0b4f585223b07bae2e
   languageName: node
   linkType: hard
 
@@ -8856,7 +8856,7 @@ __metadata:
     "@total-typescript/ts-reset": "npm:0.6.1"
     "@types/node": "npm:24.19.2"
     "@types/papaparse": "npm:5.5.2"
-    "@types/react": "npm:19.3.0"
+    "@types/react": "npm:19.3.1"
     "@types/react-dom": "npm:19.3.0"
     "@vitejs/plugin-react": "npm:6.3.0"
     axios: "npm:1.21.1"
