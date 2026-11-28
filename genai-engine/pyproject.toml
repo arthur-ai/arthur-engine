@@ -65,10 +65,10 @@ dependencies = [
   "spacy>=3.8.3",
   "date-spacy>=0.0.1,<0.1",
   "bert-score==0.3.13",
-  "langchain==1.5.0",
+  "langchain==1.5.2",
   "langchain-community==0.4.2",
-  "langchain-openai==1.8.0",
-  "langsmith==0.14.17",
+  "langchain-openai==1.8.5",
+  "langsmith==0.16.2",
   "msgpack==1.2.4",
   "cloudpickle==3.1.3",
   "amplitude-analytics>=1.1.5,<2",
@@ -78,7 +78,7 @@ dependencies = [
   # The [mcp] extra is required, not optional: since 1.106.0 litellm imports `mcp` on every
   # completion() that passes tools, so without it every tool-calling feature returns a 500
   # (UP-5288). Drop the extra once litellm makes that import lazy.
-  "litellm[mcp]==1.109.1",
+  "litellm[mcp]==1.111.0",
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.40,<0.41",
   "weaviate-client>=4.17.0,<5",
