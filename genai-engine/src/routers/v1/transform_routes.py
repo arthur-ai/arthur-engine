@@ -2,10 +2,6 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.task_eval_schemas import (
-    ListTraceTransformsResponse,
-    TraceTransformResponse,
-)
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from starlette.responses import Response
@@ -36,7 +32,11 @@ from schemas.response_schemas import (
     TransformDependents,
     TransformExtractionResponseList,
 )
-from utils.transform_executor import execute_transform
+from schemas.transform_schemas import (
+    ListTraceTransformsResponse,
+    TraceTransformResponse,
+)
+from utils.transform_executor import execute_transform_on_spans
 from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -104,7 +104,8 @@ def get_transform(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.get_transform_by_id(
-            transform_id, org_scope=org_scope
+            transform_id,
+            org_scope=org_scope,
         )
 
         if not trace_transform:
@@ -189,7 +190,9 @@ def update_transform(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.update_transform(
-            transform_id, request, org_scope=org_scope
+            transform_id,
+            request,
+            org_scope=org_scope,
         )
         definition = trace_transform_repo.get_latest_definition(transform_id)
         return trace_transform.to_response_model(definition=definition)
@@ -352,14 +355,9 @@ def execute_trace_transform_extraction(
 
         span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
 
-        trace = span_repo.get_trace_by_id(
-            trace_id=trace_id,
-            include_metrics=False,
-            compute_new_metrics=False,
-            org_scope=org_scope,
-        )
+        spans = span_repo.get_trace_spans(trace_id=trace_id, org_scope=org_scope)
 
-        if not trace:
+        if not spans:
             raise HTTPException(
                 status_code=404,
                 detail=f"Trace with ID {trace_id} not found",
@@ -374,8 +372,8 @@ def execute_trace_transform_extraction(
             )
 
         # Execute the transform
-        return execute_transform(
-            trace=trace,
+        return execute_transform_on_spans(
+            spans=spans,
             transform_definition=versions[0].definition,
         )
 

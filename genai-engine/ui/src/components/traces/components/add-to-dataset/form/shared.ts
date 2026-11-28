@@ -1,6 +1,11 @@
 import { formOptions } from "@tanstack/react-form";
 
-import type { TraceTransformDefinition, TraceTransformVariableDefinition, TraceTransformResponse } from "@/lib/api-client/api-client";
+import type {
+  TraceTransformDefinition,
+  TraceTransformVariableDefinition,
+  TraceTransformResponse,
+  TransformVariableSource,
+} from "@/lib/api-client/api-client";
 
 export type Column = {
   name: string;
@@ -8,6 +13,9 @@ export type Column = {
   path: string;
   span_name?: string;
   attribute_path?: string;
+  // From the transform variable: "trace" columns have no span name or attribute path
+  source?: TransformVariableSource;
+  max_chars?: number | null;
   matchCount?: number;
   selectedSpanId?: string;
   allMatches?: Array<{
