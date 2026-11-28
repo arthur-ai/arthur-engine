@@ -34,3 +34,4 @@ fires before any vendor's unobserved one. See [`../architecture.md`](../architec
 - [Jamf Pro](jamf-pro.md)
 - [Compute Engine](gce.md)
 - [EC2](ec2.md)
+- [Bitdefender GravityZone](gravityzone.md): a pull carrier. Your tooling schedules the collector; the scan reads the file with a command through GravityZone's Investigation API

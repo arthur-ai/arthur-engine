@@ -47,6 +47,7 @@ what a fleet receives.
 | `dist/collect-windows.ps1` and `test/run-collector.ps1` are ASCII and parse, where `pwsh` is installed | The same for the Windows build, and a character Windows PowerShell 5.1 would read as another one |
 | The Windows driver reads the variable the wrapper sets, and passes `discover.ps1` only flags it accepts | A vendor bump that renames either, after which the collector exits 1 on every Windows machine |
 | The Windows driver keeps to cmdlets and core types | A collector that stops wherever AppLocker or WDAC is enforced, where an unsigned script runs in ConstrainedLanguage mode |
+| The Windows driver writes `arthur1.` and `ERROR:oversize:` under the 262,144-byte cap, with `tar.exe` and `certutil.exe` | A Windows frame that drifts from the one the ML Engine reads, or a cap above the one the other platforms keep |
 | The Windows build never passes `--names`, runs no interpreter, and names its payload marker exactly twice | Matching moved onto the endpoint; a collector that needs python on a stock Windows machine; a build that packed a previous copy of itself |
 | Vendored `VERSION` exists; `PROVISIONAL` is announced | A commit pin becoming permanent by inattention |
 | The plist runs `collect.sh` with `RunAtLoad` | A fresh Mac reporting nothing until the first interval elapses |
@@ -66,7 +67,8 @@ runs it in Windows PowerShell 5.1 and again in ConstrainedLanguage mode.
 
 | Guard | What it catches |
 |---|---|
-| The collector exits 0 and leaves exactly `inventory.json` and `status.txt` | The wrapper failing to unpack or run; a staging directory left behind; an `inventory.ea` nothing reads |
+| The collector exits 0 and leaves exactly `inventory.ea`, `inventory.json` and `status.txt`, and the frame decodes to the payload byte for byte | The wrapper failing to unpack or run; a staging directory left behind; a frame GravityZone would read as malformed, or none at all |
+| A failed run leaves the last good scan's `inventory.ea` as it was; a first-ever failed run leaves none | A frame removed or re-dated with its pair kept, or one claiming a result that never ran |
 | Every row is an evidence row, the status is one line, and its branches are the payload's markers | A status and a payload that disagree about what ran |
 | Every marker is dated within the hour | A kept-but-stale scan passing for a new one |
 | A run whose runner fails exits non-zero and leaves both files byte for byte | A failed run replacing, removing or re-dating the last good scan |

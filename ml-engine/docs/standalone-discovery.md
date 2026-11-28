@@ -528,6 +528,36 @@ the `catalog.json` attached to the release the engine vendors (named in
 `src/ml_engine/discovery/_vendor/VERSION`), or set `query` to `""`, which every version
 reads. Use `query_language: none`. Jamf scans stop early on shutdown and report as cancelled.
 
+#### `bitdefender_gravityzone` — Bitdefender GravityZone (macOS, Linux and Windows endpoints)
+
+Asks each online GravityZone endpoint for the agent inventory Arthur's endpoint collector
+wrote to it. GravityZone cannot schedule the collector or keep its output as an endpoint
+attribute, so the collector is scheduled by your own tooling and the scan runs one
+read-only command per endpoint through GravityZone's Investigation API that prints
+`/var/lib/arthur/inventory.ea` (or `%ProgramData%\Arthur\inventory.ea` on Windows, through
+`cmd /c`), and reads back what it printed. Deploying the collector and
+creating the API key is [the GravityZone runbook](../../integrations/endpoint-ai-discovery/docs/mdm/gravityzone.md).
+
+| Field | Secret | Required | Notes |
+|---|---|---|---|
+| `access_url` | no | yes | The Control Center API access URL from *My Account → API keys*, e.g. `https://cloudgz.gravityzone.bitdefender.com/api`. Must be `https://` |
+| `api_key` | yes | yes | A personal GravityZone API key with the **Network** and **Investigation** APIs enabled, owned by a user with the Manage Networks and Advanced Investigation rights. Service API keys are not supported yet |
+
+Every scan lists the whole roster: GravityZone cannot filter endpoints by when they were last
+seen, so the lookback is applied to each endpoint's `lastSeen` after it is listed, and a
+window of `0` asks every endpoint. An endpoint that is offline (or does not pick the
+command up within 90 seconds), outside the window, refuses the command, fails it, or has not
+answered within five minutes is listed in the run's device coverage under its reason
+(`offline`, `not-seen-in-window`, `command-refused`, `command-failed`, `command-timed-out`,
+`output-unreadable`) and the scan goes on. A refused API key, a key without the
+Investigation API, or a command refused on every endpoint fails the scan.
+
+`query` is the agent catalog, as for Jamf; `""` uses the one the engine ships with. Use
+`query_language: none`. Up to 100 commands run at once, a new one starting as each finishes,
+and every call is spaced to at most eight a second, under GravityZone's default of 10 per
+key. A scan costs at least four calls an endpoint, so 10,000 endpoints take about 1.5 to 2.5
+hours; schedule it daily.
+
 #### `local` — one machine's scan, from a folder
 
 Reads the scan Arthur's endpoint collector wrote into a folder, and reports each agent on

@@ -510,6 +510,22 @@ if reach:
           f"enforced. See tools/build-collector.py's DRIVER_PS."); sys.exit(1)
 print(f"collector: ok, the driver in dist/{name} keeps to cmdlets and core types")
 
+# THE WINDOWS DRIVER FRAMES TOO, AND UNDER THE SAME CAP. A carrier that reads a Windows
+# machine (GravityZone) reads inventory.ea, as Jamf reads a Mac's. Without the frame its
+# command finds no file, which reads as a machine whose collector never ran; without the
+# reason, an oversize payload would be cut by the carrier rather than named.
+if "arthur1." not in driver_code or "ERROR:oversize:" not in driver_code:
+    print(f"FAIL: dist/{name}: the driver writes no arthur1. frame or no ERROR:oversize reason. "
+          f"See tools/build-collector.py's DRIVER_PS."); sys.exit(1)
+wcap = re.search(r"\$cap = (\d+)", driver_code)
+if not wcap or int(wcap.group(1)) != 262144:
+    print(f"FAIL: dist/{name}: the driver's frame cap is "
+          f"{wcap.group(1) if wcap else 'missing'}, not the 262144 bytes DRIVER uses."); sys.exit(1)
+if not re.search(r"tar\.exe'\) -c -z --format raw", driver_code) or "-encodehex" not in driver_code:
+    print(f"FAIL: dist/{name}: the frame is not gzip by tar.exe's raw format and base64 by "
+          f"certutil.exe, the two programs a stock Windows has for them."); sys.exit(1)
+print(f"frame: ok, dist/{name} writes arthur1. or ERROR:oversize under the 262144-byte cap")
+
 # A vendored ref pinned to a bare commit is legitimate but provisional, and saying so out
 # loud is the only thing that stops it becoming permanent by inattention.
 version = os.path.join(v, "VERSION")

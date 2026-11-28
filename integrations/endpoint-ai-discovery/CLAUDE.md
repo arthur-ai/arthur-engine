@@ -1,8 +1,9 @@
 # CLAUDE.md
 
-Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac or a Linux VM;
-a scheduled script writes a file; Jamf Extension Attributes, a Compute Engine VM's guest
-attributes, or an EC2 instance's SSM custom inventory, carry it; a collector classifies.
+Endpoint AI agent discovery for Arthur. osquery finds what is installed on a Mac, a Linux VM
+or a Windows machine; a scheduled script writes a file; Jamf Extension Attributes, a Compute
+Engine VM's guest attributes, an EC2 instance's SSM custom inventory, or Bitdefender
+GravityZone reading the file over its Investigation API, carry it; a collector classifies.
 
 ## The boundary, first
 
@@ -60,7 +61,7 @@ renumbering them is a code change.
 | `tools/vendor-queries.sh` | vendor upstream's osquery binding — `osquery/bin/`, `osquery/dist/` and the bundler — at one ref. Not `catalog/` or `bin/classify` — those are the collector's. |
 | `tools/build-collector.py` | build `dist/collect.sh`, `dist/collect-linux.sh` and `dist/collect-windows.ps1`, one file per platform. macOS and Linux share one driver, which holds the `arthur1.` framing; Windows has a PowerShell driver, `DRIVER_PS`. |
 | `dist/` | generated, and committed on purpose — a reviewer should see it change. |
-| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier. |
+| `deploy/` | the LaunchDaemon for Macs; the systemd units and `report-guest-attributes.sh`, the Compute Engine carrier; `report-ssm-inventory.sh` and the `ec2.conf` drop-in that runs it, the EC2 carrier; the `gravityzone.conf` drop-in that runs the collector alone, for GravityZone. |
 | `deploy/arthur-ai-discovery.os-policy.yaml` | the Compute Engine OS policy, and its only copy: `tools/render-os-policy.sh` renders it for gcloud and `deploy/terraform/` reads it. |
 | `deploy/terraform/` | a Terraform module that deploys that policy to a fleet's projects and zones, or through one policy orchestrator. Its tests are `terraform test`, against mocked providers. |
 | `tools/render-os-policy.sh` | pin the OS policy to one ref: each file's URL there, and the sha256 of the bytes the ref holds. |
@@ -192,10 +193,11 @@ against a real tenant, read-only; run it before a tenant's first scan.
 - **The Windows driver is PowerShell that ConstrainedLanguage mode accepts**: cmdlets and
   core types, in ASCII with LF line endings. Where AppLocker or WDAC is enforced an unsigned
   script runs in that mode, and the vendored runner and wrapper already keep to it.
-  `test/lint.sh` has the deny-list, and CI runs the collector in that mode. It writes no
-  `inventory.ea`; add the frame with the first carrier that reads a Windows machine.
-  `docs/architecture.md`'s decisions say why, and why its publish and its output folder
-  follow rules the shell driver does not need.
+  `test/lint.sh` has the deny-list, and CI runs the collector in that mode. It writes the
+  framed `inventory.ea` under the shell driver's cap, built with `tar.exe` and `certutil.exe`
+  because that mode refuses the .NET gzip and base64; keep the frame to tools that mode
+  allows. `docs/architecture.md`'s decisions say why, and why its publish and its output
+  folder follow rules the shell driver does not need.
 - The endpoint enumerates and redacts; the collector classifies (D17). Keep catalog matching
   off the device, and keep anything path-shaped out of the status line — `/Library/Managed
   Preferences` and the Jamf inventory record are readable by every Jamf admin. The bundle
