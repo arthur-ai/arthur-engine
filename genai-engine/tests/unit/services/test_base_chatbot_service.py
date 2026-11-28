@@ -1,8 +1,10 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import litellm
 import pytest
 from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
 
+from services.chatbot.base_chatbot_service import summarize_threshold
 from services.chatbot.chatbot_service import ChatbotService
 
 
@@ -94,3 +96,33 @@ def test_summarize_history():
     result = service.summarize_history(one_no_sys, llm_client=MagicMock())
     assert service.chat_completion_service.run_chat_completion.call_count == 0, case
     assert result is one_no_sys, case
+
+
+@pytest.mark.unit_tests
+def test_summarize_threshold_uses_the_input_window():
+    # A 1M-token window: summarize at 150k, not at the 128k output limit
+    with patch(
+        "services.chatbot.base_chatbot_service.litellm.get_model_info",
+        return_value={"max_input_tokens": 1_000_000, "max_output_tokens": 128_000},
+    ):
+        assert summarize_threshold("claude-opus-5-5") == 150_000
+    with patch(
+        "services.chatbot.base_chatbot_service.litellm.get_model_info",
+        return_value={"max_input_tokens": 100_000, "max_output_tokens": 16_000},
+    ):
+        assert summarize_threshold("small-window-model") == 85_000
+    with patch(
+        "services.chatbot.base_chatbot_service.litellm.get_model_info",
+        side_effect=litellm.ModelNotMappedError("This model isn't mapped yet."),
+    ):
+        assert summarize_threshold("unknown-model") is None
+    # Any other failure is logged, and summarizing is skipped rather than failing the chat
+    with (
+        patch(
+            "services.chatbot.base_chatbot_service.litellm.get_model_info",
+            side_effect=TypeError("bad call"),
+        ),
+        patch("services.chatbot.base_chatbot_service.logger") as mock_logger,
+    ):
+        assert summarize_threshold("claude-opus-5-5") is None
+        mock_logger.warning.assert_called_once()
