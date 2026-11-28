@@ -15,9 +15,12 @@ from arthur_client.api_bindings import JobKind, JobState
 
 import job_executor
 from arthur_client_support import (
+    ONBOARDING_ANALYSIS_JOB_KIND,
+    ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE,
     TEST_DISCOVERY_SOURCE_JOB_KIND,
     TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE,
 )
+from job_executors.onboarding_analysis_executor import OnboardingAnalysisFailed
 
 
 @pytest.fixture
@@ -80,3 +83,54 @@ def test_a_test_connection_job_names_the_client_to_upgrade(
     assert isinstance(raised, NotImplementedError)
     assert str(raised) == TEST_DISCOVERY_SOURCE_UNSUPPORTED_MESSAGE
     assert "upgrade arthur-client" in str(raised)
+
+
+def test_an_onboarding_failure_reaches_the_job_log_by_type_only(
+    unsupported_executor: tuple[job_executor.JobExecutor, MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    executor, _, errors = unsupported_executor
+    monkeypatch.setattr(job_executor, "ONBOARDING_ANALYSIS_SUPPORTED", True)
+    for name in (
+        "DatasetLoader",
+        "PlatformOnboardingResultUploader",
+        "JobSpecRawParser",
+    ):
+        monkeypatch.setattr(job_executor, name, MagicMock())
+    onboarding = MagicMock()
+    onboarding.return_value.execute.side_effect = ValueError("user jo@example.com said")
+    monkeypatch.setattr(job_executor, "OnboardingAnalysisExecutor", onboarding)
+    executor.jobs_client.api_client = MagicMock()  # type: ignore[attr-defined]
+    executor._onboarding_insight_client = MagicMock(return_value=None)  # type: ignore[method-assign]
+
+    with caplog.at_level(logging.ERROR, logger=job_executor.engine_logger.name):
+        state = _run_job_of_kind(executor, ONBOARDING_ANALYSIS_JOB_KIND)
+
+    assert state == JobState.FAILED
+    # The job's logger, whose errors go to the Platform, sees the type only.
+    raised = errors.call_args.kwargs["exc_info"]
+    assert isinstance(raised, OnboardingAnalysisFailed)
+    assert str(raised) == "ValueError"
+    assert raised.__suppress_context__
+    assert "jo@example.com" not in str(raised)
+    # The engine's own log keeps the original.
+    assert "jo@example.com" in caplog.text
+
+
+def test_an_onboarding_analysis_job_names_the_client_to_upgrade(
+    unsupported_executor: tuple[job_executor.JobExecutor, MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executor, list_datasets, errors = unsupported_executor
+    monkeypatch.setattr(job_executor, "ONBOARDING_ANALYSIS_SUPPORTED", False)
+    onboarding = MagicMock()
+    monkeypatch.setattr(job_executor, "OnboardingAnalysisExecutor", onboarding)
+
+    state = _run_job_of_kind(executor, ONBOARDING_ANALYSIS_JOB_KIND)
+
+    assert state == JobState.FAILED
+    onboarding.assert_not_called()
+    raised = errors.call_args.kwargs["exc_info"]
+    assert isinstance(raised, NotImplementedError)
+    assert str(raised) == ONBOARDING_ANALYSIS_UNSUPPORTED_MESSAGE

@@ -23,6 +23,8 @@ from arthur_client.api_bindings.exceptions import ApiException
 from arthur_client_support import (
     DEQUEUE_DECLARES_AGENT_TASK_SYNC,
     DEQUEUE_DECLARES_DISCOVERY_SOURCE_TEST,
+    DEQUEUE_DECLARES_ONBOARDING_ANALYSIS,
+    ONBOARDING_ANALYSIS_SUPPORTED,
     TEST_DISCOVERY_SOURCE_SUPPORTED,
 )
 from health_check import MLEngineHealthCheck as HealthCheck
@@ -154,8 +156,8 @@ class JobAgent:
             )
 
     def _dequeue_parameters(self) -> JobDequeueParameters:
-        """What this engine can take, including whether it runs Test Connection jobs
-        and task syncs.
+        """What this engine can take, including whether it runs Test Connection jobs,
+        task syncs and onboarding analysis jobs.
 
         Each capability is sent only when the installed client both has the field and
         can run the job; otherwise the request is exactly what it was before the field
@@ -167,6 +169,8 @@ class JobAgent:
             params["discovery_source_test"] = True
         if DEQUEUE_DECLARES_AGENT_TASK_SYNC:
             params["agent_task_sync"] = True
+        if ONBOARDING_ANALYSIS_SUPPORTED and DEQUEUE_DECLARES_ONBOARDING_ANALYSIS:
+            params["onboarding_analysis"] = True
         return JobDequeueParameters(**params)
 
     def _read_job(self, job_run: JobRun) -> Job | None:
