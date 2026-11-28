@@ -74,6 +74,28 @@
       "minimumReleaseAge": "0 days"
     },
     {
+      "description": "arthur-common gets its own PR instead of riding the 'python minor and patch' group above (this rule comes after that one, so its groupName wins). Inside the big group an arthur-common bump waited on every other package in it resolving and passing CI — PR #2567 took 14 days — while arthur-common is the package that unblocks the shared dependencies (litellm, pandas, duckdb, pydantic, ...). One group covers genai-engine and ml-engine so both engines move to the same release together. Majors are left out on purpose: they keep the default major handling and human review.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["arthur-common"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "arthur-common",
+      "minimumReleaseAge": "0 days",
+      "automerge": true
+    },
+    {
+      "description": "litellm only moves via arthur-common. arthur-common pins litellm exactly (its SOC-222 policy: consumers must use the same version), so a genai-engine litellm bump can never resolve until an arthur-common release carries it, and proposing one first only produces conflicts like PR #2653. genai-engine therefore declares litellm[mcp] without a version: arthur-common's pin decides it, and tool.uv constraint-dependencies keeps the litellm>=1.106.3 security floor. To move litellm, bump it in arthur-common; the arthur-common group above brings it here. vulnerabilityAlerts still re-enables security PRs for it.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["litellm"],
+      "enabled": false
+    },
+    {
+      "description": "Shared dependencies (also direct dependencies of arthur-common) wait 14 days on a MAJOR release instead of the default 3. arthur-common's Renovate opens the same major after 3 days, so it gets ~11 days to adopt it and publish before this repo proposes it; when this PR opens, the arthur-common release that allows the new major is usually already out, instead of the bump being unresolvable against arthur-common's ceiling. Keep this list in sync with arthur-common's [project] dependencies.",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["duckdb", "pandas", "pydantic", "fastapi", "fsspec", "datasketches"],
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
       "matchManagers": ["pep621"],
       "matchPackageNames": ["python", "torch", "numpy"],
       "enabled": false
@@ -91,7 +113,7 @@
       "matchPackageNames": ["fsspec", "gcsfs", "s3fs", "adlfs"]
     },
     {
-      "description": "litellm pins openai to a narrow range (openai>=2.20.0,<3.0.0 as of litellm 1.96.2), so an openai bump that leaves litellm behind cannot resolve. Grouping them means the family moves together or not at all, instead of Renovate proposing a half-bump that no lockfile can satisfy. arthur-common is deliberately NOT in this group even though it pins litellm exactly: it is first-party and updates several times a week, so coupling it here would stall those. If a litellm bump ever conflicts with the pinned arthur-common, check-dependency-automation catches it.",
+      "description": "The langchain/openai family moves together or not at all, instead of Renovate proposing a half-bump that no lockfile can satisfy. litellm is deliberately NOT in this group: arthur-common pins it exactly, so genai-engine cannot move it on its own (see the litellm rule below). An openai bump that litellm's openai ceiling rejects is held by the openai cap below until arthur-common ships a litellm that accepts it.",
       "matchManagers": ["pep621"],
       "groupName": "langchain + openai",
       "matchPackageNames": [
@@ -101,7 +123,6 @@
         "langchain-openai",
         "langchain-text-splitters",
         "langsmith",
-        "litellm",
         "openai"
       ]
     },

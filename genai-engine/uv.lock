@@ -318,7 +318,7 @@ requires-dist = [
     { name = "langchain-community", specifier = "==0.4.2" },
     { name = "langchain-openai", specifier = "==1.8.0" },
     { name = "langsmith", specifier = "==0.14.17" },
-    { name = "litellm", extras = ["mcp"], specifier = "==1.109.1" },
+    { name = "litellm", extras = ["mcp"] },
     { name = "more-itertools", specifier = "==11.2.1" },
     { name = "msgpack", specifier = "==1.2.4" },
     { name = "newrelic", specifier = "==14.3.0" },
